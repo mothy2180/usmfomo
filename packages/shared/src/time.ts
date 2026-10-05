@@ -86,8 +86,12 @@ export function formatEventRange(startIso: string, endIso: string, locale: Local
       ? `${ps.weekday} ${ps.day} – ${pe.weekday} ${pe.day} ${pe.month}`
       : `${ps.weekday} ${ps.day} ${ps.month} – ${pe.weekday} ${pe.day} ${pe.month}`
   }
-  if (mytDayKey(s) === mytDayKey(e)) {
-    const startT = sameDayPeriod(s, e, locale) ? timeLabel(s, locale, false) : timeLabel(s, locale)
+  // An event that ends exactly at midnight belongs to the day it started on
+  // ("Sat 11 Oct · 8:00 PM–12:00 AM"), not to the next day.
+  const endsAtMidnight = isoToMytInput(e.toISOString()).time === '00:00' && e.getTime() > s.getTime()
+  const lastDay = endsAtMidnight ? new Date(e.getTime() - 1) : e
+  if (mytDayKey(s) === mytDayKey(lastDay)) {
+    const startT = !endsAtMidnight && sameDayPeriod(s, e, locale) ? timeLabel(s, locale, false) : timeLabel(s, locale)
     return `${dayLabel(s, locale)} · ${startT}–${timeLabel(e, locale)}`
   }
   return `${dayLabel(s, locale)} ${timeLabel(s, locale)} – ${dayLabel(e, locale)} ${timeLabel(e, locale)}`

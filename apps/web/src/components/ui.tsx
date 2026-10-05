@@ -21,16 +21,21 @@ export function Button({
   className,
   busy,
   children,
+  onClick,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; busy?: boolean }) {
+  // While busy the button stays focusable (a real `disabled` would drop
+  // keyboard focus to <body>); it is marked aria-disabled and ignores clicks,
+  // which also stops a busy submit button from submitting its form again.
   return (
     <button
       type="button"
       {...rest}
       aria-busy={busy || undefined}
-      disabled={rest.disabled || busy}
+      aria-disabled={busy || undefined}
+      onClick={busy ? (e) => e.preventDefault() : onClick}
       className={cx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
         variants[variant],
         className,
       )}

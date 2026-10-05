@@ -1,0 +1,181 @@
+# usmfomo CI: every pull request and every push to main.
+# Deploys live in deploy.yml and only follow a successful run of this workflow on main.
+#
+# Every action is pinned to a full commit SHA (the version is in the comment;
+# Dependabot updates both). The repository setting "Require actions to be pinned
+# to a full-length commit SHA" enforces it.
+#
+# Supabase CLI: `pnpm exec supabase`, the repo's devDependency, not supabase/setup-cli.
+# One version source for laptop and CI (package.json + pnpm-lock.yaml integrity
+# hashes, behind pnpm's 3-day minimumReleaseAge), and Dependabot bumps reach CI
+# automatically. setup-cli's own version detection cannot read pnpm 12's
+# two-document lockfile and would silently fall back to "latest". deploy.yml has
+# no pnpm install, so it uses setup-cli with the exact version from package.json.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per PR or branch; a newer push cancels the older run. On main this
+  # also keeps deploys in commit order, since deploy.yml follows only successful runs.
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: web (lint, typecheck, test, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No version input: the action reads "packageManager" from package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --if-present run lint
+      - run: pnpm -r --if-present run typecheck
+      - run: pnpm -r --if-present run test
+      # The owner CLI (scripts/) and the landing media pipeline live outside the
+      # workspace packages, so `pnpm -r` doesn't reach them.
+      - name: Owner CLI type check and tests
+        run: |
+          pnpm typecheck:scripts
+          pnpm test:scripts
+      - name: Landing media pipeline tests
+        run: python3 -m unittest discover -s apps/web/scripts -p 'test_*.py'
+      - name: Build web and admin (public dummy values)
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+          VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA # Cloudflare's public always-pass test key
+        run: pnpm --filter web --filter admin run build
+      # deploy.yml bundles the Worker from source; catch bundling errors here first.
+      - name: Bundle the cron Worker (dry run)
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: pnpm --filter cron run build
+      - name: Landing media budget
+        run: python3 scripts/check-media-budget.py
+      # _headers, _redirects and _routes.json present, no 404.html anywhere (it
+      # disables the SPA fallback), no splat redirect, Functions only on /i/*,
+      # CSP built for the given Supabase URL, no secret key in any file.
+      - name: Pages output contract
+        run: python3 .github/scripts/check-pages-output.py --supabase-url https://example.supabase.co
+      - name: Self-tests of the CI scripts
+        run: |
+          python3 scripts/check-media-budget.py --self-test
+          python3 .github/scripts/check-pages-output.py --self-test
+
+  db:
+    name: db (pgTAP, advisors, lint, config guard)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # First, because it needs no database: fail in seconds, not after the stack starts.
+      - name: Config guard (supabase/config.toml security baseline)
+        run: |
+          python3 scripts/check-config.py
+          python3 scripts/check-config.py --self-test
+      # Public test values only: Cloudflare's always-pass Turnstile TEST secret
+      # and local-only function secrets. Production secrets never reach CI.
+      - name: Local CLI environment
+        run: cp supabase/.env.example supabase/.env
+      - name: Throwaway ES256 signing key (git-ignored, like on a laptop)
+        run: |
+          printf '[]' > supabase/signing_keys.json
+          pnpm exec supabase gen signing-key --algorithm ES256 --yes
+      - name: Start Supabase (Postgres, Auth, Storage, REST)
+        run: pnpm exec supabase start --exclude studio,mailpit,imgproxy,logflare,vector,supavisor,realtime,edge-runtime
+      - name: pgTAP security tests
+        run: pnpm exec supabase test db
+      - name: Security advisors
+        run: pnpm exec supabase db advisors --local --type security --fail-on error
+      - name: Schema lint
+        run: pnpm exec supabase db lint --local --schema public,private,audit --fail-on error
+      - name: Container logs (on failure)
+        if: failure()
+        run: |
+          for c in $(docker ps -a --format '{{.Names}}' | grep '^supabase_' || true); do
+            echo "::group::$c"
+            docker logs --tail 60 "$c" 2>&1 || true
+            echo "::endgroup::"
+          done
+
+  functions:
+    name: functions (deno check, deno test)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        # supabase/functions/deno.json holds the import map and compiler options.
+        working-directory: supabase/functions
+    env:
+      # Deno must never use the root package.json: with no deno.json in the way,
+      # Deno 2.9 rewrites it ("migrates" pnpm-workspace.yaml into it) and exits 1.
+      DENO_NO_PACKAGE_JSON: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.9.7 # the version the functions were written against; bump with your local Deno
+      - name: Type-check the entrypoints
+        run: deno check ./*/index.ts
+      # The same checks as docs/runbooks/functions-local.md (rules in deno.json).
+      - name: Lint and format
+        run: |
+          deno lint
+          deno fmt --check
+      # No --allow-* flags: the tests are pure, and --no-prompt turns any
+      # permission request into a failure instead of a hang.
+      - name: Unit tests (no permissions)
+        run: deno test --no-prompt
+
+  gitleaks:
+    name: gitleaks (full history)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.30.1 # keep equal to the rev in .pre-commit-config.yaml
+      # sha256 of gitleaks_8.30.1_linux_x64.tar.gz, also checked against the release's checksums file
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (checksum-verified)
+        run: |
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o "$tarball" "$base/$tarball"
+          curl -fsSL --retry 3 -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          awk -v f="$tarball" '$2 == f' checksums.txt | sha256sum --check --strict -
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum --check --strict -
+          tar -xzf "$tarball" gitleaks
+          ./gitleaks version
+      # .gitleaks.toml at the repo root is picked up automatically.
+      - name: Scan every commit
+        run: '"$RUNNER_TEMP/gitleaks" git --redact --verbose .'

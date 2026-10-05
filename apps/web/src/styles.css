@@ -172,22 +172,6 @@ body {
   background: rgb(11 13 18 / 0.8);
 }
 
-.landing-controls {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  margin-bottom: 0.5rem;
-}
-
-.landing-controls button {
-  font-size: 0.75rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 0.4rem;
-  border: 1px solid var(--color-line);
-  background: rgb(11 13 18 / 0.85);
-  color: var(--color-text);
-}
-
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;

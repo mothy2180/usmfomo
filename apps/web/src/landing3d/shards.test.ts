@@ -53,6 +53,24 @@ describe('shards', () => {
     }
   })
 
+  it('cover UVs honour a separate v inset (non-square atlases)', () => {
+    const shards = makeShards(opts)
+    const tile = { u0: 0, v0: 2 / 3, du: 1 / 6, dv: 1 / 3, aspect: 1, inset: 4 / 1920, insetV: 4 / 960 }
+    for (const s of shards.slice(0, 20)) {
+      for (const p of s.polygon) {
+        const [u, v] = coverUv(p, s, tile)
+        expect(u).toBeGreaterThanOrEqual(tile.u0 + tile.inset)
+        expect(u).toBeLessThanOrEqual(tile.u0 + tile.du - tile.inset)
+        expect(v).toBeGreaterThanOrEqual(tile.v0 + tile.insetV)
+        expect(v).toBeLessThanOrEqual(tile.v0 + tile.dv - tile.insetV)
+      }
+    }
+    // Without insetV the v inset equals the u inset, as before.
+    const s = shards[0]!
+    const p = s.polygon[0]!
+    expect(coverUv(p, s, { ...tile, insetV: undefined })).toEqual(coverUv(p, s, { ...tile, insetV: tile.inset }))
+  })
+
   it('insets polygons towards the centroid', () => {
     const square: [number, number][] = [[0, 0], [10, 0], [10, 10], [0, 10]]
     const c = polygonCentroid(square)

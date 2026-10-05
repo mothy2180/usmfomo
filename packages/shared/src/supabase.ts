@@ -9,6 +9,11 @@ export type ClientOptions = {
   storage?: Storage
   /** Owner console: false keeps the session in memory only. */
   persistSession?: boolean
+  /** Distinct per client in one page, or supabase-js warns about (and may
+   * cross-wire) "Multiple GoTrueClient instances". */
+  storageKey?: string
+  /** Anonymous clients have nothing to refresh. */
+  autoRefreshToken?: boolean
 }
 
 /** Browser client. Only ever the sb_publishable_ key — never a secret key. */
@@ -20,7 +25,8 @@ export function createBrowserClient(url: string, publishableKey: string, opts: C
     auth: {
       persistSession: opts.persistSession ?? true,
       storage: opts.storage,
-      autoRefreshToken: true,
+      storageKey: opts.storageKey,
+      autoRefreshToken: opts.autoRefreshToken ?? true,
       detectSessionInUrl: false,
       flowType: 'pkce',
     },

@@ -1,0 +1,26 @@
+# Optional: the Vite dev server for apps/web in a Linux container
+# (compose.yaml, profile "web"; docs/runbooks/local-dev.md). Running Vite
+# natively with `pnpm dev` is faster; this is for when you want it isolated.
+#
+# Nothing is copied in: compose bind-mounts the repository at /app, and the
+# Linux node_modules live in named volumes, so the macOS ones are never touched.
+# Base image pinned by digest; Dependabot (docker, monthly) proposes updates.
+FROM node:26-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
+
+# The pnpm version in package.json "packageManager", installed with npm (no Corepack).
+RUN npm install --global pnpm@12.9.1 \
+ && npm cache clean --force
+
+# Mount points for the named volumes, owned by the unprivileged user so a fresh
+# volume inherits that ownership.
+RUN mkdir -p /app/node_modules /app/apps/web/node_modules /app/apps/admin/node_modules \
+      /app/packages/shared/node_modules /app/workers/cron/node_modules /home/node/.pnpm-store \
+ && chown -R node:node /app /home/node/.pnpm-store
+
+USER node
+WORKDIR /app
+# Non-interactive pnpm: without a TTY it would otherwise abort instead of asking
+# before it rebuilds a node_modules volume.
+ENV CI=true
+EXPOSE 5173
+CMD ["pnpm", "--version"]

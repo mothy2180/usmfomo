@@ -1,3 +1,171 @@
 {
-  "_note": "filled in by the dashboard pages"
+  "dashboard": {
+    "title": "Acara terkini",
+    "docTitle": "Acara terkini — usmfomo",
+    "intro": "Acara kelab dan pusat pengajian USM yang akan datang, di satu tempat. Tidak perlu mendaftar.",
+    "tabsLabel": "Penganjur acara",
+    "countClub_other": "{{count}} acara kelab",
+    "countSchool_other": "{{count}} acara pusat pengajian"
+  },
+  "sections": {
+    "now": "Sedang berlangsung",
+    "today": "Hari ini",
+    "tomorrow": "Esok",
+    "week": "Minggu ini",
+    "later": "Akan datang"
+  },
+  "panel": {
+    "loading": "Memuatkan acara…",
+    "showMore": "Tunjuk lagi",
+    "showing": "Menunjukkan {{shown}} daripada {{total}}",
+    "empty": {
+      "club": "Belum ada acara kelab yang akan datang.",
+      "school": "Belum ada acara pusat pengajian yang akan datang."
+    },
+    "emptyHint": "Anda mengendalikan kelab atau pusat pengajian di USM? <rules>Baca peraturan siaran</rules> untuk mengetahui cara menyiarkan acara anda di sini.",
+    "noResultsQuery": "Tiada hasil untuk “{{q}}”.",
+    "noResultsFilters": "Tiada acara yang sepadan dengan penapis ini.",
+    "otherOrg": "Hanya menunjukkan acara daripada {{name}}.",
+    "otherOrgUnnamed": "Hanya menunjukkan acara daripada satu penganjur.",
+    "clearOrg": "Tunjuk semua penganjur"
+  },
+  "card": {
+    "organiser": "Penganjur:"
+  },
+  "badges": {
+    "updatedHint": "(masa atau tempat telah berubah)"
+  },
+  "filters": {
+    "label": "Tapis acara",
+    "search": "Cari",
+    "searchPlaceholder": "Acara, tempat atau penganjur",
+    "campus": "Kampus",
+    "organiser": "Penganjur",
+    "organiserPlaceholder": "Taip nama kelab atau pusat pengajian",
+    "organiserLoading": "Memuatkan senarai penganjur…",
+    "organiserList": "Penganjur",
+    "organiserNone": "Tiada penganjur yang sepadan.",
+    "organiserMore": "Teruskan menaip untuk melihat lagi.",
+    "organisersFound_other": "{{count}} penganjur dijumpai. Guna anak panah atas dan bawah untuk memilih.",
+    "clearOrganiser": "Kosongkan penganjur: {{name}}",
+    "clear": "Kosongkan penapis"
+  },
+  "notices": {
+    "heading": "Notis",
+    "readMore": "Baca lagi",
+    "readLess": "Tunjuk kurang",
+    "more_other": "Notis lain ({{count}})",
+    "fewer": "Sembunyikan notis lain",
+    "dismiss": "Tutup notis: {{title}}",
+    "link": "Maklumat lanjut"
+  },
+  "event": {
+    "back": "Acara terkini",
+    "docTitle": "{{title}} — usmfomo",
+    "loadingDocTitle": "Acara — usmfomo",
+    "goneDocTitle": "Acara telah tamat atau dikeluarkan — usmfomo",
+    "goneTitle": "Acara ini telah tamat atau telah dikeluarkan oleh penganjurnya.",
+    "goneBody": "Masih banyak lagi acara lain di USM.",
+    "goneCta": "Lihat acara terkini",
+    "errorTitle": "Acara ini tidak dapat dimuatkan",
+    "when": "Bila",
+    "where": "Di mana",
+    "organiser": "Penganjur",
+    "about": "Tentang acara ini",
+    "link": "Pendaftaran dan maklumat",
+    "posterAlt": "Poster: {{title}}",
+    "cancelledNote": "Acara ini telah dibatalkan oleh penganjurnya.",
+    "updatedNote": "Penganjur telah menukar masa atau tempat pada {{day}}.",
+    "addToCalendar": "Tambah ke kalendar",
+    "googleCalendar": "Kalendar Google",
+    "newTab": "(dibuka dalam tab baharu)"
+  },
+  "share": {
+    "copied": "Pautan disalin.",
+    "manual": "Salin pautan ini:"
+  },
+  "org": {
+    "docTitle": "{{name}} — usmfomo",
+    "loadingDocTitle": "Penganjur — usmfomo",
+    "missingDocTitle": "Penganjur tidak dijumpai — usmfomo",
+    "missingTitle": "Penganjur ini tidak dijumpai.",
+    "missingBody": "Pautan mungkin salah, atau penganjur ini tiada di usmfomo buat masa ini.",
+    "errorTitle": "Penganjur ini tidak dapat dimuatkan",
+    "upcoming": "Acara akan datang",
+    "empty": "Tiada acara akan datang daripada {{name}} buat masa ini.",
+    "emptyCta": "Lihat semua acara"
+  },
+  "degraded": {
+    "title": "Acara disembunyikan buat sementara waktu.",
+    "body": "usmfomo sedang dihadkan buat sementara, jadi acara tidak dapat dipaparkan sekarang. Sila semak semula nanti."
+  },
+  "rules": {
+    "docTitle": "Peraturan siaran — usmfomo",
+    "title": "Peraturan siaran",
+    "intro": "usmfomo menghimpunkan acara kelab dan pusat pengajian USM yang akan datang di satu tempat. Peraturan ini memastikan ia berguna dan selamat untuk semua orang, dan terpakai untuk setiap siaran.",
+    "who": {
+      "title": "Siapa boleh menyiarkan",
+      "items": [
+        "Kelab: badan kendalian pelajar, termasuk persatuan, jawatankuasa Desasiswa dan Majlis Perwakilan Pelajar (MPP).",
+        "Pusat pengajian: unit akademik dan pentadbiran, termasuk pusat pengajian, pusat, institut dan unit HEPA.",
+        "Setiap kelab atau pusat pengajian mendapat satu akaun, yang disediakan oleh admin usmfomo. Pelajar tidak perlu akaun untuk melihat acara."
+      ]
+    },
+    "allowed": {
+      "title": "Apa yang boleh disiarkan",
+      "items": [
+        "Acara USM sebenar yang dianjurkan oleh kelab atau pusat pengajian anda.",
+        "Maklumat yang tepat: nama acara, tarikh dan masa, tempat dan penerangan yang jelas. Sunting atau batalkan siaran jika ada perubahan.",
+        "Pautan yang jujur: pautan mesti membawa ke tempat yang dinyatakan, seperti borang pendaftaran atau laman rasmi anda."
+      ]
+    },
+    "notAllowed": {
+      "title": "Apa yang tidak dibenarkan",
+      "items": [
+        "Ucapan kebencian atau gangguan terhadap mana-mana individu atau kumpulan.",
+        "Kandungan lucah.",
+        "Kandungan atau kempen parti politik.",
+        "Arak atau perjudian.",
+        "Data peribadi orang lain, seperti nombor telefon, nombor kad pengenalan, alamat atau foto yang dikongsi tanpa kebenaran."
+      ]
+    },
+    "limits": {
+      "title": "Had",
+      "items": [
+        "Sehingga {{live}} siaran aktif pada satu masa.",
+        "Sehingga {{daily}} siaran baharu dalam mana-mana tempoh 24 jam. Memadam siaran tidak memulangkan kuota tersebut.",
+        "Sehingga {{edits}} suntingan dalam mana-mana tempoh 24 jam.",
+        "Sesuatu acara boleh berlangsung sehingga {{days}} hari. Siaran hilang dengan sendirinya apabila acara tamat.",
+        "Poster: JPG, PNG atau WebP, sehingga {{mb}} MB. Saiznya dikecilkan secara automatik sebelum dimuat naik."
+      ]
+    },
+    "posters": {
+      "title": "Tip poster",
+      "items": [
+        "Letakkan bahagian penting di tengah: senarai acara memaparkan potongan segi empat sama dari bahagian tengah.",
+        "Gunakan teks yang besar. Kebanyakan pelajar akan melihat poster anda pada telefon.",
+        "Nyatakan juga tarikh, masa dan tempat dalam siaran, bukan hanya pada poster."
+      ]
+    },
+    "security": {
+      "title": "Pastikan akaun anda selamat",
+      "items": [
+        "Hidupkan pengesahan dua langkah (2FA) dalam tetapan Studio. Ia pilihan, tetapi sangat digalakkan.",
+        "Setiap ahli jawatankuasa menambah telefon masing-masing, supaya akaun tidak hilang apabila seseorang meninggalkan jawatankuasa.",
+        "Jangan kongsi kata laluan di luar jawatankuasa anda. Apabila jawatankuasa bertukar, minta admin usmfomo membuat penyerahan akaun."
+      ]
+    },
+    "moderation": {
+      "title": "Moderasi",
+      "body": "Admin usmfomo boleh menyembunyikan atau mengeluarkan mana-mana siaran yang melanggar peraturan ini, dan boleh menggantung akaun yang berulang kali melanggarnya."
+    },
+    "account": {
+      "title": "Mendapatkan akaun atau kata laluan baharu",
+      "body": "Tiada pendaftaran sendiri: akaun dibuat oleh admin usmfomo. Untuk memohon akaun, kata laluan baharu atau set semula 2FA, <contact>hantar mesej kepada admin usmfomo</contact> melalui akaun rasmi kelab atau pusat pengajian anda, supaya kami dapat memastikan permintaan itu benar-benar daripada anda."
+    },
+    "disclaimer": {
+      "title": "Projek tidak rasmi",
+      "body": "usmfomo ialah projek pelajar yang bebas dan tidak rasmi. Ia tidak bergabung dengan, disokong oleh, atau dikendalikan oleh Universiti Sains Malaysia. Acara disiarkan oleh kelab dan pusat pengajian sendiri."
+    }
+  }
 }

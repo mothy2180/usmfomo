@@ -7,8 +7,7 @@
   "disclaimer": "usmfomo ialah projek pelajar yang bebas dan tidak rasmi, tidak bergabung dengan atau disokong oleh Universiti Sains Malaysia.",
   "pauseMotion": "Jeda gerakan",
   "playMotion": "Mainkan gerakan",
-  "liteOn": "Mod ringan: hidup",
-  "liteOff": "Mod ringan: mati",
   "tapToPlay": "Ketik di mana-mana untuk memulakan klip",
-  "loading": "Memuatkan kaca… {{percent}}%"
+  "loading": "Memuatkan kaca… {{percent}}%",
+  "liteMode": "Mod ringan"
 }

@@ -18,6 +18,13 @@ rule, the UI only mirrors it · unofficial project, says so on every page.
 
 | Date | Decision | Options considered | Chosen | Why |
 |---|---|---|---|---|
+| 2026-10-05 | Maintenance reports partial failure | 200 with warnings; 500 | 500 `{ok:false, failed:[steps]}`, deletions kept | the cron run shows as errored in Workers Logs instead of looking healthy |
+| 2026-10-05 | Owner console sign-in for club accounts | force TOTP like the owner; refuse early | aal1 `my_posting_status` pre-check → "not the owner" | club 2FA stays optional (owner decision) |
+| 2026-10-05 | Reduced motion on the landing | hard block; start paused | start paused, the visitor may opt in | WCAG 2.2.2 + respect the OS setting; the explosion stays off |
+| 2026-10-05 | Landing media until the owner sends clips | wait; ship synthetic | synthetic test-pattern atlases (1.4 MB) | the scene and its budgets can be tested now; swapped by re-running the pipeline |
+| 2026-10-05 | CI/CD shape | one workflow; CI + gated deploy | CI on every push/PR; deploy only after CI passes on main (gate job), build without secrets, deploy without installs or caches | supply-chain isolation; green before accounts exist |
+| 2026-10-05 | Supabase CLI in CI | setup-cli everywhere; pnpm devDependency | `pnpm exec supabase` in CI, setup-cli pinned to package.json's version in deploy | one version source; setup-cli can't read pnpm 12's lockfile |
+| 2026-10-05 | Production public values | environment vars; repository vars | `VITE_*` as repository variables, project/account ids as environment variables | the build job deliberately has no environment (no secrets) |
 | 2026-10-05 | Owner console on its own origin | /owner route in the public SPA; separate Pages project | `usmfomo-admin.pages.dev`, memory-only session | XSS or a bad dependency on the media-heavy public origin must not reach an aal2 owner token |
 | 2026-10-05 | 3D library | React Three Fiber + drei; plain three.js | plain three.js r186 + d3-delaunay | fewer dependencies (drei pulls 21), no React peer-range lock, simpler v1 |
 | 2026-10-05 | Routing on Pages | `/* /app.html 200`; explicit rewrites; `/ /landing 200` + SPA fallback | `/ /landing 200`, no 404.html | the splat rewrite loops forever on Pages (308 to /app re-matches) |
@@ -99,14 +106,33 @@ Database (`supabase/migrations`, tested by `supabase/tests`, 117 checks):
 ## 7. Open items for the owner
 
 - Request the Vice-Chancellor's written permission (USM Student Discipline Rules
-  2024, P.U.(A) 329, r.12) — draft to be prepared; optionally ask for
-  `usmfomo.cs.usm.my` in the same letter.
+  2024, P.U.(A) 329, r.12) — the letter is ready in
+  `docs/runbooks/usm-permission-letter.md` (BM + EN; check the citation against
+  the gazette first); optionally ask for `usmfomo.cs.usm.my` in the same letter.
 - Create a usmfomo-only contact channel (new Gmail or Instagram).
 - Create the Supabase org/project (Singapore, "automatically expose new tables"
   unticked), the Cloudflare account and Turnstile widget, then claim the Pages
   projects `usmfomo` and `usmfomo-admin`.
 
 ## 8. Journal (newest first)
+
+### 2026-10-05 (afternoon) — P2–P6 built locally in parallel
+- **Done**: six agents with disjoint file ownership built the public pages
+  (dashboard, event, organiser, rules), the club studio (login + Turnstile,
+  TOTP, status bar, post form with in-browser poster shrinking, settings), the
+  owner console (`apps/admin`), both Edge Functions with Deno tests, the cron
+  Worker, the owner CLI, CI/CD + Dependabot + config guard, the runbooks
+  (including the USM permission letter in BM and EN) and the landing v1
+  (vanilla three.js shattered glass, typed-Blob atlas video, motion controls,
+  ffmpeg-in-Docker atlas pipeline with synthetic dev media).
+- **Verified**: 482 unit tests (web 345, admin 93, shared 31, cron 13), 102
+  Deno tests, CLI tests, 117 pgTAP tests, security advisor and db lint clean,
+  config guard + self-test, Pages output check, actionlint, all builds.
+- **Note**: three session interrupts (13:12, 13:28, 13:46) killed the running
+  agents; the workflow restarted them and files on disk survived.
+- **Next**: independent security/correctness review of the new code; then the
+  owner's account setup (Supabase, Cloudflare, Turnstile, GitHub) and the
+  first deploy; real landing media; device tests.
 
 ### 2026-10-05 — Plan approved; repo and database security core
 - **Done**: research (hosting, BaaS, domain, three.js, security, Docker) with

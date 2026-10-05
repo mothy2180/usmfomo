@@ -41,6 +41,8 @@ function pagesHeaders(supabaseUrl: string): Plugin {
         '  Cache-Control: no-store',
         '  Permissions-Policy: accelerometer=(), gyroscope=(), magnetometer=(), camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), browsing-topics=()',
         '/assets/*',
+        // Pages merges every matching rule: detach /*'s no-store first.
+        '  ! Cache-Control',
         '  Cache-Control: public, max-age=31536000, immutable',
         '',
       ]
@@ -54,7 +56,7 @@ export default defineConfig(({ mode }) => {
   const supabaseUrl = env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321'
   return {
     plugins: [react(), tailwindcss(), pagesHeaders(supabaseUrl)],
-    build: { assetsInlineLimit: 0, sourcemap: false },
+    build: { assetsInlineLimit: 0, sourcemap: false, chunkSizeWarningLimit: 900 },
     server: { host: '127.0.0.1', port: 5174, strictPort: true },
     preview: { host: '127.0.0.1', port: 4174, strictPort: true },
   }

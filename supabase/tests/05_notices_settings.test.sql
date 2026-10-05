@@ -61,7 +61,8 @@ select throws_ok(
   '42501', null, 'anon cannot touch site settings');
 
 select tests.become_postgres();
-select is((select count(*)::int from audit.events where action = 'settings_update'), 1,
+-- now() is fixed for the whole test transaction, so this counts only rows written here.
+select is((select count(*)::int from audit.events where action = 'settings_update' and at = now()), 1,
   'kill-switch changes are audited');
 
 select * from finish();

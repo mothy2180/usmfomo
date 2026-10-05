@@ -36,7 +36,11 @@ Public (anon, `publicDb` in `apps/web/src/lib/db.ts`):
 - `from('posts').select(...).eq('id', id).maybeSingle()` — event page; embed the
   org with `org:orgs(id,name,slug,type)`. Missing row = ended/removed/hidden.
 - `from('notices').select('id,title,body,link_url,starts_at,ends_at,updated_at')`
-- `from('orgs').select('id,name,slug,type,campus')` — active orgs only (RLS).
+- `from('orgs').select('id,name,slug,type,campus')` — active orgs only (RLS);
+  paged with `range()` in steps of 100 and loaded only when the organiser filter
+  is used.
+- `from('site_settings').select('public_reads_enabled')` — read only when a page
+  comes back empty, to say "events are hidden for a while" in degraded mode.
 
 Club studio (`studioDb`, session in sessionStorage):
 - `rpc('my_posting_status')` → `{ state: 'ok'|'mfa_required'|'inactive'|'session_ended'|'no_account'|'owner'|'anonymous', username, org{id,name,slug,type,campus}, posting_enabled, live, live_limit, new_24h, new_limit, next_slot_at, edits_24h, edits_limit, factors }`
@@ -50,6 +54,10 @@ Club studio (`studioDb`, session in sessionStorage):
 - Errors: `errorKey()` from `@usmfomo/shared/errors` → i18n key under `errors:`.
 
 Owner console (owner session, aal2):
+- At aal1, right after the password step: `rpc('my_posting_status')`. Any club
+  or school state means "not the owner" (sign out with scope local), so a club
+  is never pushed into enrolling 2FA here. The binding check stays owner-admin
+  `status` at aal2.
 - `from('posts')` select (all rows) and update `hidden_at` (hide/unhide).
 - `from('notices')` select/insert/update/delete.
 - `from('site_settings')` select/update `posting_enabled`, `public_reads_enabled`.
@@ -72,7 +80,17 @@ Authorisation, in this order (any failure stops the request):
 Responses: `200 { ok: true, data }` or `{ ok: false, error }` with status
 400 `bad_request` · 401 `unauthorized` · 403 `forbidden`/`mfa_required` ·
 404 `not_found` · 409 `conflict` · 500 `internal`. Never echo secrets,
-passwords of other actions, or stack traces.
+passwords of other actions, or stack traces. Details as implemented:
+- A missing or unlisted `Origin` is 403 `forbidden` with no CORS headers
+  (preflight included). Non-POST is 400; a body over 8 KiB or not JSON is 400.
+- Invalid, expired or garbage tokens and ended sessions are 401; a verified
+  token that is not `role: authenticated` or whose `sub` is not a UUID is 401;
+  `mfa_required` (403) only when `aal` is not `aal2`; Auth outages are 500.
+- Account actions (`reset_password`, `handover`, `set_account_active`,
+  `remove_factors`, `delete_account`) all refuse the owner's own account with
+  403 `forbidden` (break-glass for the owner is the CLI). An unknown `userId` is 404.
+- Errors reach supabase-js as `FunctionsHttpError`; read
+  `await error.context.json()` for `{ ok: false, error }`.
 
 | action | params | data | notes |
 |---|---|---|---|
@@ -84,9 +102,9 @@ passwords of other actions, or stack traces.
 | `set_account_active` | `userId, active` | `{}` | `admin_set_account_active`; `false` also bans (`ban_duration: '876000h'`), `true` unbans (`'none'`) |
 | `update_org` | `orgId, name, slug, type, campus, active` | `{}` | `admin_update_org` |
 | `remove_factors` | `userId` | `{ removed }` | `auth.admin.mfa.listFactors` + `deleteFactor` each |
-| `delete_account` | `userId` | `{ removedFiles }` | refuse for the owner account; `admin_org_objects` → Storage `remove` (≤1000 per call) → `admin_delete_org` → `auth.admin.deleteUser` |
-| `delete_post` | `postId` | `{ removedFiles }` | `admin_delete_post` → Storage `remove` of returned paths |
-| `remove_post_image` | `postId` | `{ removedFiles }` | `admin_remove_post_image` → Storage `remove` |
+| `delete_account` | `userId` | `{ removedFiles }` | refuse for the owner account; deactivate first (no upload can land after the listing) → `admin_org_objects` → Storage `remove` (≤1000 per call; any failed batch → 500, org and account kept deactivated so a retry can finish) → `admin_delete_org` → `auth.admin.deleteUser`. An auth user with no account row (left by a failed create) is just deleted |
+| `delete_post` | `postId` | `{ removedFiles }` | `admin_delete_post` → Storage `remove` of returned paths. Unknown post 404. A Storage failure does not fail the request; leftovers go to the daily orphan sweep |
+| `remove_post_image` | `postId` | `{ removedFiles }` | `admin_remove_post_image` → Storage `remove` (same failure rule) |
 
 Generated passwords: 24 characters from `crypto.getRandomValues`, alphabet
 without look-alikes (no 0/O/1/l/I), always containing a lowercase letter, an
@@ -104,9 +122,15 @@ with no body detail. Steps (each logged as counts, never row contents):
    `rpc('maint_orphans')` → Storage `remove()`; `rpc('maint_retention')`.
 4. `rpc('maint_heartbeat', { p_result: { purged, files, orphans, retention, at } })`.
 
-Response `200 { ok: true, purged: { posts, notices }, files, orphans, retention }`.
-Idempotent; bounded (≤100 rows, ≤1000 files per run); never throws away the
-result of step 2 if step 3 fails.
+Response `200 { ok: true, purged: { posts, notices }, files, orphans, retention }`
+(`orphans`/`retention` are null on hourly runs without the daily sweep). If a
+later step fails, the response is `500 { ok: false, error: 'internal', purged,
+files, orphans, retention, failed: [steps] }` so the cron run shows as errored;
+step-2 deletions stay committed and are recorded in the final heartbeat. The
+daily sweep runs when the heartbeat's `swept_at` is before the latest 19:00 UTC.
+A `CRON_SECRET` that is unset or shorter than 32 characters makes every call
+401 (logged as `maintenance_misconfigured`). Idempotent and bounded (≤100 rows,
+≤1000 files per run).
 
 ## Cron Worker (`workers/cron`)
 
@@ -134,8 +158,16 @@ read -rs 'k?owner-cli key: '; SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SE
 Commands: `list` · `create-owner <username>` · `create <username> --org "<name>" --type club|school [--campus main] [--slug <slug>]` ·
 `reset-password <username>` · `handover <username>` · `deactivate <username>` · `activate <username>` ·
 `remove-factors <username>` · `delete <username> --yes` · `owner-reset-mfa <username>` (break-glass) ·
-`seed-local` (local URL only: an owner and two demo clubs with printed passwords).
-Passwords are printed once and never written to disk.
+`seed-local` (local URL only: `owner`, `demo-club` and `demo-school`; existing
+ones are skipped, not reset). Passwords are printed once and never written to disk.
+
+Break-glass meanings: `reset-password`, `deactivate` and `activate` also work on
+the owner account; `handover`, `remove-factors` and `delete` refuse it;
+`owner-reset-mfa` (owner only) sets a new password first, which ends every
+session, then deletes every factor. `delete` without `--yes` only prints what it
+would delete (exit 1). `SUPABASE_SECRET_KEY` must be an `sb_secret_` key; a
+hosted URL must be https and an origin only; the target URL is printed on
+stderr first. Exit codes: 0 done, 1 failed, 2 bad command line.
 
 ## Environment variables
 
@@ -143,7 +175,7 @@ Passwords are printed once and never written to disk.
 |---|---|---|
 | apps/web | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`, `VITE_IMAGE_MODE` (`proxy`/`direct`), `VITE_CONTACT_URL` | build-time, public |
 | apps/web Pages Function | `SUPABASE_URL` | Pages project variable |
-| apps/admin | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY` | build-time, public |
+| apps/admin | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`, `VITE_PUBLIC_SITE_URL` (default `https://usmfomo.pages.dev`) | build-time, public |
 | Edge Functions | `CRON_SECRET`, `ADMIN_ORIGINS` (+ injected `SUPABASE_URL`, `SUPABASE_SECRET_KEYS`) | `supabase secrets set` |
 | Cron Worker | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (vars), `CRON_SECRET` (secret) | `wrangler secret put` |
 | Supabase Auth | Turnstile secret | dashboard only; local test secret in `supabase/.env` |

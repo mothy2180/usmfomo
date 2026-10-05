@@ -60,12 +60,12 @@ export function AppShell({ children, wide }: { children: ReactNode; wide?: boole
         Skip to content
       </a>
       <header className="sticky top-0 z-40 border-b border-line bg-ink/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
           {/* The landing page is a different HTML document: use a plain link. */}
           <a href="/" className="text-lg font-extrabold tracking-tight text-text no-underline">
             usmfomo
           </a>
-          <nav aria-label="Main" className="flex items-center gap-3 text-sm">
+          <nav aria-label="Main" className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-sm">
             <Link to="/dashboard" className="text-muted hover:text-text [&.active]:text-text">
               {t('nav.dashboard')}
             </Link>

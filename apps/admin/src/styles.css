@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+/* Design tokens: the same dark, high-contrast palette as apps/web/src/styles.css
+   (WCAG 2.2 AA: text >= 4.5:1 on ink, surface and surface-2). */
+@theme {
+  --color-ink: #0b0d12;
+  --color-surface: #141821;
+  --color-surface-2: #1c2230;
+  --color-line: #2a3242;
+  --color-text: #e8edf5;
+  --color-muted: #a9b4c6;
+  --color-accent: #f5c542;
+  --color-accent-ink: #1a1400;
+  --color-sky: #7dd3fc;
+  --color-danger: #fca5a5;
+  --color-ok: #86efac;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  /* Native controls (date/time pickers, selects, scrollbars) in dark mode too. */
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* The console header is sticky from the lg breakpoint (one row, under 5rem):
+   keep focused and scrolled-to elements clear of it (WCAG 2.4.11). */
+@media (min-width: 64rem) {
+  html {
+    scroll-padding-top: 5rem;
+  }
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-sky);
+  outline-offset: 2px;
+}
+
+/* Visually hidden until focused (skip link). */
+.sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Modal dialogs (components/Dialog.tsx): a native <dialog> opened with
+   showModal(). Fits a 320 px viewport and scrolls inside when taller.
+   --------------------------------------------------------------------------- */
+.modal {
+  box-sizing: border-box;
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.6);
+}
+
+.modal::backdrop {
+  background: rgb(5 6 9 / 0.75);
+}
+
+/* The page behind an open modal stays put. */
+html:has(dialog.modal[open]) {
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Storage usage meter (Overview). low/high/optimum pick the colour.
+   --------------------------------------------------------------------------- */
+.usage-meter {
+  display: block;
+  width: 100%;
+  height: 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  overflow: hidden;
+  appearance: none;
+}
+
+.usage-meter::-webkit-meter-bar {
+  height: 100%;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+}
+
+.usage-meter::-webkit-meter-optimum-value {
+  background: var(--color-ok);
+}
+
+.usage-meter::-webkit-meter-suboptimum-value {
+  background: var(--color-accent);
+}
+
+.usage-meter::-webkit-meter-even-less-good-value {
+  background: var(--color-danger);
+}
+
+.usage-meter::-moz-meter-bar {
+  background: var(--color-ok);
+}
+
+.usage-meter:-moz-meter-sub-optimum::-moz-meter-bar {
+  background: var(--color-accent);
+}
+
+.usage-meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
+  background: var(--color-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}

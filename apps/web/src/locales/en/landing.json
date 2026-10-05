@@ -7,8 +7,7 @@
   "disclaimer": "usmfomo is an independent, unofficial student project, not affiliated with or endorsed by Universiti Sains Malaysia.",
   "pauseMotion": "Pause motion",
   "playMotion": "Play motion",
-  "liteOn": "Lite mode: on",
-  "liteOff": "Lite mode: off",
   "tapToPlay": "Tap anywhere to start the clips",
-  "loading": "Loading the glass… {{percent}}%"
+  "loading": "Loading the glass… {{percent}}%",
+  "liteMode": "Lite mode"
 }

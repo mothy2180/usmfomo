@@ -42,6 +42,13 @@ describe('formatEventRange', () => {
     expect(formatEventRange('2026-10-11T02:00:00Z', '2026-10-11T06:00:00Z')).toBe('Sun 11 Oct · 10:00 AM–2:00 PM')
   })
 
+  it('an event ending exactly at midnight stays on its own day', () => {
+    // 20:00-00:00 MYT on Sun 11 Oct
+    expect(formatEventRange('2026-10-11T12:00:00Z', '2026-10-11T16:00:00Z')).toBe('Sun 11 Oct · 8:00 PM–12:00 AM')
+    // 10:00-00:00: both periods shown
+    expect(formatEventRange('2026-10-11T02:00:00Z', '2026-10-11T16:00:00Z')).toBe('Sun 11 Oct · 10:00 AM–12:00 AM')
+  })
+
   it('overnight range writes both days', () => {
     expect(formatEventRange('2026-10-11T14:00:00Z', '2026-10-11T18:00:00Z')).toBe('Sun 11 Oct 10:00 PM – Mon 12 Oct 2:00 AM')
   })

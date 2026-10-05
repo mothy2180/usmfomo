@@ -1,0 +1,68 @@
+# Dependabot version updates. Security updates are switched on in the repository
+# settings (docs/runbooks/github-account.md, section 5).
+#
+# Cooldown: like pnpm's minimumReleaseAge (3 days), a new release must be a few
+# days old before Dependabot proposes it; majors wait two weeks.
+version: 2
+updates:
+  - package-ecosystem: npm # pnpm workspace: package.json files + pnpm-lock.yaml
+    directory: /
+    schedule:
+      interval: weekly
+      day: saturday
+      time: '09:00'
+      timezone: Asia/Kuala_Lumpur
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    open-pull-requests-limit: 5
+    groups:
+      # First match wins, so the React/three.js stack moves together (any update
+      # type) and everything else lands as one minor/patch PR.
+      react-stack:
+        patterns:
+          - react
+          - react-dom
+          - '@types/react*'
+          - three
+          - '@types/three'
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Actions are pinned to commit SHAs; Dependabot moves the SHA and the version comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: saturday
+      time: '09:00'
+      timezone: Asia/Kuala_Lumpur
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns:
+          - '*'
+
+  # .pre-commit-config.yaml. When gitleaks moves, update GITLEAKS_VERSION and
+  # GITLEAKS_SHA256 in .github/workflows/ci.yml in the same PR.
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: monthly
+      time: '09:00'
+      timezone: Asia/Kuala_Lumpur
+    cooldown:
+      default-days: 3
+
+  # Dockerfile.dev (the base image is pinned by digest).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+      time: '09:00'
+      timezone: Asia/Kuala_Lumpur
+    cooldown:
+      default-days: 3

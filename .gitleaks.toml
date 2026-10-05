@@ -25,4 +25,6 @@ regexes = [
   '''example\.com''',
   '''1x0000000000000000000000000000000AA''',
   '''1x00000000000000000000AA''',
+  # Test fixtures: every fake key/password/token in a test contains this marker.
+  '''FakeForTests''',
 ]

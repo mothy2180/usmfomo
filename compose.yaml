@@ -1,0 +1,65 @@
+# Local tooling only; production never uses Docker. docs/runbooks/local-dev.md.
+#
+#   docker compose run --rm ffmpeg -i raw/clips/a.mov ...   # profile "tools"
+#   docker compose --profile web up --build                 # optional Vite in Linux
+#
+# The project name must NOT be "usmfomo": the Supabase CLI labels its containers
+# com.docker.compose.project=usmfomo, so a same-named compose project would treat
+# the local Supabase stack as its own (and `down --remove-orphans` would delete it).
+name: usmfomo-tools
+
+services:
+  # ffmpeg/ffprobe for the landing media (same image as
+  # apps/web/scripts/build-landing-atlas.py; keep the two tags equal).
+  # Inputs are files other people sent us: no network, no capabilities,
+  # read-only root filesystem, and media/raw mounted read-only.
+  ffmpeg:
+    profiles: [tools]
+    image: mwader/static-ffmpeg:9.0.2
+    entrypoint: [/ffmpeg, -hide_banner]
+    working_dir: /media
+    volumes:
+      - ./media:/media
+      - ./media/raw:/media/raw:ro
+    user: '1000:1000'
+    network_mode: none
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  # Optional: Vite for apps/web inside Node 26 (Dockerfile.dev). It listens on
+  # 0.0.0.0 inside the container but is published on 127.0.0.1 only. Named
+  # volumes hold the Linux node_modules of every workspace package (pnpm writes
+  # each package's own node_modules), so the host's macOS ones stay untouched.
+  web:
+    profiles: [web]
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command:
+      - sh
+      - -c
+      - pnpm install --frozen-lockfile --store-dir /home/node/.pnpm-store
+        && exec pnpm --filter web exec vite --host 0.0.0.0 --port 5173 --strictPort
+    env_file: apps/web/.env.local
+    ports:
+      - '127.0.0.1:5173:5173'
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - web_node_modules:/app/apps/web/node_modules
+      - admin_node_modules:/app/apps/admin/node_modules
+      - shared_node_modules:/app/packages/shared/node_modules
+      - cron_node_modules:/app/workers/cron/node_modules
+      - pnpm_store:/home/node/.pnpm-store
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+volumes:
+  node_modules:
+  web_node_modules:
+  admin_node_modules:
+  shared_node_modules:
+  cron_node_modules:
+  pnpm_store:

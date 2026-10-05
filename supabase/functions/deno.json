@@ -1,0 +1,29 @@
+{
+  "nodeModulesDir": "none",
+  "lock": false,
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1.0.19",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.117.2",
+    "zod": "npm:zod@4.6.5"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "tasks": {
+    "check": "deno check maintenance/ owner-admin/ _shared/",
+    "test": "deno test --no-prompt"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "semiColons": false,
+    "singleQuote": true
+  }
+}

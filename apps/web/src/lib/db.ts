@@ -1,10 +1,13 @@
-import { createBrowserClient, imageUrl as buildImageUrl } from '@usmfomo/shared'
+import { imageUrl as buildImageUrl } from '@usmfomo/shared/images'
+import { createBrowserClient } from '@usmfomo/shared/supabase'
 import { IMAGE_MODE, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../env.ts'
 
 /** Public pages (dashboard, event, organiser): always anonymous, so they show
  * exactly what every student sees. */
 export const publicDb = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   persistSession: false,
+  autoRefreshToken: false,
+  storageKey: 'usmfomo-public',
 })
 
 /** Club studio: session kept in sessionStorage (closing the tab signs out;
@@ -12,6 +15,7 @@ export const publicDb = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_K
  * doesn't sign everyone else out. */
 export const studioDb = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   storage: typeof window === 'undefined' ? undefined : window.sessionStorage,
+  storageKey: 'usmfomo-studio',
 })
 
 /** Poster/thumbnail URL. Falls back to Supabase's own URL (see onImageError). */

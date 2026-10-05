@@ -16,8 +16,12 @@ decisions are in [`docs/adr/`](docs/adr/); operating procedures in
 
 ## Status
 
-Phase P0/P1 (2026-10-05): repository, toolchain and the database security core
-(migrations + 117 pgTAP tests). No web app yet.
+Built locally, not yet deployed (2026-10-05): database security core (117 pgTAP
+tests), public site + club studio + animated landing (`apps/web`), owner console
+(`apps/admin`), two Edge Functions, the cron Worker and the owner CLI, CI/CD
+workflows and runbooks. The landing page uses synthetic test clips until the
+real media arrives. Next: accounts on Supabase, Cloudflare and GitHub, then the
+first deploy (`docs/runbooks/deploy.md`).
 
 ## Stack
 
@@ -47,10 +51,26 @@ Daily loop:
 
 ```bash
 pnpm supabase db reset      # re-apply migrations + seed (sample orgs/posts, test helpers)
+pnpm account seed-local     # local owner + demo-club + demo-school (passwords printed once)
+pnpm dev                    # web http://127.0.0.1:5173 · owner console http://127.0.0.1:5174
+pnpm check                  # lint, typecheck and unit tests for every package + the CLI
 pnpm supabase test db       # pgTAP security tests (must stay green)
+pnpm e2e:functions          # Edge Functions end to end against the local stack
 pnpm supabase db advisors --local --type security --fail-on error
 pnpm supabase stop          # when done — the local stack listens on all interfaces
 ```
+
+Copy `apps/web/.env.example` and `apps/admin/.env.example` to `.env.local` first
+(local values: `pnpm supabase status -o env`). Landing media and the optional
+containerised dev server: `docker compose --profile tools run --rm ffmpeg ...`
+and `docker compose --profile web up` (see `docs/runbooks/local-dev.md`).
+Run Deno from `supabase/functions` (or set `DENO_NO_PACKAGE_JSON=1`): from the
+repo root Deno rewrites the root `package.json`.
+
+Operations: [`docs/runbooks/`](docs/runbooks/) — first deploy
+([`deploy.md`](docs/runbooks/deploy.md)), local development, onboarding a club,
+committee handover, forgotten passwords, owner lockout, account takeover, quota
+attack, and the USM permission letter.
 
 On networks you don't control (campus Wi-Fi), stop the stack or turn on
 "Block all incoming connections" in the macOS firewall: the local Studio has no
@@ -68,5 +88,6 @@ same ports, so run one Supabase stack at a time.
 
 ## Licence
 
-AGPL-3.0-only — see [`LICENSE`](LICENSE). Landing-page media (once added) is ©
-its owners, used with permission, and is not covered by the AGPL.
+AGPL-3.0-only — see [`LICENSE`](LICENSE). Landing-page media is © its owners,
+used with permission, and is not covered by the AGPL — see
+[`apps/web/src/landing3d/media/NOTICE.md`](apps/web/src/landing3d/media/NOTICE.md).

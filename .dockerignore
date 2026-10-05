@@ -1,0 +1,9 @@
+# Dockerfile.dev copies nothing (compose bind-mounts the repository at run time),
+# so the build context is empty: secrets (.env files, supabase/.env,
+# supabase/signing_keys.json), node_modules and the private media/raw never
+# reach the Docker daemon.
+#
+# If a Dockerfile ever needs files, allowlist exactly those with "!path" lines
+# below. Never allowlist .env*, supabase/.env, supabase/signing_keys.json,
+# media/raw or node_modules.
+*

@@ -1,3 +1,175 @@
 {
-  "_note": "filled in by the dashboard pages"
+  "dashboard": {
+    "title": "What's on",
+    "docTitle": "What's on — usmfomo",
+    "intro": "Upcoming club and school events at USM, in one place. No sign-up needed.",
+    "tabsLabel": "Event organisers",
+    "countClub_one": "{{count}} club event",
+    "countClub_other": "{{count}} club events",
+    "countSchool_one": "{{count}} school event",
+    "countSchool_other": "{{count}} school events"
+  },
+  "sections": {
+    "now": "Happening now",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "week": "This week",
+    "later": "Later"
+  },
+  "panel": {
+    "loading": "Loading events…",
+    "showMore": "Show more",
+    "showing": "Showing {{shown}} of {{total}}",
+    "empty": {
+      "club": "No upcoming club events yet.",
+      "school": "No upcoming school events yet."
+    },
+    "emptyHint": "Run a club or school at USM? <rules>Read the posting rules</rules> to see how to get your events here.",
+    "noResultsQuery": "Nothing matches “{{q}}”.",
+    "noResultsFilters": "No events match these filters.",
+    "otherOrg": "Showing events from {{name}} only.",
+    "otherOrgUnnamed": "Showing events from one organiser only.",
+    "clearOrg": "Show all organisers"
+  },
+  "card": {
+    "organiser": "Organiser:"
+  },
+  "badges": {
+    "updatedHint": "(the time or venue changed)"
+  },
+  "filters": {
+    "label": "Filter events",
+    "search": "Search",
+    "searchPlaceholder": "Event, venue or organiser",
+    "campus": "Campus",
+    "organiser": "Organiser",
+    "organiserPlaceholder": "Type a club or school name",
+    "organiserLoading": "Loading organisers…",
+    "organiserList": "Organisers",
+    "organiserNone": "No organisers match.",
+    "organiserMore": "Keep typing to see more.",
+    "organisersFound_one": "{{count}} organiser found. Use the up and down arrows to choose.",
+    "organisersFound_other": "{{count}} organisers found. Use the up and down arrows to choose.",
+    "clearOrganiser": "Clear organiser: {{name}}",
+    "clear": "Clear filters"
+  },
+  "notices": {
+    "heading": "Notices",
+    "readMore": "Read more",
+    "readLess": "Show less",
+    "more_one": "More notices ({{count}})",
+    "more_other": "More notices ({{count}})",
+    "fewer": "Hide extra notices",
+    "dismiss": "Dismiss notice: {{title}}",
+    "link": "More info"
+  },
+  "event": {
+    "back": "What's on",
+    "docTitle": "{{title}} — usmfomo",
+    "loadingDocTitle": "Event — usmfomo",
+    "goneDocTitle": "Event ended or removed — usmfomo",
+    "goneTitle": "This event has ended or was removed by its organiser.",
+    "goneBody": "There's plenty more happening at USM.",
+    "goneCta": "See what's on now",
+    "errorTitle": "Can't load this event",
+    "when": "When",
+    "where": "Where",
+    "organiser": "Organiser",
+    "about": "About this event",
+    "link": "Registration and details",
+    "posterAlt": "Poster: {{title}}",
+    "cancelledNote": "This event has been cancelled by its organiser.",
+    "updatedNote": "The organiser changed the time or venue on {{day}}.",
+    "addToCalendar": "Add to calendar",
+    "googleCalendar": "Google Calendar",
+    "newTab": "(opens in a new tab)"
+  },
+  "share": {
+    "copied": "Link copied.",
+    "manual": "Copy this link:"
+  },
+  "org": {
+    "docTitle": "{{name}} — usmfomo",
+    "loadingDocTitle": "Organiser — usmfomo",
+    "missingDocTitle": "Organiser not found — usmfomo",
+    "missingTitle": "We couldn't find this organiser.",
+    "missingBody": "The link may be wrong, or the organiser isn't on usmfomo right now.",
+    "errorTitle": "Can't load this organiser",
+    "upcoming": "Upcoming events",
+    "empty": "No upcoming events from {{name}} right now.",
+    "emptyCta": "See everything that's on"
+  },
+  "degraded": {
+    "title": "Events are hidden for a while.",
+    "body": "usmfomo is temporarily limited, so events can't be shown right now. Please check back later."
+  },
+  "rules": {
+    "docTitle": "Posting rules — usmfomo",
+    "title": "Posting rules",
+    "intro": "usmfomo puts upcoming USM club and school events in one place. These rules keep it useful and safe for everyone, and apply to every post.",
+    "who": {
+      "title": "Who can post",
+      "items": [
+        "Clubs: student-run bodies, including societies, Desasiswa committees and the Student Representative Council (MPP).",
+        "Schools: academic and administrative units, including schools, centres, institutes and HEPA units.",
+        "Each club or school gets one account, set up by the usmfomo admin. Students never need an account to browse."
+      ]
+    },
+    "allowed": {
+      "title": "What you may post",
+      "items": [
+        "Real USM events that your club or school organises.",
+        "Accurate details: the event name, date and time, venue and a clear description. Edit or cancel the post if anything changes.",
+        "Honest links: a link must go where it says, such as your registration form or official page."
+      ]
+    },
+    "notAllowed": {
+      "title": "What's not allowed",
+      "items": [
+        "Hate speech or harassment of any person or group.",
+        "Sexually explicit content.",
+        "Political party content or campaigning.",
+        "Alcohol or gambling.",
+        "Other people's personal data, such as phone numbers, IC numbers, addresses or photos shared without consent."
+      ]
+    },
+    "limits": {
+      "title": "Limits",
+      "items": [
+        "Up to {{live}} live posts at a time.",
+        "Up to {{daily}} new posts in any 24 hours. Deleting a post doesn't give the slot back.",
+        "Up to {{edits}} edits in any 24 hours.",
+        "An event can last up to {{days}} days. Posts disappear by themselves when the event ends.",
+        "Posters: JPG, PNG or WebP, up to {{mb}} MB. They are shrunk automatically before upload."
+      ]
+    },
+    "posters": {
+      "title": "Poster tips",
+      "items": [
+        "Keep the important part in the centre: event lists show a square crop from the middle.",
+        "Use large text. Most students will see your poster on a phone.",
+        "Put the date, time and venue in the post as well, not only on the poster."
+      ]
+    },
+    "security": {
+      "title": "Keep your account safe",
+      "items": [
+        "Turn on two-step verification (2FA) in Studio settings. It's optional, but strongly recommended.",
+        "Each committee member adds their own phone, so the account isn't lost when one person leaves.",
+        "Never share the password outside your committee. When the committee changes, ask the usmfomo admin for a handover."
+      ]
+    },
+    "moderation": {
+      "title": "Moderation",
+      "body": "The usmfomo admin may hide or remove any post that breaks these rules, and may pause an account that keeps breaking them."
+    },
+    "account": {
+      "title": "Getting an account or a new password",
+      "body": "There is no sign-up: accounts are created by the usmfomo admin. To ask for an account, a new password or a 2FA reset, <contact>message the usmfomo admin</contact> from your club's or school's official account, so we can check that it's really you."
+    },
+    "disclaimer": {
+      "title": "An unofficial project",
+      "body": "usmfomo is an independent, unofficial student project. It is not affiliated with, endorsed by, or operated by Universiti Sains Malaysia. Events are posted by the clubs and schools themselves."
+    }
+  }
 }

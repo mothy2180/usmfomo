@@ -167,12 +167,14 @@ export function assignTiles(shards: Shard[], tileCount: number, seed = 1): Map<n
 /**
  * UVs that make a tile cover a shard like CSS object-fit: cover. The tile with
  * aspect `aspect` (w/h) sits at [u0,v0]..[u0+du, v0+dv] in the atlas; `inset`
- * (in UV units) keeps samples away from the neighbouring tiles' edges.
+ * (in UV units) keeps samples away from the neighbouring tiles' edges. A
+ * non-square atlas needs a different inset along v (`insetV`, defaults to
+ * `inset`): 4 px is 4/1920 of the 1920x960 atlas across but 4/960 down.
  */
 export function coverUv(
   p: Point,
   shard: Pick<Shard, 'bbox' | 'centroid'>,
-  tile: { u0: number; v0: number; du: number; dv: number; aspect: number; inset?: number },
+  tile: { u0: number; v0: number; du: number; dv: number; aspect: number; inset?: number; insetV?: number },
 ): [number, number] {
   const bw = shard.bbox.x1 - shard.bbox.x0
   const bh = shard.bbox.y1 - shard.bbox.y0
@@ -180,11 +182,12 @@ export function coverUv(
   const cy = (shard.bbox.y0 + shard.bbox.y1) / 2
   const tileW = Math.max(bw, bh * tile.aspect)
   const tileH = tileW / tile.aspect
-  const inset = tile.inset ?? 0
+  const insetU = tile.inset ?? 0
+  const insetV = tile.insetV ?? insetU
   const fx = 0.5 + (p[0] - cx) / tileW
   const fy = 0.5 + (p[1] - cy) / tileH
-  const u = tile.u0 + inset + (tile.du - 2 * inset) * Math.min(1, Math.max(0, fx))
+  const u = tile.u0 + insetU + (tile.du - 2 * insetU) * Math.min(1, Math.max(0, fx))
   // Atlas v grows upwards (WebGL); scene y grows downwards.
-  const v = tile.v0 + inset + (tile.dv - 2 * inset) * (1 - Math.min(1, Math.max(0, fy)))
+  const v = tile.v0 + insetV + (tile.dv - 2 * insetV) * (1 - Math.min(1, Math.max(0, fy)))
   return [u, v]
 }
