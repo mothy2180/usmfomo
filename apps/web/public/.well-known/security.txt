@@ -1,0 +1,6 @@
+# RFC 9116. Reset Expires to less than a year ahead at every release.
+Contact: https://github.com/mothy2180/usmfomo/security/advisories/new
+Expires: 2027-09-30T00:00:00.000Z
+Preferred-Languages: en, ms
+Canonical: https://usmfomo.pages.dev/.well-known/security.txt
+Policy: https://github.com/mothy2180/usmfomo/blob/main/SECURITY.md

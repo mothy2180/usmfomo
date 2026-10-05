@@ -1,0 +1,14 @@
+{
+  "title": "usmfomo",
+  "tagline": "See what's happening around USM",
+  "cta": "I'm FOMO",
+  "login": "Login",
+  "loginNote": "For club & school admins only",
+  "disclaimer": "usmfomo is an independent, unofficial student project, not affiliated with or endorsed by Universiti Sains Malaysia.",
+  "pauseMotion": "Pause motion",
+  "playMotion": "Play motion",
+  "liteOn": "Lite mode: on",
+  "liteOff": "Lite mode: off",
+  "tapToPlay": "Tap anywhere to start the clips",
+  "loading": "Loading the glass… {{percent}}%"
+}

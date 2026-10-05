@@ -1,0 +1,68 @@
+{
+  "appName": "usmfomo",
+  "tagline": "What's on at USM",
+  "nav": {
+    "dashboard": "What's on",
+    "login": "Club & school login",
+    "studio": "Studio",
+    "rules": "Posting rules",
+    "home": "Home"
+  },
+  "footer": {
+    "disclaimer": "usmfomo is an independent, unofficial student project, not affiliated with or endorsed by Universiti Sains Malaysia. Events are posted by the clubs and schools themselves.",
+    "report": "Report a problem with a post",
+    "rules": "Posting rules",
+    "source": "Source code",
+    "security": "Security"
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "ms": "Bahasa Melayu"
+  },
+  "actions": {
+    "retry": "Try again",
+    "loading": "Loading…",
+    "back": "Back",
+    "showMore": "Show more",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "share": "Share",
+    "signOut": "Sign out"
+  },
+  "campus": {
+    "all": "All campuses",
+    "main": "Main campus",
+    "engineering": "Engineering campus",
+    "health": "Health campus",
+    "other": "Other",
+    "online": "Online"
+  },
+  "orgType": {
+    "club": "Clubs",
+    "school": "Schools",
+    "clubOne": "Club",
+    "schoolOne": "School"
+  },
+  "time": {
+    "mytNote": "Times are Malaysia time (MYT)",
+    "onUntil": "On until {{day}}",
+    "happeningNow": "Happening now",
+    "updated": "Updated",
+    "cancelled": "Cancelled"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This page doesn't exist.",
+    "back": "See what's on"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "loadEvents": "Can't load events right now."
+  }
+}

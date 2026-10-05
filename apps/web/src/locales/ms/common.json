@@ -1,0 +1,68 @@
+{
+  "appName": "usmfomo",
+  "tagline": "Apa yang berlaku di USM",
+  "nav": {
+    "dashboard": "Acara",
+    "login": "Log masuk kelab & pusat pengajian",
+    "studio": "Studio",
+    "rules": "Peraturan siaran",
+    "home": "Utama"
+  },
+  "footer": {
+    "disclaimer": "usmfomo ialah projek pelajar yang bebas dan tidak rasmi, tidak bergabung dengan atau disokong oleh Universiti Sains Malaysia. Acara disiarkan oleh kelab dan pusat pengajian sendiri.",
+    "report": "Laporkan masalah pada siaran",
+    "rules": "Peraturan siaran",
+    "source": "Kod sumber",
+    "security": "Keselamatan"
+  },
+  "lang": {
+    "label": "Bahasa",
+    "en": "English",
+    "ms": "Bahasa Melayu"
+  },
+  "actions": {
+    "retry": "Cuba lagi",
+    "loading": "Memuatkan…",
+    "back": "Kembali",
+    "showMore": "Tunjuk lagi",
+    "close": "Tutup",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Padam",
+    "confirm": "Sahkan",
+    "copyLink": "Salin pautan",
+    "copied": "Disalin",
+    "share": "Kongsi",
+    "signOut": "Log keluar"
+  },
+  "campus": {
+    "all": "Semua kampus",
+    "main": "Kampus Induk",
+    "engineering": "Kampus Kejuruteraan",
+    "health": "Kampus Kesihatan",
+    "other": "Lain-lain",
+    "online": "Dalam talian"
+  },
+  "orgType": {
+    "club": "Kelab",
+    "school": "Pusat Pengajian",
+    "clubOne": "Kelab",
+    "schoolOne": "Pusat Pengajian"
+  },
+  "time": {
+    "mytNote": "Masa dalam waktu Malaysia (MYT)",
+    "onUntil": "Berlangsung hingga {{day}}",
+    "happeningNow": "Sedang berlangsung",
+    "updated": "Dikemas kini",
+    "cancelled": "Dibatalkan"
+  },
+  "notFound": {
+    "title": "Halaman tidak dijumpai",
+    "body": "Halaman ini tidak wujud.",
+    "back": "Lihat acara"
+  },
+  "error": {
+    "title": "Ada masalah",
+    "loadEvents": "Acara tidak dapat dimuatkan sekarang."
+  }
+}

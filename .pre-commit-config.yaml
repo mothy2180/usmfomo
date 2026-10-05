@@ -16,5 +16,6 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
       - id: end-of-file-fixer
+        exclude: 'database\.types\.ts$'
       - id: trailing-whitespace
-        exclude: '\.md$'
+        exclude: '(\.md|database\.types\.ts)$'
