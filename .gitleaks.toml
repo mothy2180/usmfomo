@@ -1,0 +1,28 @@
+# gitleaks configuration — runs in pre-commit and in CI over the full history.
+# Extends the default ruleset with the secret shapes this project handles.
+title = "usmfomo gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "supabase-secret-key"
+description = "Supabase secret API key (bypasses RLS)"
+regex = '''sb_secret_[A-Za-z0-9_-]{20,}'''
+keywords = ["sb_secret_"]
+
+[[rules]]
+id = "cron-secret-assignment"
+description = "CRON_SECRET with a real value (must only live in Supabase/Cloudflare secrets)"
+regex = '''(?i)cron[_-]?secret[ \t]*[:=][ \t]*['"]?[A-Fa-f0-9]{32,}'''
+keywords = ["cron_secret", "cron-secret"]
+
+[allowlist]
+description = "Placeholders only; never allowlist whole files"
+regexes = [
+  '''sb_secret_REPLACE_ME''',
+  '''CHANGE_ME''',
+  '''example\.com''',
+  '''1x0000000000000000000000000000000AA''',
+  '''1x00000000000000000000AA''',
+]

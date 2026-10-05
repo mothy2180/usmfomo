@@ -1,0 +1,20 @@
+# Install once:  brew install pre-commit gitleaks   (see README)
+# Then:          pre-commit install
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks-system   # uses the Homebrew gitleaks binary (no Go toolchain needed)
+        pass_filenames: false # scan the staged diff once, not per file batch
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Landing atlases are capped in CI (scripts/check-media-budget.py); 4 MB here
+      # stops accidental raw GIFs or videos from entering the public repo.
+      - id: check-added-large-files
+        args: ["--maxkb=4096"]
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: '\.md$'

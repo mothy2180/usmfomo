@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+  - workers/*
+
+# Supply-chain settings (pnpm 11+ reads these only from this file).
+# Wait 3 days before installing any newly published version.
+minimumReleaseAge: 4320
+# Refuse a dependency whose trust evidence (provenance/signature) got weaker.
+trustPolicy: no-downgrade
+# Only these packages may run install scripts.
+allowBuilds:
+  esbuild: true
+  workerd: true

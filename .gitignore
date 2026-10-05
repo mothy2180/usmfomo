@@ -1,0 +1,57 @@
+# --- secrets & env (never commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.age
+*.p12
+supabase/.env*
+!supabase/.env.example
+apps/*/.env*
+!apps/*/.env.example
+workers/*/.dev.vars*
+!workers/*/.dev.vars.example
+.dev.vars*
+!.dev.vars.example
+supabase/signing_keys.json
+*.jks
+*.keystore
+
+# --- dependencies & build output ---
+node_modules/
+dist/
+build/
+.wrangler/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# --- Supabase CLI local state ---
+supabase/.temp/
+supabase/.branches/
+supabase/functions/**/.deno/
+
+# --- landing media originals and permissions log (private) ---
+media/raw/
+media/out/
+media/work/
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+
+# --- backups / dumps (encrypted or not, never in git) ---
+backups/
+*.dump
+*.sql.gz
+/*.sql
+/*.tar
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
