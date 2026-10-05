@@ -214,6 +214,20 @@ policy = "per_worker"
 inspector_port = 8083
 deno_version = 2
 
+# Local values come from supabase/.env; production secrets are set with
+# `pnpm supabase secrets set` (docs/runbooks/deploy.md), never in this file.
+[edge_runtime.secrets]
+CRON_SECRET = "env(CRON_SECRET)"
+ADMIN_ORIGINS = "env(ADMIN_ORIGINS)"
+
+# Both functions authorise in code (new API keys are not JWTs):
+# maintenance checks x-cron-secret; owner-admin verifies an aal2 owner session.
+[functions.maintenance]
+verify_jwt = false
+
+[functions.owner-admin]
+verify_jwt = false
+
 [analytics]
 # Off to save RAM on this Mac (Studio's log explorer is then unavailable).
 enabled = false

@@ -1,0 +1,4 @@
+# Copy to .dev.vars (git-ignored) for `pnpm --filter cron dev`.
+CRON_SECRET=CHANGE_ME
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_CHANGE_ME

@@ -1,0 +1,19 @@
+{
+  // usmfomo-cron: hourly cleanup + keep-alive. No public URL at all:
+  // workers_dev and preview_urls default to true when there are no routes.
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "usmfomo-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  // Cron Triggers run in UTC. :07 past every hour (avoids the busy :00).
+  "triggers": { "crons": ["7 * * * *"] },
+  "observability": { "enabled": true },
+  "vars": {
+    // Not secret. Set to the hosted project in production (see docs/runbooks/deploy.md).
+    "SUPABASE_URL": "http://127.0.0.1:54321",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_CHANGE_ME"
+  }
+  // Secret (never in this file): CRON_SECRET — `pnpm wrangler secret put CRON_SECRET --config workers/cron/wrangler.jsonc`
+}
