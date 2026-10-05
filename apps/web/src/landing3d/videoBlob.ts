@@ -124,7 +124,9 @@ export function acquireVideo(src: string, opts: Omit<FetchOptions, 'signal'> = {
   }
 }
 
-/** A Blob URL for a downloaded atlas, created once and reused until pagehide. */
+/** A Blob URL for a downloaded atlas, created once per page. It is never
+ * revoked on pagehide: it lives as long as the document, and a Back/forward
+ * restore brings the same document (and URL) back with the video playing. */
 export function objectUrlFor(src: string, blob: Blob): string {
   const e = cache.get(src)
   if (!e || e.blob !== blob) throw new Error('video atlas: not in the cache')
@@ -132,7 +134,7 @@ export function objectUrlFor(src: string, blob: Blob): string {
   return e.url
 }
 
-/** Revokes every Blob URL; the Blobs stay cached for a Back/forward restore. */
+/** Revokes every Blob URL (the Blobs stay cached). */
 export function revokeVideoUrls(): void {
   for (const e of cache.values()) {
     if (e.url) URL.revokeObjectURL(e.url)
@@ -146,5 +148,3 @@ export function clearVideoCache(): void {
   for (const e of cache.values()) e.controller.abort()
   cache.clear()
 }
-
-if (typeof window !== 'undefined') window.addEventListener('pagehide', revokeVideoUrls)

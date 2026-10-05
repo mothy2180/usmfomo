@@ -19,7 +19,10 @@ export function LandingMarkup({ onCta, onLogin, background, controls }: Props) {
   const { t } = useTranslation('landing')
   return (
     <div className="landing" data-page="landing">
-      <img className="landing-bg" src="/landing/placeholder.svg" alt="" fetchPriority="high" decoding="async" />
+      <picture>
+        <source media="(orientation: portrait)" srcSet="/landing/placeholder-portrait.svg" />
+        <img className="landing-bg" src="/landing/placeholder.svg" alt="" fetchPriority="high" decoding="async" />
+      </picture>
       {background}
       <header className="landing-top">
         <a className="landing-login" href="/login" onClick={onLogin}>

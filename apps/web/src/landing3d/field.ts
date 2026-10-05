@@ -353,12 +353,19 @@ export function project(p: Vec3, aspect: number, fovDeg = FOV_DEG): Point2 | nul
   return [p[0] / (depth * t * aspect), p[1] / (depth * t)]
 }
 
-/** Initial field: every shard spread over the whole depth so the view is full from the first frame. */
+/**
+ * Initial field: every shard spread over the whole depth, so the view is full
+ * from the first frame. Each kind has its own random stream, so a smaller
+ * plan gives the first shards of a larger one: the static placeholder
+ * (drawn for the largest plan) and a live scene with fewer shards share them,
+ * and on screen the layout does not depend on the aspect ratio.
+ */
 export function makeField(plan: Pick<FieldPlan, 'media' | 'clear' | 'speed'>, aspect: number, seed: number): FieldShard[] {
-  const rand = mulberry32(seed)
   const opts = { aspect, speed: plan.speed }
+  const mediaRand = mulberry32(seed)
+  const clearRand = mulberry32(seed ^ 0x5bd1e995)
   const shards: FieldShard[] = []
-  for (let i = 0; i < plan.media; i++) shards.push(makeFieldShard('media', rand, opts, true))
-  for (let i = 0; i < plan.clear; i++) shards.push(makeFieldShard('clear', rand, opts, true))
+  for (let i = 0; i < plan.media; i++) shards.push(makeFieldShard('media', mediaRand, opts, true))
+  for (let i = 0; i < plan.clear; i++) shards.push(makeFieldShard('clear', clearRand, opts, true))
   return shards
 }

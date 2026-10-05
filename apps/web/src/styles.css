@@ -52,13 +52,18 @@ body {
   inset: 0;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  overflow: hidden;
+  /* Scrolls when the content is taller than the viewport (a phone in
+     landscape, 200% zoom), so the controls and the disclaimer stay reachable.
+     The background layers are fixed: they never scroll. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: radial-gradient(ellipse at 50% 55%, #1b2333 0%, #0b0d12 70%);
   color: var(--color-text);
 }
 
 .landing-bg {
-  position: absolute;
+  position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -170,6 +175,26 @@ body {
   padding: 0.35rem 0.6rem;
   border-radius: 0.4rem;
   background: rgb(11 13 18 / 0.8);
+}
+
+/* Short viewports: tighter spacing, so less of the page needs scrolling. */
+@media (max-height: 30rem) {
+  .landing-top {
+    padding: 0.5rem 1rem;
+  }
+
+  .landing-center {
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .landing-cta {
+    margin-top: 0.25rem;
+  }
+
+  .landing-footer {
+    padding: 0.5rem 1rem 0.75rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

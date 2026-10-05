@@ -10,7 +10,9 @@ Public site, apps/web/dist (Pages project usmfomo):
     because every Function request counts against the Workers free quota.
 Owner console, apps/admin/dist (usmfomo-admin): _headers exists, no 404.html.
 Both: the Content-Security-Policy in _headers allows connect-src to the Supabase
-origin of this build, and no file contains a Supabase secret key.
+origin of this build, no file contains a Supabase secret key, and every file a
+page's <head> refers to on its own site (icons, og:image, scripts, preloads)
+is in the build: Pages would answer a missing one with the app shell.
 
 Usage:
   python3 .github/scripts/check-pages-output.py --supabase-url URL [--web DIR] [--admin DIR]
@@ -32,6 +34,8 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 SECRET_KEY = re.compile(rb'sb_secret_[A-Za-z0-9_-]{20,}')
 CATCH_ALL_ROUTES = {'/*', '/', '*'}
+HEAD_TAG = re.compile(r'<(link|meta|script)\b([^>]*)>', re.IGNORECASE)
+TAG_ATTR = re.compile(r'([a-zA-Z:-]+)\s*=\s*"([^"]*)"')
 
 
 def origin_of(url: str) -> str:
@@ -55,6 +59,43 @@ def connect_sources(headers: str) -> list[list[str]]:
     return found
 
 
+def same_site_path(url: str, site: str | None) -> str | None:
+    """The path of a URL on this site (root-relative, or absolute on the page's
+    canonical origin), else None."""
+    if url.startswith('/') and not url.startswith('//'):
+        return urlsplit(url).path
+    if site and url.startswith(site + '/'):
+        return urlsplit(url).path
+    return None
+
+
+def head_assets(dist: Path, label: str) -> list[str]:
+    found: list[str] = []
+    for page in sorted(dist.glob('*.html')):
+        head = page.read_text(encoding='utf-8').split('</head>', 1)[0]
+        tags = [(m.group(1).lower(), {k.lower(): v for k, v in TAG_ATTR.findall(m.group(2))}) for m in HEAD_TAG.finditer(head)]
+        site = None
+        for tag, a in tags:
+            if a.get('rel') == 'canonical' or a.get('property') == 'og:url':
+                try:
+                    site = origin_of(a.get('href') or a.get('content') or '')
+                except ValueError:
+                    pass
+        for tag, a in tags:
+            if tag == 'link' and a.get('rel') != 'canonical':
+                url = a.get('href')
+            elif tag == 'script':
+                url = a.get('src')
+            elif a.get('property') == 'og:image' or a.get('name') == 'twitter:image':
+                url = a.get('content')
+            else:
+                continue
+            path = same_site_path(url or '', site)
+            if path is not None and not (dist / path.lstrip('/')).is_file():
+                found.append(f'{label}: {page.name} refers to {url}, which is not in the build (Pages would serve the app shell)')
+    return found
+
+
 def common_checks(dist: Path, label: str, origin: str) -> list[str]:
     found: list[str] = []
     headers = dist / '_headers'
@@ -72,7 +113,7 @@ def common_checks(dist: Path, label: str, origin: str) -> list[str]:
             found.append(f'{label}: {rel} must not exist (it disables the Pages SPA fallback)')
         if path.is_file() and SECRET_KEY.search(path.read_bytes()):
             found.append(f'{label}: {rel} contains a Supabase secret key; only the publishable key may ship')
-    return found
+    return found + head_assets(dist, label)
 
 
 def check_web(dist: Path, origin: str) -> list[str]:
@@ -116,6 +157,11 @@ def check_admin(dist: Path, origin: str) -> list[str]:
 # --------------------------------------------------------------------------
 
 ORIGIN = 'https://example.supabase.co'
+GOOD_HEAD = (
+    '<!doctype html><head><link rel="icon" href="/favicon.svg" /><link rel="canonical" href="https://usmfomo.pages.dev/" />'
+    '<meta property="og:url" content="https://usmfomo.pages.dev/" /><meta property="og:image" content="https://usmfomo.pages.dev/og.jpg" />'
+    '<script type="module" src="/assets/index-abc123.js"></script><link rel="preconnect" href="https://example.supabase.co" /></head>'
+)
 
 
 def good_web(path: Path) -> None:
@@ -124,7 +170,9 @@ def good_web(path: Path) -> None:
     (path / '_headers').write_text(f"/*\n  Content-Security-Policy: default-src 'none'; connect-src 'self' {ORIGIN}\n")
     (path / '_redirects').write_text('/  /landing  200\n')
     (path / '_routes.json').write_text('{"version": 1, "include": ["/i/*"], "exclude": []}\n')
-    (path / 'index.html').write_text('<!doctype html><title>usmfomo</title>\n')
+    (path / 'index.html').write_text(GOOD_HEAD + '<title>usmfomo</title>\n')
+    (path / 'og.jpg').write_bytes(b'jpeg')
+    (path / 'favicon.svg').write_text('<svg/>')
     (path / 'assets' / 'index-abc123.js').write_text("if (key.startsWith('sb_secret_')) throw new Error('no')\n")
     (path / '.well-known' / 'security.txt').write_text('Contact: https://example.com\n')
 
@@ -150,6 +198,9 @@ def self_test() -> int:
         ('CSP for another project', lambda d: (d / '_headers').write_text(
             "/*\n  Content-Security-Policy: connect-src 'self' http://127.0.0.1:54321\n"), 'does not allow'),
         ('secret key in a bundle', lambda d: (d / 'assets' / 'x.js').write_text(f'const k = "{fake_key}"'), 'secret key'),
+        ('missing og:image', lambda d: (d / 'og.jpg').unlink(), 'refers to https://usmfomo.pages.dev/og.jpg'),
+        ('missing icon', lambda d: (d / 'landing.html').write_text(
+            '<head><link rel="apple-touch-icon" href="/apple-touch-icon.png"></head>'), 'refers to /apple-touch-icon.png'),
     ]
     admin_cases = [
         ('admin 404.html', lambda d: (d / '404.html').write_text('x'), '404.html must not exist'),

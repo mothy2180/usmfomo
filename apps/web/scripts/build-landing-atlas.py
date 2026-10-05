@@ -441,7 +441,8 @@ def encode_stills(k: Klass, posters: list[Path], fmt: str, dest: Path) -> None:
         inputs += ['-i', container_path(p)]
     chains = ''.join(f'[{i}:v]{FLATTEN_ALPHA},{to_tile(k.still_tile)}[p{i}];' for i in range(len(posters)))
     pads = ''.join(f'[p{i}]' for i in range(len(posters)))
-    graph = f'{chains}{pads}xstack=inputs={len(posters)}:layout={xstack_layout(STILL_COLS, STILL_ROWS, k.still_tile)}:fill=black[v]'
+    # xstack drops the frames' colour tags: set them again (as encode_atlas does).
+    graph = f'{chains}{pads}xstack=inputs={len(posters)}:layout={xstack_layout(STILL_COLS, STILL_ROWS, k.still_tile)}:fill=black,{TAG_709}[v]'
     ffmpeg([*inputs, '-filter_complex', graph, '-map', '[v]', '-frames:v', '1', '-map_metadata', '-1',
             *still_codec_args(fmt, STILLS_CRF), container_path(dest)])
 
@@ -543,13 +544,17 @@ def verify_video(k: Klass, path: Path) -> list[str]:
     return errors
 
 
-def verify_image(path: Path, width: int, height: int) -> list[str]:
+def verify_image(path: Path, width: int, height: int, *, bt709: bool) -> list[str]:
     info = ffprobe_json(path, ['-show_streams'])
     v = next((s for s in info.get('streams', []) if s.get('codec_type') == 'video'), None)
     if not v:
         return [f'{path.name}: not an image ffprobe can read']
     if (v.get('width'), v.get('height')) != (width, height):
         return [f'{path.name}: {v.get("width")}x{v.get("height")}, expected {width}x{height}']
+    # AVIF carries the bt709 description; the WebP fallback is RGB (no tags).
+    if bt709:
+        return [f'{path.name}: {key} = {v.get(key)!r}, expected \'bt709\''
+                for key in ('color_space', 'color_transfer', 'color_primaries') if v.get(key) != 'bt709']
     return []
 
 
@@ -571,8 +576,8 @@ def verify_all(fmt: str) -> tuple[list[str], dict[str, dict[str, int]]]:
             errors.append(f'{k.name}: missing {", ".join(missing)}')
             continue
         errors += verify_video(k, files['video'])
-        errors += verify_image(files['frame0'], k.width, k.height)
-        errors += verify_image(files['stills'], k.stills, k.stills)
+        errors += verify_image(files['frame0'], k.width, k.height, bt709=fmt == 'avif')
+        errors += verify_image(files['stills'], k.stills, k.stills, bt709=fmt == 'avif')
         sizes[k.name] = {name: p.stat().st_size for name, p in files.items()}
         total = sum(sizes[k.name].values())
         if total > k.budget:

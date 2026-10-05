@@ -54,7 +54,7 @@ export function createAtlasVideoElement(url: string): HTMLVideoElement {
 
 const errorName = (err: unknown): string => (err instanceof DOMException || err instanceof Error ? err.name : '')
 
-type Player = { el: HTMLVideoElement; texture: VideoTexture; src: string; blob: Blob }
+type Player = { el: HTMLVideoElement; texture: VideoTexture }
 
 export function useAtlasVideo({ src, expectedBytes, paused, host }: AtlasVideoOptions): AtlasVideo {
   const [state, setState] = useState<AtlasVideo>(IDLE)
@@ -78,22 +78,15 @@ export function useAtlasVideo({ src, expectedBytes, paused, host }: AtlasVideoOp
         host.appendChild(el)
         const texture = new VideoTexture(el)
         texture.colorSpace = SRGBColorSpace
-        built = { el, texture, src, blob }
+        built = { el, texture }
         setPlayer(built)
       },
       () => {
         if (!cancelled) setState({ ...IDLE, failed: true })
       },
     )
-    // Back/forward cache: the Blob URL was revoked on pagehide.
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (!e.persisted || !built) return
-      built.el.src = objectUrlFor(built.src, built.blob)
-    }
-    window.addEventListener('pageshow', onPageShow)
     return () => {
       cancelled = true
-      window.removeEventListener('pageshow', onPageShow)
       lease.release()
       setPlayer(null)
       setState(IDLE)

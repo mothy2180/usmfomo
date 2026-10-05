@@ -18,13 +18,17 @@
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://usmfomo.pages.dev/" />
-    <link rel="preload" as="image" href="/landing/placeholder.svg" fetchpriority="high" />
+    <link rel="preload" as="image" href="/landing/placeholder.svg" media="(orientation: landscape)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/landing/placeholder-portrait.svg" media="(orientation: portrait)" fetchpriority="high" />
   </head>
   <body>
     <!-- Painted before any JavaScript runs; the React landing route renders the
          same markup and removes this copy once mounted (see LandingMarkup.tsx). -->
     <div id="landing-static" class="landing" data-page="landing">
-      <img class="landing-bg" src="/landing/placeholder.svg" alt="" fetchpriority="high" decoding="async" />
+      <picture>
+        <source media="(orientation: portrait)" srcset="/landing/placeholder-portrait.svg" />
+        <img class="landing-bg" src="/landing/placeholder.svg" alt="" fetchpriority="high" decoding="async" />
+      </picture>
       <header class="landing-top">
         <a class="landing-login" href="/login">
           <span>Login</span>

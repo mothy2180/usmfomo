@@ -17,11 +17,12 @@ import { readStoredPrefs, writeLitePref, writeMotionPref, type StoredPrefs } fro
 import { SceneBoundary } from '../../landing3d/SceneBoundary.tsx'
 import { NO_STATUS, WARP_MS, type SceneApi, type SceneStatus } from '../../landing3d/types.ts'
 import { isPlainClick } from '../../lib/links.ts'
+import { optionalImport } from '../../lib/optionalImport.ts'
 import { LandingMarkup } from './LandingMarkup.tsx'
 
 // three.js and the media are a separate chunk, downloaded only when the gate
 // allows the scene (never for the dashboard or other routes).
-const LandingScene = lazy(() => import('../../landing3d/LandingScene.tsx'))
+const LandingScene = lazy(() => optionalImport(() => import('../../landing3d/LandingScene.tsx')))
 
 /**
  * "/" — static-first landing page. The generated placeholder image is the
@@ -43,6 +44,14 @@ export function LandingPage() {
   const [status, setStatus] = useState<SceneStatus>(NO_STATUS)
   const sceneApi = useRef<SceneApi | null>(null)
   const leaving = useRef(false)
+  const mounted = useRef(false)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   // The static copy from landing.html sits on top of #root; React has now
   // rendered identical markup underneath, so remove the static copy before the
@@ -89,6 +98,12 @@ export function LandingPage() {
   }
 
   const goToDashboard = () => {
+    // Only a warp that ends on the landing navigates: the visitor may have
+    // gone elsewhere meanwhile (Login, Back).
+    if (!mounted.current || router.state.location.pathname !== '/') {
+      leaving.current = false
+      return
+    }
     void navigate({ to: '/dashboard' })
       .then(() => focusPageHeading())
       .catch(() => undefined)
@@ -126,6 +141,8 @@ export function LandingPage() {
     if (!isPlainClick(e)) return
     e.preventDefault()
     void navigate({ to: '/login' })
+      .then(() => focusPageHeading())
+      .catch(() => undefined)
   }
 
   const background = mount ? (

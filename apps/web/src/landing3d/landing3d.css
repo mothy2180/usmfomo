@@ -2,9 +2,10 @@
    bundle; nothing is styled inline (CSP style-src 'self'). Colours come from
    the design tokens in src/styles.css. */
 
-/* Holds the canvas and the hidden video, behind the page text. */
+/* Holds the canvas and the hidden video, behind the page text. Fixed like
+   .landing-bg, so it covers the viewport while the landing scrolls. */
 .l3d-layer {
-  position: absolute;
+  position: fixed;
   inset: 0;
   overflow: hidden;
   pointer-events: none;

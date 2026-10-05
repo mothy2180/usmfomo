@@ -105,6 +105,23 @@ describe('spawning', () => {
     const b = makeField({ media: 5, clear: 5, speed: 0.9 }, 1.5, 7)
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
   })
+
+  it('a smaller plan is the start of a larger one, at the same screen positions on any aspect', () => {
+    const big = makeField({ media: 24, clear: 80, speed: 0.8 }, 16 / 9, 7)
+    const small = makeField({ media: 11, clear: 29, speed: 0.8 }, 390 / 844, 7)
+    const bigMedia = big.filter((s) => s.kind === 'media').slice(0, 11)
+    const bigClear = big.filter((s) => s.kind === 'clear').slice(0, 29)
+    const smallMedia = small.filter((s) => s.kind === 'media')
+    const smallClear = small.filter((s) => s.kind === 'clear')
+    for (const [a, b] of [...bigMedia.map((s, i) => [s, smallMedia[i]!] as const), ...bigClear.map((s, i) => [s, smallClear[i]!] as const)]) {
+      expect(b.polygon).toEqual(a.polygon)
+      expect(b.position[2]).toBe(a.position[2])
+      const pa = project(a.position, 16 / 9)!
+      const pb = project(b.position, 390 / 844)!
+      expect(pb[0]).toBeCloseTo(pa[0], 9)
+      expect(pb[1]).toBeCloseTo(pa[1], 9)
+    }
+  })
 })
 
 describe('motion', () => {

@@ -105,15 +105,15 @@ describe('acquireVideo (cached for the page)', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
-  it('makes one Blob URL per atlas and revokes it on pagehide', async () => {
+  it('makes one Blob URL per atlas and keeps it across pagehide (back/forward cache)', async () => {
     const lease = acquireVideo('/v.mp4', { fetchImpl: streamingFetch([10]) })
     const blob = await lease.blob
     const url = objectUrlFor('/v.mp4', blob)
     expect(objectUrlFor('/v.mp4', blob)).toBe(url)
     window.dispatchEvent(new Event('pagehide'))
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith(url)
-    // After a back/forward restore a new URL is made from the cached Blob.
-    expect(objectUrlFor('/v.mp4', blob)).not.toBe(url)
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+    expect(objectUrlFor('/v.mp4', blob)).toBe(url)
     revokeVideoUrls()
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith(url)
   })
 })

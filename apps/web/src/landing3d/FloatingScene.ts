@@ -434,7 +434,8 @@ export class FloatingScene {
   }
 
   private easePointer(dtMs: number): void {
-    const k = dtMs > 0 ? 1 - Math.exp(-dtMs / EASE_MS) : 0
+    // Clamped: after a long gap (idle, throttled) it eases instead of jumping.
+    const k = dtMs > 0 ? 1 - Math.exp(-Math.min(dtMs, 50) / EASE_MS) : 0
     this.pointerX += (this.targetX - this.pointerX) * k
     this.pointerY += (this.targetY - this.pointerY) * k
     this.camera.position.set(this.pointerX * PARALLAX, -this.pointerY * PARALLAX * 0.7, 0)
