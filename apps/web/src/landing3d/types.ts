@@ -1,11 +1,15 @@
-// Types (and one constant) shared by the eager landing page and the lazy 3D
+// Types and constants shared by the eager landing page and the lazy 3D
 // chunk. Nothing here imports three.js, so the main bundle stays free of it.
 
 /** What the landing page may ask of a running scene. */
 export type SceneApi = {
-  /** Plays the explosion from `origin` (viewport px); always resolves. */
-  explode: (ms: number, origin?: { x: number; y: number }) => Promise<void>
+  /** Plays the "I'm FOMO" warp (the glass rushes past, the view fades to
+   * black); always resolves. */
+  warp: (ms: number) => Promise<void>
 }
+
+/** Length of the warp; LandingPage navigates when it ends. */
+export const WARP_MS = 900
 
 /** Shown under the motion controls. */
 export type SceneStatus = {

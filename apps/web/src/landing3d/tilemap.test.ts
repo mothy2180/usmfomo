@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import tilemapJson from './media/tilemap.json'
 import { mediaUrl, TILEMAP } from './media.ts'
-import { coverUv, makeShards } from './shards.ts'
-import { checkTilemap, tileCount, tileRect, type Tilemap } from './tilemap.ts'
+import { shardShape } from './field.ts'
+import { mulberry32 } from './random.ts'
+import { checkTilemap, coverUvs, tileCount, tileRect, type Tilemap } from './tilemap.ts'
 
 describe('tilemap.json', () => {
   it('describes the atlases the build script promises', () => {
@@ -68,23 +69,32 @@ describe('tileRect', () => {
     expect(m.insetV).toBeCloseTo(3 / 576)
   })
 
-  it('keeps every shard’s cover UVs inside its own tile, at least insetPx from the edges', () => {
-    const shards = makeShards({ width: 1600, height: 900, count: 120, seed: 20261005 })
+  it('keeps every media facet’s cover UVs inside its own tile, at least insetPx from the edges', () => {
+    const rand = mulberry32(20261005)
+    const facets = Array.from({ length: 60 }, () => shardShape('media', rand))
     for (const [cls, atlas] of [['video', TILEMAP.video.desktop], ['stills', TILEMAP.stills.mobile]] as const) {
-      shards.forEach((s, i) => {
+      facets.forEach((polygon, i) => {
         const r = tileRect(atlas, i)
-        for (const p of s.polygon) {
-          const [u, v] = coverUv(p, s, r)
-          const px = u * atlas.width
-          const py = v * atlas.height
+        const uv = coverUvs(polygon, r, polygon.flatMap(([x, y]) => [x, y, 0]), polygon.length)
+        for (let k = 0; k < polygon.length; k++) {
+          const px = uv[k * 2]! * atlas.width
+          const py = uv[k * 2 + 1]! * atlas.height
           const left = r.u0 * atlas.width
           const bottom = r.v0 * atlas.height
-          expect(px, cls).toBeGreaterThanOrEqual(left + atlas.insetPx - 1e-6)
-          expect(px, cls).toBeLessThanOrEqual(left + atlas.tile - atlas.insetPx + 1e-6)
-          expect(py, cls).toBeGreaterThanOrEqual(bottom + atlas.insetPx - 1e-6)
-          expect(py, cls).toBeLessThanOrEqual(bottom + atlas.tile - atlas.insetPx + 1e-6)
+          expect(px, cls).toBeGreaterThanOrEqual(left + atlas.insetPx - 1e-3)
+          expect(px, cls).toBeLessThanOrEqual(left + atlas.tile - atlas.insetPx + 1e-3)
+          expect(py, cls).toBeGreaterThanOrEqual(bottom + atlas.insetPx - 1e-3)
+          expect(py, cls).toBeLessThanOrEqual(bottom + atlas.tile - atlas.insetPx + 1e-3)
         }
       })
     }
+  })
+
+  it('covers the facet: its widest side spans the tile, centred, upright', () => {
+    const square = [[-1, -0.5], [1, -0.5], [1, 0.5], [-1, 0.5]] as [number, number][]
+    const r = { u0: 0, v0: 0, du: 1, dv: 1, aspect: 1, inset: 0, insetV: 0 }
+    const uv = coverUvs(square, r, square.flatMap(([x, y]) => [x, y, 0]), 4)
+    // 2 x 1 box in a square tile: full width, the middle half of the height.
+    expect([...uv]).toEqual([0, 0.25, 1, 0.25, 1, 0.75, 0, 0.75])
   })
 })

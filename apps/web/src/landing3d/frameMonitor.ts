@@ -12,11 +12,14 @@ export type MonitorOptions = {
   slowMs: number
   /** Samples ignored after a start or reset (shader compile, texture upload). */
   warmup: number
-  /** Longer gaps are not frame times (background tab, debugger) and are dropped. */
+  /** Longer gaps are not frame times and are dropped: a background tab, a
+   * debugger, or a window that is covered but not hidden, which browsers
+   * throttle to about one frame a second. A device really this slow is
+   * still caught by its other frames (they clamp to CLAMP_MS). */
   maxSampleMs: number
 }
 
-export const MONITOR_DEFAULTS: MonitorOptions = { window: 30, slowMs: 55, warmup: 10, maxSampleMs: 1000 }
+export const MONITOR_DEFAULTS: MonitorOptions = { window: 30, slowMs: 55, warmup: 10, maxSampleMs: 400 }
 
 /** One long frame (GC, a busy main thread) must not decide a window alone. */
 const CLAMP_MS = 250

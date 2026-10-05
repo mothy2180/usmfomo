@@ -65,7 +65,7 @@ export function tileCount(g: Pick<Grid, 'cols' | 'rows'>): number {
   return g.cols * g.rows
 }
 
-/** Where tile `index` sits in the atlas, in UV units, for coverUv(). */
+/** Where tile `index` sits in the atlas, in UV units, for coverUvs(). */
 export type TileRect = { u0: number; v0: number; du: number; dv: number; aspect: number; inset: number; insetV: number }
 
 export function tileRect(g: Grid, index: number): TileRect {
@@ -83,4 +83,34 @@ export function tileRect(g: Grid, index: number): TileRect {
     inset: g.insetPx / g.width,
     insetV: g.insetPx / g.height,
   }
+}
+
+/**
+ * UVs that make one tile cover a polygon like CSS object-fit: cover: the tile
+ * is centred on the polygon's bounding box and scaled to cover it, and samples
+ * stay the tile's inset away from its neighbours (a non-square atlas needs a
+ * different inset along v: 4 px is 4/1920 across a 1920x960 atlas but 4/960
+ * down). The polygon is y-up, like the atlas's v. `points` is the geometry's
+ * position buffer (x, y, z per vertex).
+ */
+export function coverUvs(polygon: ReadonlyArray<readonly [number, number]>, rect: TileRect, points: ArrayLike<number>, count: number): Float32Array {
+  const xs = polygon.map((p) => p[0])
+  const ys = polygon.map((p) => p[1])
+  const x0 = Math.min(...xs)
+  const x1 = Math.max(...xs)
+  const y0 = Math.min(...ys)
+  const y1 = Math.max(...ys)
+  const tileW = Math.max(x1 - x0, (y1 - y0) * rect.aspect, 1e-6)
+  const tileH = tileW / rect.aspect
+  const cx = (x0 + x1) / 2
+  const cy = (y0 + y1) / 2
+  const clamp = (v: number) => Math.min(1, Math.max(0, v))
+  const uv = new Float32Array(count * 2)
+  for (let i = 0; i < count; i++) {
+    const fx = clamp(0.5 + (points[i * 3]! - cx) / tileW)
+    const fy = clamp(0.5 + (points[i * 3 + 1]! - cy) / tileH)
+    uv[i * 2] = rect.u0 + rect.inset + (rect.du - 2 * rect.inset) * fx
+    uv[i * 2 + 1] = rect.v0 + rect.insetV + (rect.dv - 2 * rect.insetV) * fy
+  }
+  return uv
 }

@@ -49,7 +49,7 @@ export function needsWebGL2Probe(g: Omit<GateInput, 'webgl2'>): boolean {
   return g.idle && !g.failed && !g.lite && (!g.paused || g.mounted)
 }
 
-export type ExplodeInput = {
+export type WarpInput = {
   /** Left click without modifier keys (others open a new tab/window as usual). */
   plainClick: boolean
   reducedMotion: boolean
@@ -59,8 +59,8 @@ export type ExplodeInput = {
   hidden: boolean
 }
 
-/** Whether "I'm FOMO" plays the explosion before navigating. */
-export function shouldExplode(e: ExplodeInput): boolean {
+/** Whether "I'm FOMO" plays the warp before navigating. */
+export function shouldWarp(e: WarpInput): boolean {
   return e.plainClick && !e.reducedMotion && !e.paused && e.sceneReady && !e.hidden
 }
 

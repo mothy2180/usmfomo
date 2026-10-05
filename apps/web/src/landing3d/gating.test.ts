@@ -6,7 +6,7 @@ import {
   resolveMotion,
   saveDataOn,
   sceneGate,
-  shouldExplode,
+  shouldWarp,
   type GateInput,
 } from './gating.ts'
 import { LITE_KEY, MOTION_KEY, readStoredPrefs, writeLitePref, writeMotionPref } from './prefs.ts'
@@ -63,15 +63,15 @@ describe('sceneGate', () => {
   })
 })
 
-describe('shouldExplode', () => {
+describe('shouldWarp', () => {
   const ok = { plainClick: true, reducedMotion: false, paused: false, sceneReady: true, hidden: false }
   it('animates only a plain click on a ready, moving scene', () => {
-    expect(shouldExplode(ok)).toBe(true)
-    expect(shouldExplode({ ...ok, plainClick: false })).toBe(false)
-    expect(shouldExplode({ ...ok, reducedMotion: true })).toBe(false)
-    expect(shouldExplode({ ...ok, paused: true })).toBe(false)
-    expect(shouldExplode({ ...ok, sceneReady: false })).toBe(false)
-    expect(shouldExplode({ ...ok, hidden: true })).toBe(false)
+    expect(shouldWarp(ok)).toBe(true)
+    expect(shouldWarp({ ...ok, plainClick: false })).toBe(false)
+    expect(shouldWarp({ ...ok, reducedMotion: true })).toBe(false)
+    expect(shouldWarp({ ...ok, paused: true })).toBe(false)
+    expect(shouldWarp({ ...ok, sceneReady: false })).toBe(false)
+    expect(shouldWarp({ ...ok, hidden: true })).toBe(false)
   })
 })
 

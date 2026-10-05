@@ -18,6 +18,7 @@ rule, the UI only mirrors it · unofficial project, says so on every page.
 
 | Date | Decision | Options considered | Chosen | Why |
 |---|---|---|---|---|
+| 2026-10-05 | Landing scene (owner) | one shattered pane that explodes on click; glass floating past the viewer | shards drifting slowly towards and past the camera: clip/poster facets mixed with clear splinters; "I'm FOMO" warps through them, then navigates | the owner's reference ("floating around and pass by"); Mix + Slow drift chosen by the owner; drops d3-delaunay |
 | 2026-10-05 | Maintenance reports partial failure | 200 with warnings; 500 | 500 `{ok:false, failed:[steps]}`, deletions kept | the cron run shows as errored in Workers Logs instead of looking healthy |
 | 2026-10-05 | Owner console sign-in for club accounts | force TOTP like the owner; refuse early | aal1 `my_posting_status` pre-check → "not the owner" | club 2FA stays optional (owner decision) |
 | 2026-10-05 | Reduced motion on the landing | hard block; start paused | start paused, the visitor may opt in | WCAG 2.2.2 + respect the OS setting; the explosion stays off |

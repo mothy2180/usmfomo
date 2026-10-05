@@ -1,6 +1,5 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
-import { EXPLODE_MS } from '../../landing3d/explode.ts'
 import { focusPageHeading } from '../../landing3d/focus.ts'
 import {
   hasWebGL2,
@@ -10,24 +9,24 @@ import {
   saveDataOn,
   sceneFailedBefore,
   sceneGate,
-  shouldExplode,
+  shouldWarp,
 } from '../../landing3d/gating.ts'
 import { useIdle, useReducedMotion } from '../../landing3d/hooks.ts'
 import { MotionControls } from '../../landing3d/MotionControls.tsx'
 import { readStoredPrefs, writeLitePref, writeMotionPref, type StoredPrefs } from '../../landing3d/prefs.ts'
 import { SceneBoundary } from '../../landing3d/SceneBoundary.tsx'
-import { NO_STATUS, type SceneApi, type SceneStatus } from '../../landing3d/types.ts'
+import { NO_STATUS, WARP_MS, type SceneApi, type SceneStatus } from '../../landing3d/types.ts'
 import { isPlainClick } from '../../lib/links.ts'
 import { LandingMarkup } from './LandingMarkup.tsx'
 
-// three.js, d3-delaunay and the media are a separate chunk, downloaded only
-// when the gate allows the scene (never for the dashboard or other routes).
+// three.js and the media are a separate chunk, downloaded only when the gate
+// allows the scene (never for the dashboard or other routes).
 const LandingScene = lazy(() => import('../../landing3d/LandingScene.tsx'))
 
 /**
  * "/" — static-first landing page. The generated placeholder image is the
  * background (and stays the fallback for no WebGL2, reduced motion, lite mode
- * or a paused page); the 3D shattered-glass scene fades in over it when allowed.
+ * or a paused page); the 3D floating-glass scene fades in over it when allowed.
  */
 export function LandingPage() {
   const navigate = useNavigate()
@@ -106,7 +105,7 @@ export function LandingPage() {
     if (leaving.current) return
     leaving.current = true
     const api = sceneApi.current
-    const animate = shouldExplode({
+    const animate = shouldWarp({
       plainClick,
       reducedMotion,
       paused,
@@ -117,11 +116,10 @@ export function LandingPage() {
       goToDashboard()
       return
     }
-    // Fetch the dashboard chunk while the glass flies; navigate when the
-    // explosion ends whether or not that finished (it then loads as usual).
+    // Fetch the dashboard chunk while the glass rushes past; navigate when the
+    // warp ends whether or not that finished (it then loads as usual).
     void router.preloadRoute({ to: '/dashboard' }).catch(() => undefined)
-    const r = e.currentTarget.getBoundingClientRect()
-    void api.explode(EXPLODE_MS, { x: r.left + r.width / 2, y: r.top + r.height / 2 }).finally(goToDashboard)
+    void api.warp(WARP_MS).finally(goToDashboard)
   }
 
   const onLogin = (e: MouseEvent<HTMLAnchorElement>) => {

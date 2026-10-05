@@ -31,14 +31,19 @@ describe('FrameMonitor', () => {
   it('does not let one long frame decide a window', () => {
     const m = new FrameMonitor({ warmup: 0 })
     feed(m, 16.7, 29)
-    expect(m.sample(900)).toBe('ok')
+    expect(m.sample(390)).toBe('ok')
   })
 
-  it('drops gaps that are not frame times (hidden tab, debugger)', () => {
+  it('drops gaps that are not frame times (hidden tab, debugger, a covered window at 1 fps)', () => {
     const m = new FrameMonitor({ warmup: 0 })
     expect(feed(m, 5000, 100)).toEqual([])
+    expect(feed(m, 1000, 300)).toEqual([])
     expect(feed(m, 0, 10)).toEqual([])
     expect(feed(m, Number.NaN, 10)).toEqual([])
+  })
+
+  it('still calls a device at 3 fps slow', () => {
+    expect(feed(new FrameMonitor({ warmup: 0 }), 330, 30)).toEqual(['slow'])
   })
 
   it('starts over after a reset', () => {

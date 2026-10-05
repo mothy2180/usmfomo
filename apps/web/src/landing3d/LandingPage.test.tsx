@@ -4,14 +4,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import i18n from '../lib/i18n.ts'
 import { LandingPage } from '../routes/landing/LandingPage.tsx'
 import { LITE_KEY, MOTION_KEY } from './prefs.ts'
-import type { SceneProps } from './types.ts'
+import { WARP_MS, type SceneProps } from './types.ts'
 
 // The lazy scene and the WebGL2 probe are replaced: jsdom has no WebGL. The
-// fake scene reports itself ready with a fake explode().
+// fake scene reports itself ready with a fake warp().
 const fake = vi.hoisted(() => ({
   webgl2: false,
   imported: 0,
-  explode: vi.fn((_ms: number, _origin?: { x: number; y: number }) => Promise.resolve()),
+  warp: vi.fn((_ms: number) => Promise.resolve()),
 }))
 
 vi.mock('./gating.ts', async (importOriginal) => ({
@@ -25,7 +25,7 @@ vi.mock('./LandingScene.tsx', async () => {
   return {
     default: function FakeScene({ onReady }: SceneProps) {
       useEffect(() => {
-        onReady({ explode: fake.explode })
+        onReady({ warp: fake.warp })
         return () => onReady(null)
       }, [onReady])
       return <div data-testid="scene" />
@@ -60,7 +60,7 @@ describe('LandingPage', () => {
     window.localStorage.clear()
     fake.webgl2 = false
     fake.imported = 0
-    fake.explode.mockClear()
+    fake.warp.mockClear()
   })
   afterEach(cleanup)
 
@@ -98,20 +98,20 @@ describe('LandingPage', () => {
     expect(await screen.findByTestId('scene', {}, { timeout: 2000 })).toBeTruthy()
   })
 
-  it('explodes the glass, then navigates and focuses the dashboard heading', async () => {
+  it('plays the warp, then navigates and focuses the dashboard heading', async () => {
     fake.webgl2 = true
     const router = renderAt()
     await screen.findByTestId('scene', {}, { timeout: 2000 })
     const cta = screen.getByRole('link', { name: "I'm FOMO" })
     expect(fireEvent.click(cta)).toBe(false) // default prevented
-    expect(fake.explode).toHaveBeenCalledOnce()
-    expect(fake.explode.mock.calls[0]?.[0]).toBe(800)
+    expect(fake.warp).toHaveBeenCalledOnce()
+    expect(fake.warp.mock.calls[0]?.[0]).toBe(WARP_MS)
     const heading = await screen.findByRole('heading', { name: 'What’s on' })
     expect(router.state.location.pathname).toBe('/dashboard')
     await waitFor(() => expect(document.activeElement).toBe(heading))
   })
 
-  it('skips the explosion while paused but still navigates', async () => {
+  it('skips the warp while paused but still navigates', async () => {
     fake.webgl2 = true
     renderAt()
     await screen.findByTestId('scene', {}, { timeout: 2000 })
@@ -119,7 +119,7 @@ describe('LandingPage', () => {
     // A running scene stays mounted (frozen) when paused.
     expect(screen.getByTestId('scene')).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: "I'm FOMO" }))
-    expect(fake.explode).not.toHaveBeenCalled()
+    expect(fake.warp).not.toHaveBeenCalled()
     expect(await screen.findByRole('heading', { name: 'What’s on' })).toBeTruthy()
   })
 
@@ -139,7 +139,7 @@ describe('LandingPage', () => {
     for (const mod of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }]) fireEvent.click(cta, mod)
     window.removeEventListener('click', record)
     expect(prevented).toEqual([false, false, false, false])
-    expect(fake.explode).not.toHaveBeenCalled()
+    expect(fake.warp).not.toHaveBeenCalled()
     expect(router.state.location.pathname).toBe('/')
   })
 })

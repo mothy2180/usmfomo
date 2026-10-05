@@ -1,11 +1,11 @@
-// The lazy part of the landing page (its own chunk, with three.js and
-// d3-delaunay): picks the media for this device, builds the scene on a fresh
-// canvas and feeds it the video once it plays.
+// The lazy part of the landing page (its own chunk, with three.js): picks the
+// media for this device, builds the floating-glass scene on a fresh canvas and
+// feeds it the video once it plays.
 import { useEffect, useEffectEvent, useState } from 'react'
 import { chooseAtlas, type AtlasChoice } from './atlas.ts'
+import { FloatingScene } from './FloatingScene.ts'
 import { planScene } from './layout.ts'
 import { loadImage, mediaUrl, TILEMAP } from './media.ts'
-import { ShatterScene } from './ShatterScene.ts'
 import type { SceneProps } from './types.ts'
 import { useAtlasVideo } from './useAtlasVideo.ts'
 
@@ -15,7 +15,7 @@ export default function LandingScene({ paused, onReady, onFallback, onStatus }: 
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const [plan] = useState(() => planScene(window.innerWidth, window.innerHeight))
   const [media, setMedia] = useState<Media | null>(null)
-  const [scene, setScene] = useState<ShatterScene | null>(null)
+  const [scene, setScene] = useState<FloatingScene | null>(null)
   const ready = useEffectEvent(onReady)
   const fallback = useEffectEvent(onFallback)
   const report = useEffectEvent(onStatus)
@@ -49,14 +49,12 @@ export default function LandingScene({ paused, onReady, onFallback, onStatus }: 
     const canvas = document.createElement('canvas')
     canvas.className = 'landing-canvas l3d-canvas'
     layer.prepend(canvas)
-    let shatter: ShatterScene
+    let floating: FloatingScene
     try {
-      shatter = new ShatterScene({
+      floating = new FloatingScene({
         canvas,
-        count: plan.count,
+        plan: plan.field,
         seed: plan.seed,
-        dprCap: plan.dprCap,
-        crackInset: plan.crackInset,
         clips: TILEMAP.video[media.choice.clips],
         posters: TILEMAP.stills[media.choice.stills],
         frame0: media.frame0,
@@ -65,8 +63,8 @@ export default function LandingScene({ paused, onReady, onFallback, onStatus }: 
         onFirstFrame: () => {
           // The placeholder stays visible until now; then the canvas fades in.
           canvas.classList.add('is-visible')
-          setScene(shatter)
-          ready({ explode: (ms, origin) => shatter.explode(ms, origin) })
+          setScene(floating)
+          ready({ warp: (ms) => floating.warp(ms) })
         },
         onFallback: (reason) => fallback(reason),
       })
@@ -78,7 +76,7 @@ export default function LandingScene({ paused, onReady, onFallback, onStatus }: 
     return () => {
       ready(null)
       setScene(null)
-      shatter.dispose()
+      floating.dispose()
       canvas.remove()
     }
   }, [media, layer, plan])

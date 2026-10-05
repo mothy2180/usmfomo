@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the landing-page media for the shattered-glass scene (Module 6).
+"""Build the landing-page media for the floating-glass scene (Module 6).
 
 ffmpeg runs in Docker (image pinned below; nothing is installed locally), with
 no network, no capabilities and a read-only root filesystem, because the
