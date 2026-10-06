@@ -8,8 +8,8 @@ delete from public.posts;
 delete from public.notices;
 
 -- Two owner accounts (to show the user_id tiebreak) and 105 club accounts.
-insert into tests.fx (k, v) select 'uo', tests.create_user('owner');
-select tests.create_owner(tests.fx('uo'));
+insert into tests.fx (k, v) select 'uo', tests.create_user('pgtap-owner');
+select tests.create_owner(tests.fx('uo'), 'pgtap-owner');
 insert into tests.fx (k, v) select 'uo2', tests.create_user('owner-two');
 select tests.create_owner(tests.fx('uo2'), 'owner-two');
 do $$

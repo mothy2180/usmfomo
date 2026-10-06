@@ -10,8 +10,8 @@ insert into tests.fx (k, v) select 'oa', tests.create_org_account(tests.fx('ua')
 insert into tests.fx (k, v) select 'sa', tests.create_session(tests.fx('ua'));
 insert into tests.fx (k, v) select 'ub', tests.create_user('club-b');
 insert into tests.fx (k, v) select 'ob', tests.create_org_account(tests.fx('ub'), 'club-b');
-insert into tests.fx (k, v) select 'uo', tests.create_user('owner');
-select tests.create_owner(tests.fx('uo'));
+insert into tests.fx (k, v) select 'uo', tests.create_user('pgtap-owner');
+select tests.create_owner(tests.fx('uo'), 'pgtap-owner');
 
 -- The trigger ------------------------------------------------------------------------
 select has_trigger('auth', 'users', 'usmfomo_password_guard', 'auth.users has the password guard');

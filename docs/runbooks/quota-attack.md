@@ -22,8 +22,8 @@ traffic is the signal. Also take the Supabase "approaching limit" emails serious
 
 ## 2. Degrade on purpose: public reads off
 
-Owner console → **Settings** → switch **public reads** off
-(`public_reads_enabled = false`). Anonymous reads of posts and notices now return
+Owner console → **Overview** → **Kill switches** → Public site content →
+**Hide everything from the public** (`public_reads_enabled = false`). Anonymous reads of posts and notices now return
 nothing, so a flood of list requests costs almost no egress; the site shows a
 degraded banner instead of events. Clubs can still sign in and manage posts.
 Switch it back on when the flood stops (check Usage again an hour later).

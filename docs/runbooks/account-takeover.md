@@ -8,8 +8,8 @@ logins at strange hours in the audit log. Contain first, investigate second.
 
 Owner console (or the owner CLI with the `owner-cli` key):
 
-1. **Deactivate** the account: it can no longer sign in, and posting stops at
-   once (`pnpm account deactivate <username>`).
+1. **Pause account** (Accounts → Manage): it can no longer sign in, and posting
+   stops at once (`pnpm account deactivate <username>`).
 2. **Reset the password**: this ends every session of the account
    (`pnpm account reset-password <username>`). Keep the new password to yourself
    for now.
@@ -19,8 +19,8 @@ Owner console (or the owner CLI with the `owner-cli` key):
    also deletes the files at once). Copies already cached can stay visible for
    up to 6 hours at the edge and 1 hour in browsers; there is no purge on the
    free plan.
-5. Many accounts at once, or you are unsure how far it goes: **Settings** →
-   switch **posting** off for everyone (the kill switch); public reading keeps
+5. Many accounts at once, or you are unsure how far it goes: **Overview** →
+   **Kill switches** → **Pause posting** for everyone; public reading keeps
    working.
 
 The order matters: banning and removing factors do not end live sessions; the

@@ -55,3 +55,6 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Editor state (Obsidian vault settings)
+.obsidian/

@@ -18,6 +18,11 @@ rule, the UI only mirrors it · unofficial project, says so on every page.
 
 | Date | Decision | Options considered | Chosen | Why |
 |---|---|---|---|---|
+| 2026-10-06 | Hosted Realtime | leave the default; turn it off | off right after the project is created (deploy.md step 1) | usmfomo never uses it, a hosted project has it on with public channels open to the publishable key, and `config.toml` only switches the local one off |
+| 2026-10-06 | Pages Functions at the daily limit | fail closed; fail open | fail open on both Pages projects (deploy.md step 0) | the static site keeps working; posters fall back to direct Supabase URLs |
+| 2026-10-06 | Where the CI tokens live | password manager + GitHub; GitHub only | GitHub environment secrets only, environment created before the tokens; make a new token if lost | fewer copies of a deploy credential; both tokens are shown once and are cheap to replace |
+| 2026-10-06 | How CRON_SECRET is made | password-manager generator; `openssl rand -hex 32` | `openssl rand -hex 32 \| pbcopy`, pasted into the password manager | matches the code comments and the hex gitleaks rule; never shown on screen |
+| 2026-10-06 | pgTAP owner user | `owner`; a test-only name | `pgtap-owner` | the tests no longer clash with the local `owner` from `seed-local`, so they pass in any order |
 | 2026-10-06 | Owner console second TOTP device | allow 'continue with one device'; require two | require two: the console opens only when Auth lists two verified factors. There is no skip, a listing error never counts as two, and limited mode needs two as well | the approved plan ('only the TOTP enrolment screen until two devices are enrolled'); with one lost phone, the only way back in would be the break-glass CLI |
 | 2026-10-06 | Owner console aal1 pre-check fails | continue to owner 2FA ('unknown'); fail closed | retry my_posting_status once, then treat it as a failed sign-in: sign out with scope local and show an error | a club must never be pushed into enrolling owner 2FA, or signed out globally (the docs/api.md promise) |
 | 2026-10-06 | Owner console sign-out scope | always global; global only for a confirmed owner | global only after owner-admin `status` has confirmed the owner in this session; local before that (code, enrolment, status error) and in limited mode, including the idle sign-out | a club account that reaches these steps must not end every committee member's session; limited mode never got owner-admin's confirmation |
@@ -91,7 +96,7 @@ Cloudflare Worker usmfomo-cron (no URL) --hourly--> REST read + maintenance
 
 ## 4. Security model (Module 5)
 
-Database (`supabase/migrations`, tested by `supabase/tests`, 117 checks):
+Database (`supabase/migrations`, tested by `supabase/tests`, 160 checks):
 - Only `public` is exposed. anon/authenticated get SELECT on orgs, posts,
   notices, site_settings; clubs get column-scoped INSERT/UPDATE and DELETE on
   posts. `private` and `audit` are unreachable; service-only `maint_*`/`admin_*`
@@ -143,6 +148,24 @@ Database (`supabase/migrations`, tested by `supabase/tests`, 117 checks):
   projects `usmfomo` and `usmfomo-admin`.
 
 ## 8. Journal (newest first)
+
+### 2026-10-06 (afternoon) — Owner handbook; research fixes
+- **Done**: an owner handbook (private claude.ai page) built from five
+  researched and independently fact-checked sections: credentials, the local
+  environment, the owner test playbook, capacity and limits (free tiers checked
+  on the official pages today), and the landing media pipeline.
+- **Fixed from the research**: deploy.md turns hosted Realtime off, sets Pages
+  to fail open, keeps the CI tokens in GitHub only (environment first), makes
+  `CRON_SECRET` with openssl and logs Wrangler in with `--use-keyring`;
+  quota-attack.md and account-takeover.md use the console's real labels
+  (Overview → Kill switches, Pause account); the pgTAP owner is `pgtap-owner`
+  (no clash with `seed-local`); `.obsidian/` is git-ignored; stale counts fixed.
+- **Capacity, in short**: static pages unlimited; images 100,000 requests a
+  day; Supabase egress 5 + 5 GB a month; about 3,000 visits a day is a rough
+  ceiling (phone-heavy traffic). The main risk is a script flooding the public
+  API (the month's egress in under an hour); the response is the public-content
+  kill switch, and the long-term fix is the cached feed on the Later list.
+
 
 ### 2026-10-06 — Review fixes; the landing becomes floating glass
 - **Done**: the landing scene follows the owner's reference: glass shards

@@ -86,16 +86,23 @@ Everything below assumes `usmfomo.pages.dev` and `usmfomo-admin.pages.dev`: the
 Turnstile hostnames (step 4), `site_url` (step 6) and `ADMIN_ORIGINS` (step 7).
 Claim both names before anything points at them.
 
-1. Create a free Cloudflare account (no card), turn on MFA.
-2. On your laptop (browser login for these one-off commands):
+1. Create a free Cloudflare account (no card), turn on MFA. A brand-new
+   account may create only a few Pages projects in its first 48 hours, and
+   usmfomo needs two: if a create command is refused, wait and try again.
+2. On your laptop (browser login for these one-off commands; `--use-keyring`
+   keeps the login token encrypted with a key in the macOS keychain instead of
+   a plain-text file in `~/Library/Preferences/.wrangler/`):
    ```zsh
-   pnpm wrangler login
+   pnpm wrangler login --use-keyring
    pnpm wrangler whoami                       # shows the Account ID (GitHub variable, step 10)
    pnpm wrangler pages project create usmfomo --production-branch main
    pnpm wrangler pages project create usmfomo-admin --production-branch main
    ```
    If a name is taken, stop here: `site_url`, the Turnstile hostnames,
    `ADMIN_ORIGINS` and the docs all assume these two names.
+3. For each project: Workers & Pages → the project → Settings → **Runtime** →
+   when the daily Functions limit is reached → **Fail open**, so the static
+   site keeps working (posters then load straight from Supabase).
 
 ## 1. Supabase organisation and project
 
@@ -112,6 +119,11 @@ Claim both names before anything points at them.
    - Postgres version: **17** (the default for new projects). The migrations
      use Postgres 16+ functions, and `config.toml` says `major_version = 17`;
      check Project Settings → Infrastructure after the project is created.
+   - Once it exists: Realtime → Settings → turn **off "Enable Realtime
+     service"**. usmfomo never uses Realtime, but a hosted project has it on,
+     with public channels that anyone holding the publishable key can use
+     against the free quota. `[realtime] enabled = false` in `config.toml`
+     only switches it off on your laptop.
 3. Note the **project ref** (Project Settings → General, or the `<ref>` in
    `https://<ref>.supabase.co`).
 
@@ -141,7 +153,10 @@ Account (your avatar) → **Access Tokens** → generate a token:
 - If your dashboard offers no scoping, the token reaches every project of your
   account. Step 1's separate organisation then matters even more: keep nothing
   else there, and treat the token like a password.
-- It goes only into the GitHub environment secret `SUPABASE_ACCESS_TOKEN` (step 10).
+- It goes only into the GitHub environment secret `SUPABASE_ACCESS_TOKEN` (step 10),
+  never into your password manager: if it is lost, make a new one. The token is
+  shown only once, so create the `production` environment first (the two
+  `gh api` commands at the top of step 10) and paste the token straight in.
   On your laptop you use your own `supabase login`, not this token.
 
 ## 4. The Turnstile widget
@@ -208,9 +223,9 @@ work. Then the two function secrets, **both in one command** with explicit
 values: CLI 2.119.0 fills any name you leave out from the local files, and
 `hide_local_env` makes sure there is nothing to fill it from.
 
-First generate `CRON_SECRET` in your password manager (64 random letters and
-digits) and save it as "usmfomo CRON_SECRET": step 12 and every rotation read
-it from there.
+First make `CRON_SECRET` with `openssl rand -hex 32 | pbcopy` (it goes to the
+clipboard without being shown) and paste it into your password manager as
+"usmfomo CRON_SECRET": step 12 and every rotation read it from there.
 
 ```zsh
 hide_local_env
@@ -236,8 +251,10 @@ Dashboard → My Profile → **API Tokens** → Create Token → **Custom token*
 - Permissions: **Account · Cloudflare Pages · Edit** and **Account · Workers
   Scripts · Edit**; Account resources: include only your account;
 - No IP filter (GitHub runners change), expiry about one year (calendar).
-- It goes only into the GitHub secret `CLOUDFLARE_API_TOKEN` (step 10). If a
-  deploy fails with an authentication error, add only the permission it names.
+- It goes only into the GitHub secret `CLOUDFLARE_API_TOKEN` (step 10), never
+  into your password manager: Cloudflare shows it once, so paste it straight
+  into the secret (the environment exists already, see step 3). If a deploy
+  fails with an authentication error, add only the permission it names.
 
 ## 9. Pages project variable for the image proxy
 
@@ -445,8 +462,9 @@ After the first club posts a poster, open the event: the image URL is
 
 | Thing | Lives in |
 |---|---|
-| Database password, `owner-cli` key, owner password, CI tokens | your password manager (+ GitHub secrets for CI) |
-| Production Turnstile secret | Supabase dashboard only |
+| Database password, `owner-cli` key, owner password | your password manager (the database password also in its GitHub secret) |
+| CI tokens (Supabase, Cloudflare) | GitHub environment secrets only; make a new one if lost |
+| Production Turnstile secret | Cloudflare (with the widget) + one copy in the Supabase dashboard; nowhere else |
 | `CRON_SECRET` | Supabase secrets + Worker secret + your password manager (nowhere else) |
 | `ADMIN_ORIGINS` | Supabase secrets |
 | `SUPABASE_URL` for `/i/*` | Pages project variable (usmfomo) |

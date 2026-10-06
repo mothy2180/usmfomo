@@ -38,6 +38,7 @@ App environment files (public local values only; both are git-ignored):
   echo 'VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA'   # Cloudflare's always-pass test key
 } > apps/admin/.env.local
 { cat apps/admin/.env.local; echo 'VITE_IMAGE_MODE=direct'; echo 'VITE_CONTACT_URL='; } > apps/web/.env.local
+echo 'VITE_PUBLIC_SITE_URL=http://127.0.0.1:5173' >> apps/admin/.env.local   # console links open the local site
 ```
 
 Only the **publishable** key ever goes into these files, never an `sb_secret_` key.

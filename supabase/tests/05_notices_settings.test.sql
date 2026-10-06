@@ -5,8 +5,8 @@ select plan(13);
 insert into tests.fx (k, v) select 'ua', tests.create_user('club-a');
 insert into tests.fx (k, v) select 'oa', tests.create_org_account(tests.fx('ua'), 'club-a');
 insert into tests.fx (k, v) select 'sa', tests.create_session(tests.fx('ua'));
-insert into tests.fx (k, v) select 'uo', tests.create_user('owner');
-select tests.create_owner(tests.fx('uo'));
+insert into tests.fx (k, v) select 'uo', tests.create_user('pgtap-owner');
+select tests.create_owner(tests.fx('uo'), 'pgtap-owner');
 insert into tests.fx (k, v) select 'so2', tests.create_session(tests.fx('uo'), 'aal2');
 insert into tests.fx (k, v) select 'so1', tests.create_session(tests.fx('uo'), 'aal1');
 

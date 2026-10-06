@@ -1,6 +1,6 @@
 // The landing scene: glass shards floating in a dark space, drifting
 // slowly towards and past the camera, tumbling gently and catching the light.
-// About a third are larger facets that show the clips (video atlas) and
+// About a quarter are larger facets that show the clips (video atlas) and
 // posters (stills atlas); the rest are thin clear splinters with bright edges.
 // Shards that pass the camera re-enter far away, so the stream never ends.
 // Plain three.js; the motion maths lives in field.ts (unit-tested).

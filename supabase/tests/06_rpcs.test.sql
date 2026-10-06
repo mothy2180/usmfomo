@@ -12,8 +12,8 @@ insert into tests.fx (k, v) select 'um', tests.create_user('club-m');
 insert into tests.fx (k, v) select 'om', tests.create_org_account(tests.fx('um'), 'club-m');
 select tests.add_verified_factor(tests.fx('um'));
 insert into tests.fx (k, v) select 'sm1', tests.create_session(tests.fx('um'), 'aal1');
-insert into tests.fx (k, v) select 'uo', tests.create_user('owner');
-select tests.create_owner(tests.fx('uo'));
+insert into tests.fx (k, v) select 'uo', tests.create_user('pgtap-owner');
+select tests.create_owner(tests.fx('uo'), 'pgtap-owner');
 insert into tests.fx (k, v) select 'so2', tests.create_session(tests.fx('uo'), 'aal2');
 
 insert into tests.fx (k, v) select 'p_now',

@@ -16,7 +16,7 @@ decisions are in [`docs/adr/`](docs/adr/); operating procedures in
 
 ## Status
 
-Built locally, not yet deployed (2026-10-05): database security core (117 pgTAP
+Code public, not yet deployed (2026-10-06): database security core (160 pgTAP
 tests), public site + club studio + animated landing (`apps/web`), owner console
 (`apps/admin`), two Edge Functions, the cron Worker and the owner CLI, CI/CD
 workflows and runbooks. The landing page uses synthetic test clips until the
