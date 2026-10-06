@@ -22,21 +22,12 @@ How to test `supabase/functions/{maintenance,owner-admin}`, `workers/cron` and
 cd supabase/functions
 deno task check && deno lint && deno fmt --check && deno task test
 cd ../..
-pnpm --filter cron typecheck && pnpm --filter cron test
-node --test scripts/lib/*.test.ts
+pnpm --filter cron lint && pnpm --filter cron typecheck && pnpm --filter cron test
+pnpm typecheck:scripts && pnpm test:scripts
 ```
 
-There is no root tsconfig for `scripts/` yet. To type-check the CLI with the
-same strict, erasable-only rules as `packages/shared`, run:
-
-```bash
-packages/shared/node_modules/.bin/tsc --noEmit --strict --target es2024 --lib es2024 \
-  --module nodenext --moduleResolution nodenext --allowImportingTsExtensions \
-  --erasableSyntaxOnly --verbatimModuleSyntax --noUncheckedIndexedAccess \
-  --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch --skipLibCheck \
-  --types node --typeRoots apps/web/node_modules/@types \
-  scripts/account.ts scripts/lib/*.ts scripts/lib/e2e/*.ts
-```
+The last line is what CI runs for the owner CLI: `scripts/tsconfig.json` holds
+its compiler options, so there is no separate `tsc` command to keep in step.
 
 ## End to end against the local stack
 
@@ -99,7 +90,11 @@ curl -i -X OPTIONS https://<ref>.supabase.co/functions/v1/owner-admin \
 ```
 
 In production, `ADMIN_ORIGINS` must be only `https://usmfomo-admin.pages.dev`,
-with no localhost entries.
+with no localhost entries. A `pnpm supabase secrets set` run with
+`supabase/.env` in place also uploads the local `ADMIN_ORIGINS` and
+`CRON_SECRET`, so set production secrets only as [deploy.md](deploy.md) step 7
+does: both names in one command, between `hide_local_env` and
+`restore_local_env`, then compare the digests from `secrets list`.
 
 ## Owner CLI locally
 
@@ -131,4 +126,6 @@ curl 'http://127.0.0.1:8787/cdn-cgi/handler/scheduled?cron=7+*+*+*+*'
 
 A successful run logs `{"event":"maintenance","ok":true,...}` with counts
 only. A failing step makes the invocation error (`usmfomo-cron failed:
-maintenance: HTTP 401`). There is no fetch handler, so `GET /` answers 500.
+maintenance: HTTP 401`). Without `CRON_SECRET` the keep-alive read still runs
+and the run fails with `maintenance: CRON_SECRET is not set`. There is no fetch
+handler, so `GET /` answers 500.

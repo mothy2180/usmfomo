@@ -2,8 +2,10 @@
 //   1. GET site_settings with the publishable key: anonymous API traffic that
 //      keeps the free Supabase project from pausing.
 //   2. POST the maintenance function with x-cron-secret.
-// Both steps always run; if either fails, the run throws so the invocation
-// shows as errored in Workers Logs. Logs carry status codes and counts only.
+// Step 1 needs no secret and always runs, also while CRON_SECRET is missing;
+// step 2 then counts as failed instead of running. If either step fails, the
+// run throws so the invocation shows as errored in Workers Logs. Logs carry
+// status codes and counts only.
 
 export interface Env {
   SUPABASE_URL: string
@@ -11,19 +13,34 @@ export interface Env {
   CRON_SECRET: string
 }
 
+/** What the keep-alive read needs: no secret. */
+export type ReadEnv = Pick<Env, 'SUPABASE_URL' | 'SUPABASE_PUBLISHABLE_KEY'>
+
 export const READ_TIMEOUT_MS = 20_000
 /** The maintenance run makes a handful of bounded RPC and Storage calls. */
 export const MAINTENANCE_TIMEOUT_MS = 120_000
 
 type Fetch = typeof fetch
 
-const REQUIRED: ReadonlyArray<keyof Env> = ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'CRON_SECRET']
+const REQUIRED: ReadonlyArray<keyof ReadEnv> = ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY']
 
-/** Throws naming the first missing variable, never printing a value. */
-export function checkEnv(env: Partial<Env>): asserts env is Env {
+function isSet(value: unknown): value is string {
+  return typeof value === 'string' && value !== ''
+}
+
+/**
+ * Throws naming the first missing variable the keep-alive read needs, never
+ * printing a value. CRON_SECRET is checked later, so its absence never stops
+ * the read.
+ */
+export function checkEnv(env: Partial<Env>): asserts env is Partial<Env> & ReadEnv {
   for (const name of REQUIRED) {
-    if (typeof env[name] !== 'string' || env[name] === '') throw new Error(`${name} is not set`)
+    if (!isSet(env[name])) throw new Error(`${name} is not set`)
   }
+}
+
+function hasCronSecret(env: Partial<Env> & ReadEnv): env is Env {
+  return isSet(env.CRON_SECRET)
 }
 
 function baseUrl(raw: string): string {
@@ -37,7 +54,7 @@ function describe(step: string, err: unknown): string {
   return `${step}: ${name}`
 }
 
-export async function keepAliveRead(env: Env, fetchImpl: Fetch = fetch): Promise<void> {
+export async function keepAliveRead(env: ReadEnv, fetchImpl: Fetch = fetch): Promise<void> {
   const res = await fetchImpl(`${baseUrl(env.SUPABASE_URL)}/rest/v1/site_settings?select=posting_enabled&limit=1`, {
     method: 'GET',
     headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Accept: 'application/json' },
@@ -86,11 +103,17 @@ export async function runCron(env: Partial<Env>, fetchImpl: Fetch = fetch): Prom
     failures.push(describe('site_settings', err))
   }
 
-  try {
-    const counts = await callMaintenance(env, fetchImpl)
-    console.log(JSON.stringify({ event: 'maintenance', ok: true, ...counts }))
-  } catch (err) {
-    failures.push(describe('maintenance', err))
+  if (hasCronSecret(env)) {
+    try {
+      const counts = await callMaintenance(env, fetchImpl)
+      console.log(JSON.stringify({ event: 'maintenance', ok: true, ...counts }))
+    } catch (err) {
+      failures.push(describe('maintenance', err))
+    }
+  } else {
+    // The Worker secret was never set or got lost: nothing to send, but the
+    // read above already ran, and the run still fails so the gap is visible.
+    failures.push('maintenance: CRON_SECRET is not set')
   }
 
   if (failures.length > 0) {

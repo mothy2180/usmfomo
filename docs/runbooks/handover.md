@@ -24,9 +24,10 @@ enrols in one sitting.**
 
 ## 2. Run the handover
 
-**Owner console** → Accounts → the organisation → **Handover**. One click does,
-in this order: deactivate (and ban) → new password (ends every session) →
-delete every 2FA factor → reactivate. The new password is shown **once**.
+**Owner console** → Accounts → the organisation → **Hand over to a new
+committee**. One click does, in this order: deactivate (and ban) → new password
+(ends every session) → delete every 2FA factor → reactivate. The new password
+is shown **once**.
 
 From your laptop instead (production: the `owner-cli` key for this command only):
 

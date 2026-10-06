@@ -6,11 +6,11 @@
 # to a full-length commit SHA" enforces it.
 #
 # Supabase CLI: `pnpm exec supabase`, the repo's devDependency, not supabase/setup-cli.
-# One version source for laptop and CI (package.json + pnpm-lock.yaml integrity
-# hashes, behind pnpm's 3-day minimumReleaseAge), and Dependabot bumps reach CI
-# automatically. setup-cli's own version detection cannot read pnpm 12's
-# two-document lockfile and would silently fall back to "latest". deploy.yml has
-# no pnpm install, so it uses setup-cli with the exact version from package.json.
+# One version source for laptop, CI and deploy (package.json + pnpm-lock.yaml
+# integrity hashes, behind pnpm's 3-day minimumReleaseAge), and Dependabot bumps
+# reach CI automatically. setup-cli's own version detection cannot read pnpm 12's
+# two-document lockfile and would silently fall back to "latest". deploy.yml
+# installs the same CLI and wrangler from this lockfile (the root package only).
 name: CI
 
 on:
@@ -65,6 +65,20 @@ jobs:
         env:
           WRANGLER_SEND_METRICS: 'false'
         run: pnpm --filter cron run build
+      # deploy.yml installs its tools (the root package: Supabase CLI, wrangler)
+      # from these three files alone, in a folder of their own. Prove that still
+      # works before main needs it, for example after a new root dependency.
+      - name: Deploy tools install from the lockfile alone (as deploy.yml does)
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          tools="$RUNNER_TEMP/deploy-tools"
+          mkdir -p "$tools"
+          cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$tools/"
+          cd "$tools"
+          pnpm install --frozen-lockfile
+          node_modules/.bin/supabase --version
+          node_modules/.bin/wrangler --version
       - name: Landing media budget
         run: python3 scripts/check-media-budget.py
       # _headers, _redirects and _routes.json present, no 404.html anywhere (it

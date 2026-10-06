@@ -28,12 +28,19 @@ session** of that account. Enrolled 2FA devices keep working.
 
 ## 2b. Lost 2FA device
 
-After the identity check:
+After the identity check, **reset the password first, then remove the
+factors**. An account with no 2FA factor counts as fully verified, so a session
+that is still signed in (on the lost phone, or of anyone who knows the
+password) could post, or enrol a factor of its own that locks the committee
+out. The reset ends every session before the factors go.
 
-1. Owner console → **Remove 2FA factors** (or `pnpm account remove-factors <username>`).
-   It removes every factor of the account.
-2. **Then reset the password** as in 2a. Removing factors alone signs nobody
-   out, and the missing phone may be in someone else's hands.
+1. Owner console → Accounts → the organisation → **Hand over to a new
+   committee** (or `pnpm account handover <username>`). It does exactly this,
+   in the safe order: deactivate → new password (ends every session) → remove
+   every factor → reactivate. The new password is shown once.
+2. If you do it by hand instead: **Reset password** first (2a), and only then
+   **Remove 2FA devices** (`pnpm account remove-factors <username>`). Never
+   remove the devices on their own.
 3. The committee enrols every member's device again in one sitting (step 3).
 
 For a lost **owner** device, see [owner-lockout.md](owner-lockout.md).

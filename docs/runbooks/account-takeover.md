@@ -62,10 +62,12 @@ Treat everything the owner can reach as exposed and rotate it all, from your lap
 
 1. `pnpm account owner-reset-mfa <username>` (new owner password, every owner
    factor removed, every session ended), then enrol two new TOTP devices.
-2. Supabase dashboard → API Keys → create a new `owner-cli` secret key and delete
-   the old one. Rotate the `default` secret key too if any secret key could have
-   leaked (Edge Functions pick up the new one; redeploy them).
-3. New `CRON_SECRET` in both places ([deploy.md](deploy.md), step 12).
+2. Replace the `owner-cli` secret key, and the `default` one too if any secret
+   key could have leaked, in the order of [quota-attack.md](quota-attack.md),
+   section 4: the new Edge Functions key must be named exactly `default`, then
+   redeploy the functions.
+3. New `CRON_SECRET` in both places, set together with `ADMIN_ORIGINS`
+   ([deploy.md](deploy.md), "Rotating `CRON_SECRET`").
 4. Renew the CI tokens (Supabase access token, Cloudflare API token) and update
    the GitHub environment secrets; review GitHub, Supabase and Cloudflare
    security logs for sessions you do not recognise.

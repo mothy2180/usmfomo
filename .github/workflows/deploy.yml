@@ -4,9 +4,11 @@
 #           (refused unless CI passed for it). Uses the Actions API only, no code.
 #   build   no secrets and no environment: installs, builds both apps with the
 #           production PUBLIC values (repository variables) and uploads artifacts.
-#   deploy  environment "production": downloads the artifacts and ships them with
-#           the official supabase/setup-cli and cloudflare/wrangler-action. No pnpm
-#           install, no caches; secrets only as step-level env or action inputs.
+#   deploy  environment "production": downloads the artifacts, installs the deploy
+#           tools (the root package's Supabase CLI and wrangler) from the committed
+#           lockfile in a step with no secrets, then runs them. No caches; secrets
+#           only as step-level env of the steps that deploy, never while a package
+#           installs or runs an install script.
 #
 # Supabase steps run only when the variable SUPABASE_PROJECT_ID is set, Cloudflare
 # steps only when CLOUDFLARE_ACCOUNT_ID is set, so the pipeline grows by phase.
@@ -23,10 +25,9 @@ on:
 
 permissions: {}
 
-concurrency:
-  # Deploys run one at a time, in order; never cut a migration or an upload short.
-  group: deploy-production
-  cancel-in-progress: false
+# No workflow-level concurrency: every completed CI run on a branch named main
+# starts this workflow, and one whose gate is skipped must not take the place of
+# a deploy that is waiting. The deploy job holds the group instead.
 
 jobs:
   gate:
@@ -78,9 +79,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-    outputs:
-      supabase_cli: ${{ steps.tools.outputs.supabase }}
-      wrangler: ${{ steps.tools.outputs.wrangler }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -93,22 +91,6 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile
-
-      # The deploy job installs the same Supabase CLI and wrangler versions that
-      # CI tested: the exact pins in package.json (no drift, Dependabot-updated).
-      - name: Deploy tool versions from package.json
-        id: tools
-        run: |
-          supabase=$(jq -r '.devDependencies.supabase // empty' package.json)
-          wrangler=$(jq -r '.devDependencies.wrangler // empty' package.json)
-          for v in "$supabase" "$wrangler"; do
-            if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::package.json must pin supabase and wrangler to exact versions (got '$v')"
-              exit 1
-            fi
-          done
-          echo "supabase=$supabase" >> "$GITHUB_OUTPUT"
-          echo "wrangler=$wrangler" >> "$GITHUB_OUTPUT"
 
       # Repository variables (not environment ones: this job has no environment on purpose).
       - name: Check the production public values
@@ -154,8 +136,8 @@ jobs:
       # Layout inside the artifact: dist/ next to functions/ and edge/. wrangler
       # compiles the /i/* image-proxy Function from ./functions (which imports
       # ../../edge/image-proxy.ts) in the directory it runs from, so the deploy job
-      # runs `pages deploy dist` from this folder. No package.json is shipped: the
-      # wrangler-action installs wrangler into the folder with npm.
+      # runs `pages deploy dist` from this folder. No package.json is shipped with
+      # the site: wrangler comes from the deploy tools (the last artifact).
       - name: Upload the public site
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -193,11 +175,31 @@ jobs:
           include-hidden-files: true # .nvmrc
           if-no-files-found: error
           retention-days: 7
+      # The deploy tools are the root package's devDependencies, installed in the
+      # deploy job from these three files alone. They go in a folder of their own:
+      # pnpm refuses a frozen install when a workspace folder such as workers/cron
+      # exists without its package.json.
+      - name: Upload the deploy tools' manifest and lockfile
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deploy-tools
+          path: |
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+          if-no-files-found: error
+          retention-days: 7
 
   deploy:
     needs: [gate, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # Deploys run one at a time, in the order their builds finish; a waiting one
+    # may be replaced by a newer one, a running one is never cut short (no half
+    # migration or upload). Runs whose gate is skipped never get this far.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     environment:
       name: production
       url: https://usmfomo.pages.dev
@@ -221,33 +223,44 @@ jobs:
         with:
           name: admin
           path: site/admin/dist
+      - name: Download the deploy tools' manifest and lockfile
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: deploy-tools
+          path: deploy-tools
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: deploy-tools/package.json
       # wrangler needs Node 22+ and the Supabase CLI Node 20+; use the repo's Node.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
-      # Both deploy actions npm-install their tool without a lockfile. Like pnpm's
-      # minimumReleaseAge, only accept package versions published 3+ days ago.
-      - name: Release-age gate for the deploy tools' npm installs
-        run: echo "npm_config_before=$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      # The exact Supabase CLI and wrangler that CI ran, integrity-checked against
+      # pnpm-lock.yaml; nothing is resolved here. Install scripts (only esbuild's
+      # and workerd's may run: allowBuilds in pnpm-workspace.yaml) run in this
+      # step, which has no secrets. The tokens reach only the deploy steps below.
+      - name: Install the deploy tools from the lockfile (no secrets in this step)
+        working-directory: deploy-tools
+        run: |
+          pnpm install --frozen-lockfile
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+          node_modules/.bin/supabase --version
+          node_modules/.bin/wrangler --version
 
       # ---- Supabase: migrations and Edge Functions -------------------------------
-      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
-        if: vars.SUPABASE_PROJECT_ID != ''
-        with:
-          version: ${{ needs.build.outputs.supabase_cli }}
       - name: Link the production project
         if: vars.SUPABASE_PROJECT_ID != ''
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
         run: |
           # The CLI refuses to load config.toml without the (git-ignored) signing-key
           # file; production signs its own JWTs, so an empty key list is enough.
           printf '[]' > supabase/signing_keys.json
-          # The default connection is the IPv4 pooler; GitHub runners have no IPv6,
-          # so never add --skip-pooler.
+          # link only talks to the Management API (no database password: CLI
+          # 2.119.0 ignores it here) and records the IPv4 pooler that db push
+          # uses. GitHub runners have no IPv6, so never add --skip-pooler.
           supabase link --project-ref "$PROJECT_ID"
       - name: Apply new migrations
         if: vars.SUPABASE_PROJECT_ID != ''
@@ -265,47 +278,39 @@ jobs:
         run: supabase functions deploy maintenance owner-admin --project-ref "$PROJECT_ID" --use-api
 
       # ---- Cloudflare: Pages projects and the cron Worker ------------------------
-      # apiToken is an action input on purpose: the action overwrites
-      # CLOUDFLARE_API_TOKEN in its environment with this input.
+      # wrangler reads CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID from its
+      # environment; only these three steps get them.
       - name: Deploy the public site (Pages project usmfomo)
         if: vars.CLOUDFLARE_ACCOUNT_ID != ''
-        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: ${{ needs.build.outputs.wrangler }}
-          packageManager: npm
-          workingDirectory: site/web # dist/ + functions/ + edge/ (see the build job)
-          command: pages deploy dist --project-name=usmfomo --branch=main --commit-hash=${{ needs.gate.outputs.sha }} --commit-dirty=true
+        working-directory: site/web # dist/ + functions/ + edge/ (see the build job)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          SHA: ${{ needs.gate.outputs.sha }}
+        run: wrangler pages deploy dist --project-name=usmfomo --branch=main --commit-hash="$SHA" --commit-dirty=true
       - name: Deploy the owner console (Pages project usmfomo-admin)
         if: vars.CLOUDFLARE_ACCOUNT_ID != ''
-        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: ${{ needs.build.outputs.wrangler }}
-          packageManager: npm
-          workingDirectory: site/admin # no functions/ here: the console has no Functions
-          command: pages deploy dist --project-name=usmfomo-admin --branch=main --commit-hash=${{ needs.gate.outputs.sha }} --commit-dirty=true
+        working-directory: site/admin # no functions/ here: the console has no Functions
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          SHA: ${{ needs.gate.outputs.sha }}
+        run: wrangler pages deploy dist --project-name=usmfomo-admin --branch=main --commit-hash="$SHA" --commit-dirty=true
       - name: Deploy the cron Worker (usmfomo-cron)
         if: vars.CLOUDFLARE_ACCOUNT_ID != ''
-        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        working-directory: workers/cron
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           # Public values of the same project the site uses, bound as plain-text vars
           # (they replace the local defaults in wrangler.jsonc). CRON_SECRET is a
           # Worker secret set by hand once (`wrangler secret put`), never from CI.
           SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: ${{ needs.build.outputs.wrangler }}
-          packageManager: npm
-          workingDirectory: workers/cron
-          command: deploy --config wrangler.jsonc
-          vars: |
-            SUPABASE_URL
-            SUPABASE_PUBLISHABLE_KEY
+        run: |
+          wrangler deploy --config wrangler.jsonc \
+            --var "SUPABASE_URL:$SUPABASE_URL" \
+            --var "SUPABASE_PUBLISHABLE_KEY:$SUPABASE_PUBLISHABLE_KEY"
 
       - name: Summary
         if: always()

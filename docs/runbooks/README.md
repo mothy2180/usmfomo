@@ -12,7 +12,7 @@ component contracts: [`../api.md`](../api.md).
 | [github-account.md](github-account.md) | cloning, committing or pushing: the repo lives under **mothy2180**, never the work account |
 | [local-dev.md](local-dev.md) | setting up a laptop, the daily loop, campus Wi-Fi, FirstApp's port clash, Docker tools |
 | [functions-local.md](functions-local.md) | testing the Edge Functions, the cron Worker and the owner CLI locally |
-| [deploy.md](deploy.md) | first-time production setup, how the pipeline deploys, smoke tests, changing project settings, rollbacks |
+| [deploy.md](deploy.md) | first-time production setup, how the pipeline deploys, keeping local values out of production, setting or rotating `CRON_SECRET`, smoke tests, changing project settings, rollbacks |
 | [usm-permission-letter.md](usm-permission-letter.md) | asking the Vice-Chancellor for written permission (Student Discipline Rules 2024, r.12), BM + EN |
 | [learning-path.md](learning-path.md) | learning the stack to write parts yourself (FirstApp's evenings + usmfomo's) |
 
@@ -38,4 +38,8 @@ component contracts: [`../api.md`](../api.md).
 - **Secrets stay out of files**: read them with `read -rs`, use them for one
   command, `unset` them. Only the publishable key ever reaches a browser.
 - **`supabase config push` is by hand only**, after `config diff`; never from CI.
+- **Local values stay local**: every command that writes to production
+  (`config push`, `db push`, `functions deploy`, `secrets set`) runs between
+  `hide_local_env` and `restore_local_env` ([deploy.md](deploy.md)), and
+  `secrets set` always names both `CRON_SECRET` and `ADMIN_ORIGINS`.
 - Write incidents and their fixes into the journal in `docs/PROJECT.md`.

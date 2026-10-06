@@ -25,6 +25,13 @@ function mockFetch(responses: Array<Response | Error>) {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
+/** A copy of the environment with one variable absent (not just empty). */
+function withoutKey(env: Env, name: keyof Env): Partial<Env> {
+  const copy: Partial<Env> = { ...env }
+  delete copy[name]
+  return copy
+}
+
 let logs: string[]
 
 beforeEach(() => {
@@ -122,13 +129,39 @@ describe('runCron', () => {
     }
   })
 
-  it('refuses to run with missing configuration, naming only the variable', async () => {
-    for (const name of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'CRON_SECRET'] as const) {
-      const { fetch, calls } = mockFetch([])
-      const env: Partial<Env> = { ...ENV, [name]: '' }
-      await expect(runCron(env, fetch)).rejects.toThrow(`${name} is not set`)
-      expect(calls).toHaveLength(0)
+  it('refuses to run without the URL or the publishable key, naming only the variable', async () => {
+    for (const name of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY'] as const) {
+      for (const env of [{ ...ENV, [name]: '' }, withoutKey(ENV, name)]) {
+        const { fetch, calls } = mockFetch([])
+        await expect(runCron(env, fetch)).rejects.toThrow(`${name} is not set`)
+        expect(calls).toHaveLength(0)
+      }
     }
+  })
+
+  it('still makes the keep-alive read without CRON_SECRET, then fails the run', async () => {
+    for (const env of [{ ...ENV, CRON_SECRET: '' }, withoutKey(ENV, 'CRON_SECRET')]) {
+      logs = []
+      const { fetch, calls } = mockFetch([json([{ posting_enabled: true }])])
+      await expect(runCron(env, fetch)).rejects.toThrow('usmfomo-cron failed: maintenance: CRON_SECRET is not set')
+
+      expect(calls).toHaveLength(1)
+      const [read] = calls as [Call]
+      expect(read.url).toBe('https://project-ref.supabase.co/rest/v1/site_settings?select=posting_enabled&limit=1')
+      expect(read.init.method).toBe('GET')
+      const headers = new Headers(read.init.headers)
+      expect(headers.get('apikey')).toBe(ENV.SUPABASE_PUBLISHABLE_KEY)
+      expect(headers.get('x-cron-secret')).toBeNull()
+      expect(logs.join('\n')).toContain('"event":"cron_failed","failures":["maintenance: CRON_SECRET is not set"]')
+    }
+  })
+
+  it('reports a failed read and a missing CRON_SECRET together', async () => {
+    const { fetch, calls } = mockFetch([json({ message: 'paused' }, 503)])
+    await expect(runCron({ ...ENV, CRON_SECRET: '' }, fetch)).rejects.toThrow(
+      'site_settings: HTTP 503; maintenance: CRON_SECRET is not set',
+    )
+    expect(calls).toHaveLength(1)
   })
 
   it('accepts a SUPABASE_URL with a trailing slash', async () => {
@@ -174,5 +207,16 @@ describe('worker', () => {
     const failing = mockFetch([json([]), json({ ok: false }, 401)])
     vi.stubGlobal('fetch', failing.fetch)
     await expect(worker.scheduled(controller, ENV)).rejects.toThrow('maintenance: HTTP 401')
+  })
+
+  it('scheduled() keeps the project awake before the Worker secret is set', async () => {
+    const readOnly = mockFetch([json([])])
+    vi.stubGlobal('fetch', readOnly.fetch)
+    const controller = { cron: '7 * * * *', scheduledTime: Date.now(), noRetry: () => {} } as ScheduledController
+    const env = { ...ENV, CRON_SECRET: '' }
+    await expect(worker.scheduled(controller, env)).rejects.toThrow('maintenance: CRON_SECRET is not set')
+    expect(readOnly.calls.map((c) => c.url)).toEqual([
+      'https://project-ref.supabase.co/rest/v1/site_settings?select=posting_enabled&limit=1',
+    ])
   })
 })

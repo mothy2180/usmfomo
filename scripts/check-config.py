@@ -7,14 +7,18 @@ script fails, with one line per key, if any of these settings drift:
 
   api        only `public` is exposed, max_rows 100, new tables are not exposed
   auth       sign-ups closed (the Email provider stays on for password login),
-             no anonymous sign-ins or manual linking, 30-minute JWTs, passwords
-             of 12+ characters, an https site_url, TOTP on, phone MFA off,
-             Turnstile CAPTCHA with its secret read from the environment, SMS
-             sign-ups off, no email notifications, no OAuth, Web3, third-party
-             or OAuth-server sign-in
+             email changes confirmed, no anonymous sign-ins or manual linking,
+             30-minute JWTs, refresh-token rotation, passwords of 12+ characters
+             with lower, upper and digits, an https site_url, TOTP on with room
+             for 10 factors, phone MFA off, Turnstile CAPTCHA with its secret
+             read from the environment, SMS sign-ups off, no email notifications
+             and no SMTP, no auth hooks, no OAuth, Web3, third-party or
+             OAuth-server sign-in
   storage    S3 protocol and vector buckets off
   realtime   off
   functions  maintenance and owner-admin authorise in code (verify_jwt false)
+  overrides  no [remotes.*] tables and no config.json next to the file: the CLI
+             would push those instead of the checked values
 
 A missing key counts as drift: the CLI default would silently apply instead.
 Values must have the right TOML type ("100" is not 100, true is not 1).
@@ -77,7 +81,17 @@ class EveryTable:
     why: str
 
 
+@dataclass(frozen=True)
+class OffIfPresent:
+    """The table at `path` (for example [auth.email.smtp]) may be absent; if present it must set enabled = false."""
+
+    path: tuple[str, ...]
+    why: str
+
+
 RULES = [
+    Rule(('db', 'major_version'), equals(17), '17',
+         'the migrations use Postgres 16+ functions (pg_input_is_valid); production must match'),
     Rule(('api', 'schemas'), equals(['public']), '["public"]',
          'only public is exposed to the Data API; private and audit never are'),
     Rule(('api', 'max_rows'), equals(100), '100', 'hard cap on rows per request'),
@@ -88,12 +102,21 @@ RULES = [
     Rule(('auth', 'email', 'enable_signup'), equals(True), 'true',
          'this is the Email provider switch that password login needs; '
          'sign-ups stay closed through [auth] enable_signup = false'),
+    Rule(('auth', 'email', 'enable_confirmations'), equals(True), 'true',
+         'an email change (the login name) needs a confirmation, never applies at once'),
     Rule(('auth', 'enable_anonymous_sign_ins'), equals(False), 'false', 'no anonymous accounts'),
     Rule(('auth', 'enable_manual_linking'), equals(False), 'false', 'no identity linking'),
     Rule(('auth', 'jwt_expiry'), equals(1800), '1800', '30-minute access tokens'),
+    Rule(('auth', 'enable_refresh_token_rotation'), equals(True), 'true',
+         'a used refresh token cannot be replayed to keep a stolen session alive'),
     Rule(('auth', 'minimum_password_length'), at_least(12), 'an integer >= 12',
          'owner-generated passwords are long'),
+    Rule(('auth', 'password_requirements'), equals('lower_upper_letters_digits'),
+         '"lower_upper_letters_digits"',
+         'generated passwords always meet it; requiring symbols would refuse them'),
     Rule(('auth', 'site_url'), https_url, 'an https:// URL', 'the production site is HTTPS only'),
+    Rule(('auth', 'mfa', 'max_enrolled_factors'), equals(10), '10',
+         'the owner needs two devices and committees one per member'),
     Rule(('auth', 'mfa', 'totp', 'enroll_enabled'), equals(True), 'true', 'TOTP 2FA (mandatory for the owner)'),
     Rule(('auth', 'mfa', 'totp', 'verify_enabled'), equals(True), 'true', 'TOTP 2FA (mandatory for the owner)'),
     Rule(('auth', 'mfa', 'phone', 'enroll_enabled'), equals(False), 'false', 'no SMS factors'),
@@ -118,7 +141,16 @@ EVERY_TABLE = [
     EveryTable(('auth', 'external'), 'no OAuth sign-in'),
     EveryTable(('auth', 'web3'), 'no wallet sign-in'),
     EveryTable(('auth', 'third_party'), 'no tokens from other identity providers'),
+    EveryTable(('auth', 'hook'), 'no auth hooks: one could rewrite the aal and session claims the database trusts'),
 ]
+
+OFF_IF_PRESENT = [
+    OffIfPresent(('auth', 'email', 'smtp'), 'usmfomo never sends email'),
+]
+
+REMOTES_WHY = ('config push merges a matching [remotes.*] table over the checked values, '
+               'and usmfomo has one project: keep every setting in the top-level tables')
+JSON_WHY = 'the CLI reads config.json instead of config.toml, so none of these checks would apply'
 
 
 def lookup(config: dict[str, object], path: tuple[str, ...]) -> object:
@@ -148,6 +180,17 @@ def toml_value(value: object) -> str:
     return str(value)
 
 
+def switched_off(table_path: tuple[str, ...], table: object, why: str) -> str | None:
+    """The problem with a table that must set enabled = false, or None."""
+    path = (*table_path, 'enabled')
+    value = table.get('enabled', MISSING) if isinstance(table, dict) else table
+    if value is MISSING:
+        return f'{where(path)} is missing; expected false ({why})'
+    if value is not False:
+        return f'{where(path)} = {toml_value(value)}; expected false ({why})'
+    return None
+
+
 def problems(config: dict[str, object]) -> tuple[list[str], int]:
     """Returns (problems, number of checks made)."""
     found: list[str] = []
@@ -170,12 +213,22 @@ def problems(config: dict[str, object]) -> tuple[list[str], int]:
             continue
         for name, table in tables.items():
             checks += 1
-            path = (*group.prefix, name, 'enabled')
-            value = table.get('enabled', MISSING) if isinstance(table, dict) else table
-            if value is MISSING:
-                found.append(f'{where(path)} is missing; expected false ({group.why})')
-            elif value is not False:
-                found.append(f'{where(path)} = {toml_value(value)}; expected false ({group.why})')
+            problem = switched_off((*group.prefix, name), table, group.why)
+            if problem:
+                found.append(problem)
+    for single in OFF_IF_PRESENT:
+        checks += 1
+        table = lookup(config, single.path)
+        problem = None if table is MISSING else switched_off(single.path, table, single.why)
+        if problem:
+            found.append(problem)
+    # Per-project overlays: the CLI applies them on top of everything checked above.
+    checks += 1
+    remotes = config.get('remotes', MISSING)
+    if isinstance(remotes, dict) and remotes:
+        found.extend(f'[remotes.{name}] must not exist ({REMOTES_WHY})' for name in remotes)
+    elif remotes is not MISSING:
+        found.append(f'remotes must not exist ({REMOTES_WHY})')
     return found, checks
 
 
@@ -188,7 +241,11 @@ def check_file(path: Path) -> tuple[list[str], int]:
         config = tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:
         return [f'not valid TOML ({err})'], 0
-    return problems(config)
+    found, checks = problems(config)
+    checks += 1
+    if path.with_name('config.json').exists():
+        found.append(f'config.json next to this file must not exist ({JSON_WHY})')
+    return found, checks
 
 
 def shown(path: Path) -> str:
@@ -215,6 +272,7 @@ class Mutation:
     key: str
     value: str | None  # a TOML literal; None deletes the key
     create: bool = False  # the table is new (appended to the file)
+    reported_as: str = ''  # how the problem starts, when that is not label()
 
     def label(self) -> str:
         return f'[{self.table}] {self.key}'
@@ -224,6 +282,7 @@ class Mutation:
 
 
 MUST_FAIL = [
+    Mutation('db', 'major_version', '15'),
     Mutation('api', 'schemas', '["public", "private"]'),
     Mutation('api', 'schemas', '["public", "graphql_public"]'),
     Mutation('api', 'max_rows', '1000'),
@@ -233,12 +292,20 @@ MUST_FAIL = [
     Mutation('auth', 'enable_signup', 'true'),
     Mutation('auth', 'enable_signup', None),
     Mutation('auth.email', 'enable_signup', 'false'),
+    Mutation('auth.email', 'enable_confirmations', 'false'),
+    Mutation('auth.email', 'enable_confirmations', None),
     Mutation('auth', 'enable_anonymous_sign_ins', 'true'),
     Mutation('auth', 'enable_manual_linking', 'true'),
     Mutation('auth', 'jwt_expiry', '3600'),
+    Mutation('auth', 'enable_refresh_token_rotation', 'false'),
     Mutation('auth', 'minimum_password_length', '11'),
     Mutation('auth', 'minimum_password_length', 'true'),
+    Mutation('auth', 'password_requirements', '""'),
+    Mutation('auth', 'password_requirements', '"lower_upper_letters_digits_symbols"'),
+    Mutation('auth', 'password_requirements', None),
     Mutation('auth', 'site_url', '"http://usmfomo.pages.dev"'),
+    Mutation('auth.mfa', 'max_enrolled_factors', '1'),
+    Mutation('auth.mfa', 'max_enrolled_factors', None),
     Mutation('auth.mfa.totp', 'enroll_enabled', 'false'),
     Mutation('auth.mfa.totp', 'verify_enabled', 'false'),
     Mutation('auth.mfa.phone', 'enroll_enabled', 'true'),
@@ -249,6 +316,12 @@ MUST_FAIL = [
     Mutation('auth.email.notification.password_changed', 'enabled', 'true'),
     Mutation('auth.email.notification.mfa_factor_enrolled', 'enabled', None),
     Mutation('auth.email.notification.some_future_template', 'enabled', 'true', create=True),
+    Mutation('auth.email.smtp', 'enabled', 'true', create=True),
+    Mutation('auth.email.smtp', 'host', '"smtp.example.com"', create=True,
+             reported_as='[auth.email.smtp] enabled'),
+    Mutation('auth.hook.custom_access_token', 'enabled', 'true', create=True),
+    Mutation('auth.hook.before_user_created', 'uri', '"pg-functions://postgres/public/hook"', create=True,
+             reported_as='[auth.hook.before_user_created] enabled'),
     Mutation('auth.external.apple', 'enabled', 'true'),
     Mutation('auth.external.github', 'enabled', 'true', create=True),
     Mutation('auth.web3.solana', 'enabled', 'true'),
@@ -261,6 +334,9 @@ MUST_FAIL = [
     Mutation('functions.maintenance', 'verify_jwt', 'true'),
     Mutation('functions.owner-admin', 'verify_jwt', 'true'),
     Mutation('functions.owner-admin', 'verify_jwt', None),
+    # A per-project overlay, harmless-looking or not, is refused as a whole.
+    Mutation('remotes.prod', 'project_id', '"abcdefghijklmnopqrst"', create=True, reported_as='[remotes.prod]'),
+    Mutation('remotes.prod.auth', 'enable_signup', 'true', create=True, reported_as='[remotes.prod]'),
 ]
 
 # Harmless edits that must still pass (the guard is not just "any change fails").
@@ -268,6 +344,8 @@ MUST_PASS = [
     Mutation('auth', 'minimum_password_length', '16'),
     Mutation('auth', 'site_url', '"https://usmfomo.cs.usm.my"'),
     Mutation('auth.external.github', 'enabled', 'false', create=True),
+    Mutation('auth.email.smtp', 'enabled', 'false', create=True),
+    Mutation('auth.hook.custom_access_token', 'enabled', 'false', create=True),
 ]
 
 
@@ -320,7 +398,7 @@ def self_test(base: Path) -> int:
             got, _ = check_file(copy)
             if m in MUST_PASS and got:
                 failures.append(f'harmless "{m.describe()}" was rejected: {got[0]}')
-            elif m in MUST_FAIL and not any(p.startswith(m.label()) for p in got):
+            elif m in MUST_FAIL and not any(p.startswith(m.reported_as or m.label()) for p in got):
                 failures.append(f'"{m.describe()}" was not caught (got: {got or "no problems"})')
         broken = Path(tmp) / 'broken.toml'
         broken.write_text(base_text + '\n[auth\n', encoding='utf-8')
@@ -328,13 +406,20 @@ def self_test(base: Path) -> int:
             failures.append('invalid TOML was not reported')
         if not check_file(Path(tmp) / 'absent.toml')[0]:
             failures.append('a missing file was not reported')
+        # An unchanged config.toml with a config.json beside it (the CLI would read that instead).
+        pair = Path(tmp) / 'with-json'
+        pair.mkdir()
+        (pair / 'config.toml').write_text(base_text, encoding='utf-8')
+        (pair / 'config.json').write_text('{}\n', encoding='utf-8')
+        if not any(p.startswith('config.json') for p in check_file(pair / 'config.toml')[0]):
+            failures.append('a config.json next to the file was not reported')
     for line in failures:
         print(f'self-test FAILED: {line}', file=sys.stderr)
     if failures:
         return 1
     print(f'check-config self-test: {shown(base)} passes ({checks} checks); '
           f'{len(MUST_FAIL)} mutations rejected, {len(MUST_PASS)} harmless edits accepted, '
-          'invalid TOML and a missing file reported')
+          'invalid TOML, a missing file and a config.json beside the file reported')
     return 0
 
 

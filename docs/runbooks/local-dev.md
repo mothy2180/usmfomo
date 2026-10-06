@@ -25,7 +25,10 @@ pnpm supabase start                            # API 54321 · DB 54322 · Studio
 ```
 
 `supabase/signing_keys.json` holds a private key (ES256, like production): it is
-git-ignored; never commit or share it.
+git-ignored; never commit or share it. `supabase/.env` holds only public local
+test values, but the CLI would send them to the hosted project too: before any
+command against production, see "Keep local values out of production" in
+[deploy.md](deploy.md).
 
 App environment files (public local values only; both are git-ignored):
 

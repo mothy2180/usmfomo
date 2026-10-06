@@ -44,8 +44,9 @@ signs out every owner session.
 
 1. Sign in to the Supabase dashboard (your Supabase account has its own MFA and
    recovery codes).
-2. Project Settings → API Keys → **create a new secret key** named `owner-cli`,
-   then **delete the old one**.
+2. Project Settings → API Keys → **delete the old `owner-cli` key**, then
+   **create a new secret key** with the same name. Leave the key named
+   `default` alone: the Edge Functions use it.
 3. Continue with section 1 or 2.
 
 If you cannot reach the Supabase dashboard either, use Supabase's account
