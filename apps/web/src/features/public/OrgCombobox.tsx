@@ -148,7 +148,7 @@ export function OrgCombobox({ inputId, describedBy, orgs, type, showType, select
           setText(selectedName)
         }}
         className={cx(
-          'w-full min-h-11 rounded-lg border border-line bg-ink px-3 py-2 text-sm text-text placeholder:text-muted/70',
+          'w-full min-h-11 rounded-lg border border-field-line bg-ink px-3 py-2 text-sm text-text placeholder:text-muted/70',
           selected && 'pr-12',
         )}
       />
@@ -181,8 +181,10 @@ export function OrgCombobox({ inputId, describedBy, orgs, type, showType, select
               onMouseMove={() => setActive(i)}
               onClick={() => choose(org)}
               className={cx(
-                'flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm',
-                i === activeIndex ? 'bg-surface-2 text-text' : 'text-text',
+                'flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-text',
+                // The option Enter would pick. Focus stays in the input, so it
+                // needs its own clear outline (sky on surface is over 10:1).
+                i === activeIndex && 'bg-surface-2 ring-2 ring-sky ring-inset',
                 org.id === selectedId && 'font-semibold',
               )}
             >

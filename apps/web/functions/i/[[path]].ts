@@ -1,7 +1,8 @@
 import { serveImage } from '../../edge/image-proxy.ts'
 
 interface Env {
-  SUPABASE_URL: string
+  /** Pages project variable; may be missing (serveImage answers 500 then). */
+  SUPABASE_URL?: string
 }
 
 const handle: PagesFunction<Env> = (ctx) => {

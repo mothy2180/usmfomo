@@ -5,7 +5,11 @@
   --color-ink: #0b0d12;
   --color-surface: #141821;
   --color-surface-2: #1c2230;
+  /* Dividers and decorative edges (cards, filled buttons), never a field's. */
   --color-line: #2a3242;
+  /* The edge of a form field (input, select, textarea): at least 3:1 on ink,
+     surface and surface-2, so the field can be found (WCAG 1.4.11). */
+  --color-field-line: #6b7790;
   --color-text: #e8edf5;
   --color-muted: #a9b4c6;
   --color-accent: #f5c542;
@@ -14,6 +18,11 @@
   --color-danger: #fca5a5;
   --color-ok: #86efac;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  /* Native controls (date/time pickers, selects, scrollbars) in dark mode too. */
+  color-scheme: dark;
 }
 
 html {
@@ -26,6 +35,14 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+}
+
+/* The page header is sticky from the lg breakpoint (one row, under 5rem):
+   keep focused and scrolled-to elements clear of it (WCAG 2.4.11). */
+@media (min-width: 64rem) {
+  html {
+    scroll-padding-top: 5rem;
+  }
 }
 
 :focus-visible {
@@ -51,6 +68,9 @@ body {
   position: fixed;
   inset: 0;
   display: grid;
+  /* Header, centre, footer: each sets its own row, because the <picture> is
+     a grid child too (an empty one: its image is fixed) and would otherwise
+     take the first row and push the header into the 1fr one. */
   grid-template-rows: auto 1fr auto;
   /* Scrolls when the content is taller than the viewport (a phone in
      landscape, 200% zoom), so the controls and the disclaimer stay reachable.
@@ -81,11 +101,20 @@ body {
 }
 
 .landing-top {
+  grid-row: 1;
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
   padding: 1rem 1.25rem;
   z-index: 2;
+}
+
+/* The EN | BM switch: a backdrop like the Login box, over the moving glass. */
+.landing-lang {
+  background: rgb(11 13 18 / 0.82);
 }
 
 .landing-login {
@@ -114,6 +143,7 @@ body {
 }
 
 .landing-center {
+  grid-row: 2;
   position: relative;
   z-index: 2;
   display: flex;
@@ -161,6 +191,7 @@ body {
 }
 
 .landing-footer {
+  grid-row: 3;
   position: relative;
   z-index: 2;
   padding: 0.75rem 1.25rem 1rem;

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import type { OrgType } from '@usmfomo/shared/config'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { DbCall, DbHandler } from '../../features/public/testDb.ts'
 import type { Notice, OrgSummary, PostCard } from '../../features/public/types.ts'
 import i18n from '../../lib/i18n.ts'
@@ -91,6 +91,33 @@ function serve(rows: Partial<Record<OrgType, PostCard[]>>, opts: { notices?: Not
 }
 
 const searchCalls = (type: OrgType) => mock.calls.filter((c) => c.fn === 'search_posts' && c.args?.p_type === type)
+
+/** A response held back until the test releases it. */
+function holdBack() {
+  let release = () => {}
+  const until = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  return { until, release }
+}
+
+/** What the results live region tells screen readers right now. */
+const summaryText = () => document.querySelector('main > p[aria-live]')?.textContent ?? null
+
+/** Every text the results live region holds, in order, until the test ends. */
+function recordSummary(): string[] {
+  const said: string[] = []
+  const observer = new MutationObserver(() => {
+    const text = summaryText()
+    if (text !== null && text !== said.at(-1)) said.push(text)
+  })
+  observer.observe(document.body, { subtree: true, childList: true, characterData: true })
+  onTestFinished(() => observer.disconnect())
+  return said
+}
+
+/** The notice on screen (the live region can say the same words). */
+const findHiddenNotice = () => screen.findByText('Events are hidden for a while.', { ignore: '[aria-live]' })
 
 async function renderDashboard(url = '/dashboard') {
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
@@ -235,20 +262,104 @@ describe('DashboardPage', () => {
   it('says events are hidden (not "no events") when public reads are switched off', async () => {
     mock.handler = serve({}, { readsEnabled: false })
     await renderDashboard()
-    expect(await screen.findByText('Events are hidden for a while.')).toBeTruthy()
+    expect(await findHiddenNotice()).toBeTruthy()
     expect(screen.queryByRole('tablist')).toBeNull()
   })
 
+  it.each([
+    { name: 'a remembered campus', url: '/dashboard', remembered: true, noResults: 'No events match these filters.' },
+    { name: 'a shared search link', url: '/dashboard?q=robot', remembered: false, noResults: 'Nothing matches “robot”.' },
+  ])('says events are hidden with $name, and never tells screen readers "0 events"', async ({ url, remembered, noResults }) => {
+    if (remembered) window.localStorage.setItem('usmfomo.dashboard.campus', 'engineering')
+    // Public reads are off. Schools answers after Clubs, and the public-read
+    // check after both.
+    const schools = holdBack()
+    const check = holdBack()
+    const base = serve({}, { readsEnabled: false })
+    mock.handler = async (call) => {
+      if (call.fn === 'search_posts' && call.args?.p_type === 'school') await schools.until
+      if (call.table === 'site_settings') await check.until
+      return base(call)
+    }
+    const said = recordSummary()
+    const { router } = await renderDashboard(url)
+    await waitFor(() => expect(router.state.location.search).toEqual(remembered ? { campus: 'engineering' } : { q: 'robot' }))
+
+    await screen.findByRole('tab', { name: 'Clubs (0)' })
+    expect(summaryText()).toBe('') // Schools isn't in yet
+    schools.release()
+    await waitFor(() => expect(mock.calls.some((c) => c.table === 'site_settings')).toBe(true))
+    expect(summaryText()).toBe('') // both empty, and the check isn't back
+    check.release()
+
+    expect(await findHiddenNotice()).toBeTruthy()
+    expect(screen.queryByText(noResults)).toBeNull()
+    expect(screen.queryByRole('tablist')).toBeNull()
+    await waitFor(() => expect(summaryText()).toBe('Events are hidden for a while.'))
+    expect(said).toEqual(['', 'Events are hidden for a while.'])
+  })
+
+  it('says events are hidden with an organiser filter too (the other panel is skipped)', async () => {
+    mock.handler = serve({}, { readsEnabled: false })
+    await renderDashboard(`/dashboard?org=${SCHOOL.id}`)
+    expect(await findHiddenNotice()).toBeTruthy()
+    expect(searchCalls('school').some((c) => c.args?.p_org === SCHOOL.id)).toBe(true)
+    await waitFor(() => expect(summaryText()).toBe('Events are hidden for a while.'))
+  })
+
+  it('tells screen readers the result counts once both lists are in', async () => {
+    const schools = holdBack()
+    const base = serve({ club: [post(CLUB, 'Robot race', '2026-10-12T01:00:00Z', '2026-10-12T03:00:00Z')], school: [] })
+    mock.handler = async (call) => {
+      if (call.fn === 'search_posts' && call.args?.p_type === 'school') await schools.until
+      return base(call)
+    }
+    const said = recordSummary()
+    await renderDashboard('/dashboard?q=robot')
+
+    await screen.findByRole('tabpanel', { name: 'Clubs (1)' })
+    expect(summaryText()).toBe('') // Schools isn't in yet
+    schools.release()
+    await waitFor(() => expect(summaryText()).toBe('1 club event, 0 school events'))
+    expect(said).toEqual(['', '1 club event, 0 school events'])
+    // One list has events, so there was nothing to check.
+    expect(mock.calls.some((c) => c.table === 'site_settings')).toBe(false)
+  })
+
+  it('still tells screen readers the other count when one list fails', async () => {
+    const base = serve({ school: [post(SCHOOL, 'Robot talk', '2026-10-30T01:00:00Z', '2026-10-30T03:00:00Z')] })
+    mock.handler = (call) =>
+      call.fn === 'search_posts' && call.args?.p_type === 'club'
+        ? { data: null, error: { message: 'Failed to fetch', name: 'TypeError' } }
+        : base(call)
+    await renderDashboard('/dashboard?q=robot')
+    expect((await screen.findByRole('alert')).textContent).toContain("Can't reach usmfomo.")
+    await waitFor(() => expect(summaryText()).toBe('1 school event'))
+  })
+
   it('says when nothing matches a search, and Clear filters brings everything back', async () => {
-    mock.handler = serve({ club: [post(CLUB, 'Robot race', '2026-10-12T01:00:00Z', '2026-10-12T03:00:00Z')], school: [] })
+    const check = holdBack()
+    const base = serve({ club: [post(CLUB, 'Robot race', '2026-10-12T01:00:00Z', '2026-10-12T03:00:00Z')], school: [] })
+    mock.handler = async (call) => {
+      if (call.table === 'site_settings') await check.until
+      return base(call)
+    }
     const { router } = await renderDashboard('/dashboard?q=zzz')
     const panel = await screen.findByRole('tabpanel', { name: 'Clubs (0)' })
     expect(within(panel).getByText('Nothing matches “zzz”.')).toBeTruthy()
     expect(searchCalls('club')[0]?.args?.p_q).toBe('zzz')
+    // Both lists came back empty: screen readers hear "0 events" only once the
+    // public-read check says reads are on.
+    await waitFor(() => expect(mock.calls.some((c) => c.table === 'site_settings')).toBe(true))
+    expect(summaryText()).toBe('')
+    check.release()
+    await waitFor(() => expect(summaryText()).toBe('0 club events, 0 school events'))
+    expect(screen.queryByText('Events are hidden for a while.')).toBeNull()
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Clear filters' }))
     await waitFor(() => expect(router.state.location.search).toEqual({}))
     expect(within(await screen.findByRole('tabpanel', { name: 'Clubs (1)' })).getByText('Robot race')).toBeTruthy()
+    expect(summaryText()).toBe('')
   })
 
   it('shows an error with Try again', async () => {

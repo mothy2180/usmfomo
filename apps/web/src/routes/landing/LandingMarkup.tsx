@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LanguageSwitch } from '../../components/LanguageSwitch.tsx'
 
 type Props = {
   onCta?: (e: MouseEvent<HTMLAnchorElement>) => void
@@ -13,7 +14,8 @@ type Props = {
 /**
  * The landing page markup. landing.html contains the same structure as static
  * HTML so the page paints before any JavaScript runs; LandingMarkup.test.tsx
- * keeps the two copies identical (English, no background/controls).
+ * keeps the two copies identical (English, no background/controls). The
+ * language buttons only work once the app has loaded.
  */
 export function LandingMarkup({ onCta, onLogin, background, controls }: Props) {
   const { t } = useTranslation('landing')
@@ -25,6 +27,7 @@ export function LandingMarkup({ onCta, onLogin, background, controls }: Props) {
       </picture>
       {background}
       <header className="landing-top">
+        <LanguageSwitch className="landing-lang" />
         <a className="landing-login" href="/login" onClick={onLogin}>
           <span>{t('login')}</span>
           <small>{t('loginNote')}</small>

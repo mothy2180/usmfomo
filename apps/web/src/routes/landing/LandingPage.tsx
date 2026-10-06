@@ -1,6 +1,7 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
-import { focusPageHeading } from '../../landing3d/focus.ts'
+import { useTranslation } from 'react-i18next'
+import { useDocumentTitle } from '../../features/public/hooks.ts'
 import {
   hasWebGL2,
   markSceneFailed,
@@ -30,6 +31,7 @@ const LandingScene = lazy(() => optionalImport(() => import('../../landing3d/Lan
  * or a paused page); the 3D floating-glass scene fades in over it when allowed.
  */
 export function LandingPage() {
+  const { t } = useTranslation('landing')
   const navigate = useNavigate()
   const router = useRouter()
   const reducedMotion = useReducedMotion()
@@ -58,8 +60,8 @@ export function LandingPage() {
   // browser paints (useLayoutEffect) — no flash, idempotent under StrictMode.
   useLayoutEffect(() => {
     document.getElementById('landing-static')?.remove()
-    document.title = "usmfomo — what's on at USM"
   }, [])
+  useDocumentTitle(t('docTitle'))
 
   const gateInput = { idle, failed, lite, paused, mounted: keepWhilePaused }
   // The probe creates a throwaway WebGL context, so it runs (once) only when
@@ -97,6 +99,8 @@ export function LandingPage() {
     if (next === 'on') setKeepWhilePaused(false)
   }
 
+  // Focus moves to the new page's h1 in the router (focusHeadingOnPathChange),
+  // as for every other navigation.
   const goToDashboard = () => {
     // Only a warp that ends on the landing navigates: the visitor may have
     // gone elsewhere meanwhile (Login, Back).
@@ -105,7 +109,6 @@ export function LandingPage() {
       return
     }
     void navigate({ to: '/dashboard' })
-      .then(() => focusPageHeading())
       .catch(() => undefined)
       .finally(() => {
         leaving.current = false
@@ -140,9 +143,7 @@ export function LandingPage() {
   const onLogin = (e: MouseEvent<HTMLAnchorElement>) => {
     if (!isPlainClick(e)) return
     e.preventDefault()
-    void navigate({ to: '/login' })
-      .then(() => focusPageHeading())
-      .catch(() => undefined)
+    void navigate({ to: '/login' }).catch(() => undefined)
   }
 
   const background = mount ? (

@@ -1,7 +1,9 @@
 {
   "appName": "usmfomo",
   "tagline": "Apa yang berlaku di USM",
+  "skipToContent": "Langkau ke kandungan",
   "nav": {
+    "label": "Utama",
     "dashboard": "Acara",
     "login": "Log masuk kelab & pusat pengajian",
     "studio": "Studio",
@@ -9,6 +11,7 @@
     "home": "Utama"
   },
   "footer": {
+    "label": "Kaki halaman",
     "disclaimer": "usmfomo ialah projek pelajar yang bebas dan tidak rasmi, tidak bergabung dengan atau disokong oleh Universiti Sains Malaysia. Acara disiarkan oleh kelab dan pusat pengajian sendiri.",
     "report": "Laporkan masalah pada siaran",
     "rules": "Peraturan siaran",

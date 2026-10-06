@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router'
 import { CAMPUSES, type Campus, type OrgType } from '@usmfomo/shared/config'
+import { focusHeadingOnPathChange } from './components/pageFocus.ts'
 import { LandingPage } from './routes/landing/LandingPage.tsx'
 import { NotFoundPage } from './routes/NotFoundPage.tsx'
 
@@ -113,6 +114,9 @@ export const router = createRouter({
   defaultPreload: 'intent',
   scrollRestoration: true,
 })
+
+// Every move to a new path puts focus on the new page's h1 (pages don't).
+focusHeadingOnPathChange(router)
 
 declare module '@tanstack/react-router' {
   interface Register {

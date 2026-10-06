@@ -43,7 +43,7 @@ export function ShareButton({ url, title }: { url: string; title: string }) {
             readOnly
             value={url}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full min-h-11 rounded-lg border border-line bg-ink px-3 py-2 text-sm text-text"
+            className="w-full min-h-11 rounded-lg border border-field-line bg-ink px-3 py-2 text-sm text-text"
           />
         </div>
       ) : null}

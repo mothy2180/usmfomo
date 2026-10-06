@@ -63,6 +63,22 @@ describe('OrgCombobox', () => {
     expect(input.getAttribute('aria-expanded')).toBe('false')
   })
 
+  it('outlines the option Enter would pick, and only that one', () => {
+    render(<Harness onSelect={() => {}} />)
+    const input = screen.getByRole('combobox', { name: 'Organiser' })
+    // A field edge that can be seen (3:1), like every other input.
+    expect(input.classList.contains('border-field-line')).toBe(true)
+    fireEvent.change(input, { target: { value: 'comp' } })
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    const outlined = (o: HTMLElement) => o.classList.contains('ring-2') && o.classList.contains('ring-sky')
+    const options = screen.getAllByRole('option')
+    const active = document.getElementById(input.getAttribute('aria-activedescendant') ?? '')
+    expect(active).toBe(options[1])
+    expect(options.map(outlined)).toEqual([false, true])
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    expect(options.map(outlined)).toEqual([true, false])
+  })
+
   it('only suggests organisers of the current tab when given a type', () => {
     render(<Harness onSelect={() => {}} type="club" />)
     const input = screen.getByRole('combobox', { name: 'Organiser' })

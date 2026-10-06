@@ -19,11 +19,22 @@ export function securityHeaders(contentType: string): Record<string, string> {
 }
 
 export type ProxyDeps = {
-  supabaseUrl: string
+  /** The SUPABASE_URL Pages variable: undefined when it was never set. */
+  supabaseUrl: string | undefined
   cache: Pick<Cache, 'match' | 'put'>
   fetch: (input: string) => Promise<Response>
   waitUntil: (p: Promise<unknown>) => void
   requestUrl: string
+}
+
+/** The project URL without trailing slashes, or null if it isn't an http(s) URL. */
+function projectUrl(raw: string | undefined): string | null {
+  const url = raw?.trim().replace(/\/+$/, '') ?? ''
+  try {
+    return /^https?:$/.test(new URL(url).protocol) ? url : null
+  } catch {
+    return null
+  }
 }
 
 export async function serveImage(path: string, deps: ProxyDeps): Promise<Response> {
@@ -34,7 +45,14 @@ export async function serveImage(path: string, deps: ProxyDeps): Promise<Respons
   const hit = await deps.cache.match(cacheKey)
   if (hit) return hit
 
-  const origin = `${deps.supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/public/posters/${path}`
+  // A missing Pages variable: a logged, plain 500 (the deploy smoke test
+  // looks for it) instead of an exception and Cloudflare's error page.
+  const base = projectUrl(deps.supabaseUrl)
+  if (!base) {
+    console.error('image proxy misconfigured: SUPABASE_URL is missing or not an http(s) URL')
+    return new Response('Misconfigured', { status: 500, headers: { ...securityHeaders('text/plain; charset=utf-8'), 'Cache-Control': 'no-store' } })
+  }
+  const origin = `${base}/storage/v1/object/public/posters/${path}`
   let upstream: Response
   try {
     upstream = await deps.fetch(origin)

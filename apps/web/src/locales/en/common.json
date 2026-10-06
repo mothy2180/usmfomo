@@ -1,7 +1,9 @@
 {
   "appName": "usmfomo",
   "tagline": "What's on at USM",
+  "skipToContent": "Skip to content",
   "nav": {
+    "label": "Main",
     "dashboard": "What's on",
     "login": "Club & school login",
     "studio": "Studio",
@@ -9,6 +11,7 @@
     "home": "Home"
   },
   "footer": {
+    "label": "Footer",
     "disclaimer": "usmfomo is an independent, unofficial student project, not affiliated with or endorsed by Universiti Sains Malaysia. Events are posted by the clubs and schools themselves.",
     "report": "Report a problem with a post",
     "rules": "Posting rules",

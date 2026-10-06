@@ -65,7 +65,7 @@ describe('RulesPage', () => {
     await i18n.changeLanguage('ms')
     renderRules()
     expect(await screen.findByRole('heading', { level: 1, name: 'Peraturan siaran' })).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'hantar mesej kepada admin usmfomo' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'hantar mesej kepada pentadbir usmfomo' })).toBeTruthy()
     expect(items('Had')[0]).toBe(`Sehingga ${LIMITS.livePosts} siaran aktif pada satu masa.`)
   })
 })

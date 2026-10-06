@@ -108,7 +108,7 @@
       "items": [
         "Kelab: badan kendalian pelajar, termasuk persatuan, jawatankuasa Desasiswa dan Majlis Perwakilan Pelajar (MPP).",
         "Pusat pengajian: unit akademik dan pentadbiran, termasuk pusat pengajian, pusat, institut dan unit HEPA.",
-        "Setiap kelab atau pusat pengajian mendapat satu akaun, yang disediakan oleh admin usmfomo. Pelajar tidak perlu akaun untuk melihat acara."
+        "Setiap kelab atau pusat pengajian mendapat satu akaun, yang disediakan oleh pentadbir usmfomo. Pelajar tidak perlu akaun untuk melihat acara."
       ]
     },
     "allowed": {
@@ -152,16 +152,16 @@
       "items": [
         "Hidupkan pengesahan dua langkah (2FA) dalam tetapan Studio. Ia pilihan, tetapi sangat digalakkan.",
         "Setiap ahli jawatankuasa menambah telefon masing-masing, supaya akaun tidak hilang apabila seseorang meninggalkan jawatankuasa.",
-        "Jangan kongsi kata laluan di luar jawatankuasa anda. Apabila jawatankuasa bertukar, minta admin usmfomo membuat penyerahan akaun."
+        "Jangan kongsi kata laluan di luar jawatankuasa anda. Apabila jawatankuasa bertukar, minta pentadbir usmfomo membuat penyerahan akaun."
       ]
     },
     "moderation": {
       "title": "Moderasi",
-      "body": "Admin usmfomo boleh menyembunyikan atau mengeluarkan mana-mana siaran yang melanggar peraturan ini, dan boleh menggantung akaun yang berulang kali melanggarnya."
+      "body": "Pentadbir usmfomo boleh menyembunyikan atau mengeluarkan mana-mana siaran yang melanggar peraturan ini, dan boleh menggantung akaun yang berulang kali melanggarnya."
     },
     "account": {
       "title": "Mendapatkan akaun atau kata laluan baharu",
-      "body": "Tiada pendaftaran sendiri: akaun dibuat oleh admin usmfomo. Untuk memohon akaun, kata laluan baharu atau set semula 2FA, <contact>hantar mesej kepada admin usmfomo</contact> melalui akaun rasmi kelab atau pusat pengajian anda, supaya kami dapat memastikan permintaan itu benar-benar daripada anda."
+      "body": "Tiada pendaftaran sendiri: akaun dibuat oleh pentadbir usmfomo. Untuk memohon akaun, kata laluan baharu atau set semula 2FA, <contact>hantar mesej kepada pentadbir usmfomo</contact> melalui akaun rasmi kelab atau pusat pengajian anda, supaya kami dapat memastikan permintaan itu benar-benar daripada anda."
     },
     "disclaimer": {
       "title": "Projek tidak rasmi",

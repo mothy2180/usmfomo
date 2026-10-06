@@ -112,8 +112,8 @@ type FieldProps = { label: string; hint?: string; error?: string | null; childre
 export function Field({ label, hint, error, children }: FieldProps) {
   const id = useId()
   const hintId = hint ? `${id}-hint` : undefined
-  const errId = error ? `${id}-err` : undefined
-  const describedBy = [hintId, errId].filter(Boolean).join(' ') || undefined
+  const errId = `${id}-err`
+  const describedBy = [hintId, error ? errId : undefined].filter(Boolean).join(' ') || undefined
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-semibold">
@@ -125,7 +125,10 @@ export function Field({ label, hint, error, children }: FieldProps) {
           {hint}
         </p>
       ) : null}
-      <p id={errId} aria-live="polite" className={cx('m-0 text-xs text-danger', !error && 'hidden')}>
+      {/* Always rendered (empty, out of the layout, when there's no error):
+          screen readers only announce changes to a live region they already
+          know, and an error can arrive while focus is elsewhere. */}
+      <p id={errId} aria-live="polite" className={cx('m-0 text-xs text-danger', !error && 'sr-only')}>
         {error}
       </p>
     </div>
@@ -133,7 +136,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
 }
 
 const inputBase =
-  'w-full min-h-11 rounded-lg border border-line bg-ink px-3 py-2 text-sm text-text placeholder:text-muted/70 aria-[invalid=true]:border-danger'
+  'w-full min-h-11 rounded-lg border border-field-line bg-ink px-3 py-2 text-sm text-text placeholder:text-muted/70 aria-[invalid=true]:border-danger'
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(inputBase, props.className)} />

@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import i18n from '../lib/i18n.ts'
+import { focusHeadingOnPathChange } from '../components/pageFocus.ts'
+import i18n, { setLanguage } from '../lib/i18n.ts'
 import { LandingPage } from '../routes/landing/LandingPage.tsx'
 import { LITE_KEY, MOTION_KEY } from './prefs.ts'
 import { WARP_MS, type SceneProps } from './types.ts'
@@ -33,19 +34,27 @@ vi.mock('./LandingScene.tsx', async () => {
   }
 })
 
+// Texts of the elements that received focus, in order.
+const focused: string[] = []
+const recordFocus = (e: FocusEvent) => focused.push((e.target as HTMLElement).textContent ?? '')
+let stopFocus = () => {}
+
 function renderAt(path = '/') {
   const root = createRootRoute({ component: () => <Outlet /> })
   const landing = createRoute({ getParentRoute: () => root, path: '/', component: LandingPage })
-  const dashboard = createRoute({
-    getParentRoute: () => root,
-    path: '/dashboard',
-    component: () => (
-      <main>
-        <h1>What’s on</h1>
-      </main>
-    ),
+  const page = (title: string) => () => (
+    <main>
+      <h1>{title}</h1>
+    </main>
+  )
+  const dashboard = createRoute({ getParentRoute: () => root, path: '/dashboard', component: page('What’s on') })
+  const login = createRoute({ getParentRoute: () => root, path: '/login', component: page('Club & school login') })
+  const router = createRouter({
+    routeTree: root.addChildren([landing, dashboard, login]),
+    history: createMemoryHistory({ initialEntries: [path] }),
   })
-  const router = createRouter({ routeTree: root.addChildren([landing, dashboard]), history: createMemoryHistory({ initialEntries: [path] }) })
+  // The app router's focus handling (router.tsx), the only one there is.
+  stopFocus = focusHeadingOnPathChange(router)
   render(<RouterProvider router={router} />)
   return router
 }
@@ -61,8 +70,15 @@ describe('LandingPage', () => {
     fake.webgl2 = false
     fake.imported = 0
     fake.warp.mockClear()
+    focused.length = 0
+    document.addEventListener('focusin', recordFocus)
   })
-  afterEach(cleanup)
+  afterEach(() => {
+    stopFocus()
+    cleanup()
+    document.removeEventListener('focusin', recordFocus)
+    setLanguage('en')
+  })
 
   it('keeps the placeholder and never loads the 3D chunk without WebGL2', async () => {
     renderAt()
@@ -109,6 +125,34 @@ describe('LandingPage', () => {
     const heading = await screen.findByRole('heading', { name: 'What’s on' })
     expect(router.state.location.pathname).toBe('/dashboard')
     await waitFor(() => expect(document.activeElement).toBe(heading))
+    // Focus moved once: the page does not move it a second time.
+    await act(() => new Promise((r) => setTimeout(r, 150)))
+    expect(focused).toEqual(['What’s on'])
+  })
+
+  it('opens Login in the app and focuses its heading once', async () => {
+    const router = renderAt()
+    const login = await screen.findByRole('link', { name: /Login/ })
+    expect(fireEvent.click(login)).toBe(false) // default prevented: no page load
+    const heading = await screen.findByRole('heading', { name: 'Club & school login' })
+    expect(router.state.location.pathname).toBe('/login')
+    await waitFor(() => expect(document.activeElement).toBe(heading))
+    await act(() => new Promise((r) => setTimeout(r, 150)))
+    expect(focused).toEqual(['Club & school login'])
+  })
+
+  it('switches the landing page to BM, title included', async () => {
+    renderAt()
+    const bm = await screen.findByRole('button', { name: 'BM' })
+    expect(screen.getByRole('group', { name: 'Language' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'EN' }).getAttribute('aria-pressed')).toBe('true')
+    expect(document.title).toBe("usmfomo — what's on at USM")
+    fireEvent.click(bm)
+    expect(await screen.findByText('Lihat apa yang berlaku di sekitar USM')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'BM' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('link', { name: /Log masuk/ })).toBeTruthy()
+    await waitFor(() => expect(document.title).toBe('usmfomo — apa yang berlaku di USM'))
+    expect(document.documentElement.lang).toBe('ms')
   })
 
   it('skips the warp while paused but still navigates', async () => {

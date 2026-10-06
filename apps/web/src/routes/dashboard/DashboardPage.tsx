@@ -78,10 +78,12 @@ export function DashboardPage() {
     school: orgIsElsewhere('school') ? undefined : countOf(school.data),
   }
 
-  // Everything empty without filters: check whether public reads are off.
-  const allEmpty = !filtersActive && counts.club === 0 && counts.school === 0
-  const reads = usePublicReadsEnabled(allEmpty)
-  const degraded = allEmpty && reads.data === false
+  // Both lists empty, with or without filters (a remembered campus is one):
+  // check whether public reads are off, so hidden events never read as "no
+  // events" or "nothing matches". A panel the organiser filter skips is empty.
+  const bothEmpty = ORG_TYPES.every((type) => orgIsElsewhere(type) || counts[type] === 0)
+  const reads = usePublicReadsEnabled(bothEmpty)
+  const degraded = bothEmpty && reads.data === false
 
   const notices = useNotices()
 
@@ -101,11 +103,18 @@ export function DashboardPage() {
     update({ tab: next })
   }
 
-  // Result counts for screen readers after a filter change.
+  // For screen readers after a filter change: the result counts, said once
+  // every list is in, or that events are hidden. With both lists empty it
+  // waits for the public-read check, so hidden events never sound like
+  // "0 events". A list that failed has its own alert and is left out.
   const settled = ORG_TYPES.filter((type) => counts[type] !== undefined && !queries[type].isPlaceholderData)
-  const summary = filtersActive
-    ? settled.map((type) => t(type === 'club' ? 'dashboard.countClub' : 'dashboard.countSchool', { count: counts[type] })).join(', ')
-    : ''
+  const listsIn = ORG_TYPES.every((type) => orgIsElsewhere(type) || settled.includes(type) || queries[type].isError)
+  const ready = filtersActive && listsIn && !(bothEmpty && reads.isPending)
+  const summary = !ready
+    ? ''
+    : degraded
+      ? t('degraded.title')
+      : settled.map((type) => t(type === 'club' ? 'dashboard.countClub' : 'dashboard.countSchool', { count: counts[type] })).join(', ')
 
   return (
     <AppShell wide>
