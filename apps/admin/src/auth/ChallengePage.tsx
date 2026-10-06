@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { Button, Field, FormError, Input } from '../components/ui.tsx'
 import { ownerDb } from '../lib/db.ts'
 import { errorMessage } from '../lib/messages.ts'
@@ -22,7 +23,9 @@ export function ChallengePage({ factors }: { factors: OwnerFactor[] }) {
     if (busy) return
     const clean = normaliseCode(code)
     if (!isSixDigitCode(clean)) {
-      setCodeError('Enter the 6-digit code shown in your authenticator app.')
+      // Commit the error first, so the field is already invalid (and described
+      // by it) when it receives focus.
+      flushSync(() => setCodeError('Enter the 6-digit code shown in your authenticator app.'))
       codeRef.current?.focus()
       return
     }
@@ -35,8 +38,10 @@ export function ChallengePage({ factors }: { factors: OwnerFactor[] }) {
       setCode('')
       await session.mfaVerified()
     } catch (err) {
-      setError(errorMessage(err))
-      setCode('')
+      flushSync(() => {
+        setError(errorMessage(err))
+        setCode('')
+      })
       codeRef.current?.focus()
     } finally {
       setBusy(false)

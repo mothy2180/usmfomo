@@ -51,8 +51,8 @@ export function ConsoleLayout({ section, children }: { section: SectionId; child
       </main>
       <footer className="border-t border-line px-4 py-4 text-xs text-muted">
         <p className="m-0 mx-auto max-w-6xl">
-          Sign-out is global (every owner session ends) and automatic after 30 minutes without activity. All times are
-          Malaysia time (MYT).
+          Sign-out ends every owner session (in limited mode, only this one) and is automatic after 30 minutes without
+          activity. All times are Malaysia time (MYT).
         </p>
       </footer>
     </div>

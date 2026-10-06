@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { CopyButton } from '../components/CopyButton.tsx'
 import { Button, Field, FormError, Input } from '../components/ui.tsx'
 import { ownerDb } from '../lib/db.ts'
@@ -30,6 +31,7 @@ export function EnrolFactor({ defaultName, existingNames, onVerified }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const pendingId = useRef<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
   const codeRef = useRef<HTMLInputElement>(null)
 
   // Leaving mid-way: drop the unverified factor so its name stays free.
@@ -44,8 +46,13 @@ export function EnrolFactor({ defaultName, existingNames, onVerified }: Props) {
     e.preventDefault()
     if (busy) return
     const problem = validateDeviceName(name, existingNames)
-    setNameError(problem)
-    if (problem) return
+    // Commit the error first, so the field is already invalid (and described
+    // by it) when it receives focus.
+    flushSync(() => setNameError(problem))
+    if (problem) {
+      nameRef.current?.focus()
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -67,7 +74,7 @@ export function EnrolFactor({ defaultName, existingNames, onVerified }: Props) {
     if (busy || !pending) return
     const clean = normaliseCode(code)
     if (!isSixDigitCode(clean)) {
-      setCodeError('Enter the 6-digit code shown in the app.')
+      flushSync(() => setCodeError('Enter the 6-digit code shown in the app.'))
       codeRef.current?.focus()
       return
     }
@@ -103,6 +110,7 @@ export function EnrolFactor({ defaultName, existingNames, onVerified }: Props) {
         <Field label="Device name" hint="So you can tell your devices apart, e.g. “Phone” or “Backup phone”." error={nameError}>
           {({ id, describedBy, invalid }) => (
             <Input
+              ref={nameRef}
               id={id}
               value={name}
               maxLength={40}

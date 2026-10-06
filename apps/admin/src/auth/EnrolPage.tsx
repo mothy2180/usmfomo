@@ -11,10 +11,10 @@ export function EnrolPage() {
       <p className="m-0 text-sm">
         The owner account must use an authenticator app. Nothing else in the console opens until a device is set up.
       </p>
-      <Callout tone="info" title="Plan for two devices">
+      <Callout tone="info" title="Two devices are required">
         <p className="m-0">
-          After this one you will be asked to add a second device (a backup phone or a password manager), so losing one
-          doesn't lock you out.
+          After this one you add a second device before the console opens, so losing one doesn't lock you out. It can be
+          any TOTP app: a second phone, a tablet or a password manager.
         </p>
       </Callout>
       <EnrolFactor defaultName="Phone" existingNames={[]} onVerified={session.mfaVerified} />

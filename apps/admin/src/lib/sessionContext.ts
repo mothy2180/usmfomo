@@ -4,7 +4,7 @@ import type { OwnerFactor } from './mfa.ts'
 /**
  * Where the owner is in the sign-in flow:
  *   signed_out → (password + Turnstile) → enrol | challenge → checking
- *   → second_device (only one TOTP device) → ready
+ *   → second_device (until two TOTP devices are verified) → ready
  * not_owner and status_error are dead ends with a way back.
  */
 export type Phase =
@@ -25,11 +25,15 @@ export type Session = {
   /** After a TOTP code was verified (enrolment or challenge): the session is aal2. */
   mfaVerified: () => Promise<void>
   retryStatus: () => Promise<void>
-  /** Enter the console although owner-admin is unreachable (PostgREST features only). */
-  continueLimited: () => void
-  /** Leave the second-device prompt (with one or two devices). */
-  continueToConsole: () => void
-  /** Global sign-out (every session of the owner), then back to the sign-in form. */
+  /** Enter the console although owner-admin is unreachable (PostgREST features
+   * only). Two devices are still required, and sign-out stays local. */
+  continueLimited: () => Promise<void>
+  /** Open the console. Stays on the second-device step unless Auth lists two
+   * verified devices: there is no way to skip it. */
+  continueToConsole: () => Promise<void>
+  /** Signs out, then back to the sign-in form: globally (every session of the
+   * account) once owner-admin has confirmed the owner, otherwise only this
+   * session, so a club account can never end its other members' sessions. */
   signOut: (notice?: string | null) => Promise<void>
   /** From the "not the owner" screen back to the sign-in form. */
   backToSignIn: () => void

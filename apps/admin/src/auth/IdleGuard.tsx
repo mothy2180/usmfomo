@@ -3,8 +3,9 @@ import { Button } from '../components/ui.tsx'
 import { formatCountdown, useIdleTimeout } from '../lib/idle.ts'
 import { NOTICES, hasSession, useSession } from '../lib/sessionContext.ts'
 
-/** Signs the owner out (globally) after 30 minutes without input, with a
- * two-minute warning that one click dismisses. */
+/** Signs out after 30 minutes without input, with a two-minute warning that
+ * one click dismisses. session.signOut picks the scope: global only once
+ * owner-admin has confirmed the owner, otherwise just this session. */
 export function IdleGuard() {
   const session = useSession()
   const { state, stayActive } = useIdleTimeout({

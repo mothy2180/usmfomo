@@ -7,6 +7,9 @@
   --color-surface: #141821;
   --color-surface-2: #1c2230;
   --color-line: #2a3242;
+  /* Borders of text fields, selects and text areas: at least 3:1 against ink,
+     surface and surface-2 (WCAG 1.4.11). --color-line is for dividers only. */
+  --color-field-line: #6b7790;
   --color-text: #e8edf5;
   --color-muted: #a9b4c6;
   --color-accent: #f5c542;

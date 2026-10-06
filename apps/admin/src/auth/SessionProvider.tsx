@@ -3,6 +3,7 @@ import { usernameToEmail } from '@usmfomo/shared/supabase'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AdminApiError } from '../lib/api.ts'
 import { adminApi, ownerDb } from '../lib/db.ts'
+import { AccountCheckError } from '../lib/messages.ts'
 import { verifiedTotpFactors } from '../lib/mfa.ts'
 import { qk } from '../lib/queries.ts'
 import { NOTICES, SessionContext, type Phase, type Session } from '../lib/sessionContext.ts'
@@ -11,19 +12,28 @@ import { onSessionProblem, sessionProblem, type SessionProblem } from '../lib/se
 /** my_posting_status() states that belong to club/school accounts. */
 const OTHER_ACCOUNT_STATES = new Set(['ok', 'mfa_required', 'inactive', 'session_ended', 'no_account'])
 
+type AccountKind = 'owner' | 'other' | 'unknown'
+
+function kindOf(data: unknown): AccountKind {
+  const state = data && typeof data === 'object' && !Array.isArray(data) ? (data as { state?: unknown }).state : undefined
+  if (state === 'owner') return 'owner'
+  if (typeof state === 'string' && OTHER_ACCOUNT_STATES.has(state)) return 'other'
+  return 'unknown'
+}
+
 /**
  * Pre-check at aal1, before any TOTP step: my_posting_status() reports
  * "owner" for the owner account (it checks is_owner before MFA). This keeps a
  * club account that wanders in here from being pushed to enrol a TOTP device
- * (which would make 2FA mandatory for that club). The binding owner check is
- * still owner-admin "status" at aal2.
+ * (which would make 2FA mandatory for that club). A failed call is tried once
+ * more; "unknown" then fails the sign-in. The binding owner check is still
+ * owner-admin "status" at aal2.
  */
-async function accountKind(): Promise<'owner' | 'other' | 'unknown'> {
-  const { data, error } = await ownerDb.rpc('my_posting_status')
-  if (error) return 'unknown'
-  const state = data && typeof data === 'object' && !Array.isArray(data) ? (data as { state?: unknown }).state : undefined
-  if (state === 'owner') return 'owner'
-  if (typeof state === 'string' && OTHER_ACCOUNT_STATES.has(state)) return 'other'
+async function accountKind(): Promise<AccountKind> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await ownerDb.rpc('my_posting_status')
+    if (!error) return kindOf(data)
+  }
   return 'unknown'
 }
 
@@ -33,7 +43,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(null)
   const phaseRef = useRef<Phase>(phase)
   const ownerHint = useRef(false)
-  const skippedSecond = useRef(false)
+  // owner-admin confirmed the owner in this session: only then is sign-out global.
+  const ownerConfirmed = useRef(false)
   const sawSignedOut = useRef(false)
   const rechecking = useRef(false)
 
@@ -48,6 +59,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setPhase(next)
       setUsername(null)
       ownerHint.current = false
+      ownerConfirmed.current = false
       sawSignedOut.current = false
       let failed = false
       try {
@@ -68,16 +80,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    async function afterOwnerConfirmed(): Promise<void> {
-      let devices = 2
+    /** The console opens only with two verified TOTP devices (the approved
+     * plan). With fewer, or when Auth can't list them, the second-device step
+     * stays; it shows the list, or the error with a retry. */
+    async function enterConsole(): Promise<void> {
+      let devices = 0
       try {
-        const factors = await verifiedTotpFactors()
-        queryClient.setQueryData(qk.factors, factors)
+        const factors = await queryClient.fetchQuery({ queryKey: qk.factors, queryFn: verifiedTotpFactors, staleTime: 0 })
         devices = factors.length
       } catch {
-        // Not critical: Overview lists the devices as well.
+        // Unknown count: never assume two.
       }
-      setPhase(devices < 2 && !skippedSecond.current ? { kind: 'second_device' } : { kind: 'ready' })
+      setPhase(devices >= 2 ? { kind: 'ready' } : { kind: 'second_device' })
     }
 
     async function currentAal(): Promise<string | null> {
@@ -106,7 +120,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setPhase({ kind: 'status_error', error: err, ownerHint: ownerHint.current })
         return
       }
-      await afterOwnerConfirmed()
+      ownerConfirmed.current = true
+      await enterConsole()
     }
 
     async function signIn(name: string, password: string, captchaToken: string): Promise<void> {
@@ -116,13 +131,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         options: { captchaToken },
       })
       if (error) throw error
-      skippedSecond.current = false
       setUsername(name.trim().toLowerCase())
       try {
         const kind = await accountKind()
         // Not the owner: end only this session, so a club's other members stay signed in.
         if (kind === 'other') return endSession('local', { kind: 'not_owner' })
-        ownerHint.current = kind === 'owner'
+        // Couldn't tell: a failed sign-in (signed out locally below), so a club
+        // is never pushed into the owner's 2FA steps.
+        if (kind === 'unknown') throw new AccountCheckError()
+        ownerHint.current = true
         await routeByAal()
       } catch (err) {
         await endSession('local', { kind: 'signed_out', notice: null })
@@ -160,12 +177,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       handleProblem,
       mfaVerified: () => checkStatus(),
       retryStatus: () => checkStatus(),
-      continueLimited: () => setPhase({ kind: 'ready' }),
-      continueToConsole: () => {
-        skippedSecond.current = true
-        setPhase({ kind: 'ready' })
-      },
-      signOut: (notice: string | null = NOTICES.signedOut) => endSession('global', { kind: 'signed_out', notice }),
+      continueLimited: () => enterConsole(),
+      continueToConsole: () => enterConsole(),
+      // Global only for a confirmed owner: before that (code, enrolment, status
+      // error, limited mode) this may not be the owner, and a club's global
+      // sign-out would end every committee member's session.
+      signOut: (notice: string | null = NOTICES.signedOut) =>
+        endSession(ownerConfirmed.current ? 'global' : 'local', { kind: 'signed_out', notice }),
       backToSignIn: () => setPhase({ kind: 'signed_out', notice: null }),
     }
   }, [queryClient, setPhase])
@@ -176,6 +194,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const { data } = ownerDb.auth.onAuthStateChange((event) => {
       if (event !== 'SIGNED_OUT') return
       sawSignedOut.current = true
+      ownerHint.current = false
+      ownerConfirmed.current = false
       const kind = phaseRef.current.kind
       if (kind === 'signed_out' || kind === 'not_owner') return
       setPhase({ kind: 'signed_out', notice: NOTICES.ended })

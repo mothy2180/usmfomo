@@ -18,16 +18,21 @@ export function Button({
   className,
   busy,
   children,
+  onClick,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; busy?: boolean }) {
+  // While busy the button stays focusable (a real `disabled` would drop
+  // keyboard focus to <body>); it is marked aria-disabled and ignores clicks,
+  // which also stops a busy submit button from submitting its form again.
   return (
     <button
       type="button"
       {...rest}
       aria-busy={busy || undefined}
-      disabled={rest.disabled || busy}
+      aria-disabled={busy || undefined}
+      onClick={busy ? (e) => e.preventDefault() : onClick}
       className={cx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
         variants[variant],
         className,
       )}
@@ -144,7 +149,9 @@ type FieldProps = {
   children: (ids: { id: string; describedBy?: string; invalid: boolean }) => ReactNode
 }
 
-/** Labelled form field; hint and error are linked with aria-describedby. */
+/** Labelled form field; hint and error are linked with aria-describedby. The
+ * error is an alert, so it is read out even when focus doesn't move (it was
+ * already in the field, or the form doesn't move it). */
 export function Field({ label, hint, error, id: givenId, children }: FieldProps) {
   const autoId = useId()
   const id = givenId ?? autoId
@@ -162,15 +169,16 @@ export function Field({ label, hint, error, id: givenId, children }: FieldProps)
           {hint}
         </p>
       ) : null}
-      <p id={errId} className={cx('m-0 text-xs text-danger', !error && 'hidden')}>
+      <p id={errId} role="alert" className={cx('m-0 text-xs text-danger', !error && 'hidden')}>
         {error}
       </p>
     </div>
   )
 }
 
+// border-field-line: the field's edge reaches 3:1 on every background (WCAG 1.4.11).
 const inputBase =
-  'w-full min-h-11 rounded-lg border border-line bg-ink px-3 py-2 text-sm text-text placeholder:text-muted/70 aria-[invalid=true]:border-danger'
+  'w-full min-h-11 rounded-lg border border-field-line bg-ink px-3 py-2 text-sm text-text placeholder:text-muted/70 aria-[invalid=true]:border-danger'
 
 export function Input(props: ComponentProps<'input'>) {
   return <input {...props} className={cx(inputBase, props.className)} />
@@ -283,7 +291,7 @@ export function RadioGroup<T extends string>({
           </label>
         )
       })}
-      <p id={errId} className={cx('m-0 text-xs text-danger', !error && 'hidden')}>
+      <p id={errId} role="alert" className={cx('m-0 text-xs text-danger', !error && 'hidden')}>
         {error}
       </p>
     </fieldset>

@@ -122,13 +122,24 @@ const createdSchema = z.object({
 /** `{}` per the contract; the action already happened, so any data is accepted. */
 const done = z.unknown().transform((): void => undefined)
 
+function numberAt(value: unknown, key: string): number | null {
+  const n = isRecord(value) ? value[key] : undefined
+  return typeof n === 'number' ? n : null
+}
+
 /** Optional counters (`{ removed }`, `{ removedFiles }`): the action already
  * happened, so a missing counter is reported as null instead of an error. */
-const counter = (key: string) =>
-  z.unknown().transform((value): number | null => {
-    const n = isRecord(value) ? value[key] : undefined
-    return typeof n === 'number' ? n : null
-  })
+const counter = (key: string) => z.unknown().transform((value): number | null => numberAt(value, key))
+
+/** delete_post and remove_post_image. failedFiles counts poster files Storage
+ * refused to delete (still public until the daily orphan sweep); a response
+ * without it counts as 0. */
+export type FileRemoval = { removedFiles: number | null; failedFiles: number }
+
+const fileRemoval = z.unknown().transform((value): FileRemoval => ({
+  removedFiles: numberAt(value, 'removedFiles'),
+  failedFiles: numberAt(value, 'failedFiles') ?? 0,
+}))
 
 // ---------------------------------------------------------------------------
 // Error mapping.
@@ -282,8 +293,8 @@ export function createAdminApi(invoke: Invoke) {
       ),
     removeFactors: (userId: string) => call('remove_factors', { userId }, counter('removed')),
     deleteAccount: (userId: string) => call('delete_account', { userId }, counter('removedFiles')),
-    deletePost: (postId: string) => call('delete_post', { postId }, counter('removedFiles')),
-    removePostImage: (postId: string) => call('remove_post_image', { postId }, counter('removedFiles')),
+    deletePost: (postId: string) => call('delete_post', { postId }, fileRemoval),
+    removePostImage: (postId: string) => call('remove_post_image', { postId }, fileRemoval),
   }
 }
 

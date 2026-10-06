@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
-import { ConfirmDialog } from '../../components/ConfirmDialog.tsx'
+import { useId, useState, type ReactNode } from 'react'
+import { ConfirmBody } from '../../components/ConfirmDialog.tsx'
+import { Dialog } from '../../components/Dialog.tsx'
+import { Button, Callout } from '../../components/ui.tsx'
 import { useAnnounce } from '../../lib/announce.ts'
 import { adminApi } from '../../lib/db.ts'
 import { plural } from '../../lib/format.ts'
@@ -10,6 +12,9 @@ import { dropCachedPost, patchCachedPost, qk, setPostHidden, type ModPost } from
 export type PostAction = 'hide' | 'unhide' | 'remove_image' | 'delete'
 
 type Copy = { title: string; effect: ReactNode; confirmLabel: string; tone: 'danger' | 'primary' }
+
+/** What happened: the announcement, and how many poster files Storage refused to delete. */
+type Outcome = { message: string; failedFiles: number }
 
 const CACHE_NOTE =
   'Copies already cached can stay reachable for up to 6 hours at the edge and 1 hour in browsers; the free plan has no cache purge.'
@@ -72,48 +77,121 @@ function copyFor(action: PostAction, post: ModPost): Copy {
 export function PostActionDialog({ post, action, onClose }: { post: ModPost; action: PostAction; onClose: () => void }) {
   const queryClient = useQueryClient()
   const announce = useAnnounce()
+  const descId = useId()
+  // Files Storage refused to delete: shown instead of a success message.
+  const [leftover, setLeftover] = useState(0)
   const copy = copyFor(action, post)
 
   const mutation = useMutation({
-    mutationFn: async (): Promise<string> => {
+    mutationFn: async (): Promise<Outcome> => {
       switch (action) {
         case 'hide':
         case 'unhide': {
           const row = await setPostHidden(post.id, action === 'hide')
           patchCachedPost(queryClient, post.id, { hidden_at: row.hidden_at, updated_at: row.updated_at })
-          return action === 'hide' ? `“${post.title}” hidden.` : `“${post.title}” is public again.`
+          const message = action === 'hide' ? `“${post.title}” hidden.` : `“${post.title}” is public again.`
+          return { message, failedFiles: 0 }
         }
         case 'remove_image': {
-          const files = await adminApi.removePostImage(post.id)
+          const { removedFiles, failedFiles } = await adminApi.removePostImage(post.id)
           patchCachedPost(queryClient, post.id, { poster_path: null, thumb_path: null })
-          return files ? `Image removed (${plural(files, 'file')} deleted).` : 'Image removed.'
+          const message = removedFiles ? `Image removed (${plural(removedFiles, 'file')} deleted).` : 'Image removed.'
+          return { message, failedFiles }
         }
         case 'delete': {
-          const files = await adminApi.deletePost(post.id)
+          const { removedFiles, failedFiles } = await adminApi.deletePost(post.id)
           dropCachedPost(queryClient, post.id)
-          return files ? `Post deleted, with ${plural(files, 'poster file')}.` : 'Post deleted.'
+          const message = removedFiles ? `Post deleted, with ${plural(removedFiles, 'poster file')}.` : 'Post deleted.'
+          return { message, failedFiles }
         }
       }
     },
-    onSuccess: (message) => {
+    onSuccess: ({ message, failedFiles }) => {
       void queryClient.invalidateQueries({ queryKey: qk.status })
+      if (failedFiles > 0) return setLeftover(failedFiles)
       onClose()
       announce(message)
     },
   })
 
+  // One dialog for both steps: when the warning replaces the confirm step,
+  // focus moves to its new title, so it is read out.
   return (
-    <ConfirmDialog
+    <Dialog
       open
-      title={copy.title}
-      confirmLabel={copy.confirmLabel}
-      tone={copy.tone}
-      busy={mutation.isPending}
-      error={mutation.isError ? errorMessage(mutation.error) : null}
-      onConfirm={() => mutation.mutate()}
+      title={leftover ? leftoverTitle(action, leftover) : copy.title}
       onClose={onClose}
+      focusKey={leftover ? 'leftover' : 'confirm'}
+      preventEscape={mutation.isPending}
+      describedBy={descId}
     >
-      {copy.effect}
-    </ConfirmDialog>
+      {leftover ? (
+        <LeftoverFiles descId={descId} count={leftover} paths={[post.poster_path, post.thumb_path]} onClose={onClose} />
+      ) : (
+        <ConfirmBody
+          descId={descId}
+          confirmLabel={copy.confirmLabel}
+          tone={copy.tone}
+          busy={mutation.isPending}
+          error={mutation.isError ? errorMessage(mutation.error) : null}
+          onConfirm={() => mutation.mutate()}
+          onCancel={onClose}
+        >
+          {copy.effect}
+        </ConfirmBody>
+      )}
+    </Dialog>
+  )
+}
+
+function leftoverTitle(action: PostAction, count: number): string {
+  const files = count === 1 ? 'a file is' : `${count} files are`
+  return action === 'delete' ? `Post deleted, but ${files} still public` : `Image removed, but ${files} still public`
+}
+
+/** The action happened, but Storage kept some files: say so instead of "done". */
+function LeftoverFiles({
+  descId,
+  count,
+  paths,
+  onClose,
+}: {
+  descId: string
+  count: number
+  paths: ReadonlyArray<string | null>
+  onClose: () => void
+}) {
+  const known = paths.filter((p): p is string => Boolean(p))
+  const one = count === 1
+  return (
+    <div className="flex flex-col gap-4">
+      <div id={descId} className="flex flex-col gap-2 text-sm">
+        <Callout tone="warn">
+          <p className="m-0">
+            Storage couldn’t delete {plural(count, 'poster file')}.{' '}
+            {one ? 'It stays public at its address' : 'They stay public at their addresses'} until the daily clean-up
+            deletes {one ? 'it' : 'them'}, which can take up to two days.
+          </p>
+          {known.length ? (
+            <>
+              <p className="m-0">
+                To remove the files sooner, delete them in the Supabase dashboard (Storage → posters). This post’s files
+                were:
+              </p>
+              <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+                {known.map((p) => (
+                  <li key={p} className="break-all font-mono text-xs">
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </Callout>
+      </div>
+      <Button variant="primary" onClick={onClose} className="self-end">
+        Close
+      </Button>
+    </div>
   )
 }

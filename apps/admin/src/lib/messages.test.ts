@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AdminApiError } from './api.ts'
-import { errorMessage, NoRowsError } from './messages.ts'
+import { AccountCheckError, errorMessage, NoRowsError } from './messages.ts'
 
 describe('errorMessage', () => {
   it('explains owner-admin codes, with action-specific wording where it matters', () => {
@@ -28,5 +28,9 @@ describe('errorMessage', () => {
     expect(errorMessage(new TypeError('Failed to fetch'))).toMatch(/Couldn't reach the server/)
     expect(errorMessage(new NoRowsError())).toMatch(/Nothing changed/)
     expect(errorMessage(undefined)).toBe('Something went wrong. Try again.')
+  })
+
+  it('explains a sign-in that failed closed because the account could not be checked', () => {
+    expect(errorMessage(new AccountCheckError())).toMatch(/^Couldn't check this account, so it was signed out again\./)
   })
 })

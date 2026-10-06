@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { Turnstile } from '../components/Turnstile.tsx'
 import { Button, Callout, Checkbox, Field, FormError, Input } from '../components/ui.tsx'
 import { PUBLIC_SITE_URL, TURNSTILE_SITE_KEY } from '../env.ts'
@@ -26,7 +27,12 @@ export function SignInPage({ notice }: { notice: string | null }) {
     const errs: { username?: string; password?: string } = {}
     if (!username.trim()) errs.username = 'Enter your username.'
     if (!password) errs.password = 'Enter your password.'
-    setFieldErrors(errs)
+    // Commit the errors first, so the field is already marked invalid (and
+    // described by its error) when it receives focus.
+    flushSync(() => {
+      setFieldErrors(errs)
+      if (errs.username || errs.password) setError(null)
+    })
     if (errs.username) return usernameRef.current?.focus()
     if (errs.password) return passwordRef.current?.focus()
     if (!token) {

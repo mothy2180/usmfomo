@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { Dialog } from '../../components/Dialog.tsx'
 import { ShowOncePassword } from '../../components/ShowOncePassword.tsx'
 import { Button, Field, FormError, Input, RadioGroup, Select } from '../../components/ui.tsx'
@@ -52,7 +53,9 @@ export function CreateAccountDialog({ accounts, onClose }: { accounts: readonly 
     setError(null)
     const result = validateCreate({ ...values, orgSlug: slug.slug }, accounts)
     if (!result.ok) {
-      setErrors(result.errors)
+      // Commit the errors first, so the field is already invalid (and
+      // described by its error) when it receives focus.
+      flushSync(() => setErrors(result.errors))
       const first = firstInvalid(CREATE_FIELDS, result.errors)
       if (first) document.getElementById(ids[first])?.focus()
       return

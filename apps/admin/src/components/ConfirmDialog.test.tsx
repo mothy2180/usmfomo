@@ -64,6 +64,22 @@ describe('ConfirmDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps focus on the busy confirm button and ignores a second press', () => {
+    const onConfirm = vi.fn()
+    render(
+      <ConfirmDialog open title="Delete?" confirmLabel="Delete post" busy onConfirm={onConfirm} onClose={() => {}}>
+        <p>Gone for good.</p>
+      </ConfirmDialog>,
+    )
+    const confirm = screen.getByRole('button', { name: /Delete post/ }) as HTMLButtonElement
+    confirm.focus()
+    fireEvent.click(confirm)
+    expect(onConfirm).not.toHaveBeenCalled()
+    expect(confirm.disabled).toBe(false)
+    expect(confirm.getAttribute('aria-disabled')).toBe('true')
+    expect(document.activeElement).toBe(confirm)
+  })
+
   it('shows the error from a failed attempt', () => {
     render(
       <ConfirmDialog open title="Hide?" confirmLabel="Hide post" error="Not allowed." onConfirm={() => {}} onClose={() => {}}>

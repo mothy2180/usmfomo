@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { Button, Callout, Checkbox, Field, FormError, Input, RadioGroup, Select } from '../../components/ui.tsx'
 import type { AccountRow } from '../../lib/api.ts'
 import { adminApi } from '../../lib/db.ts'
@@ -48,7 +49,9 @@ function EditOrgFields({ accounts, onBusy, onCancel, onSaved, orgId, initial }: 
     setError(null)
     const result = validateOrgEdit(values, orgId, accounts)
     if (!result.ok) {
-      setErrors(result.errors)
+      // Commit the errors first, so the field is already invalid (and
+      // described by its error) when it receives focus.
+      flushSync(() => setErrors(result.errors))
       const first = firstInvalid(ORG_EDIT_FIELDS, result.errors)
       if (first) document.getElementById(ids[first])?.focus()
       return

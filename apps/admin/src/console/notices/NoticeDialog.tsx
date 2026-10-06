@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { LIMITS } from '@usmfomo/shared/config'
 import { mytInputToIso } from '@usmfomo/shared/time'
 import { useId, useState, type ChangeEvent, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { Dialog } from '../../components/Dialog.tsx'
 import { Button, Field, FormError, Input, Textarea } from '../../components/ui.tsx'
 import { useAnnounce } from '../../lib/announce.ts'
@@ -54,7 +55,9 @@ export function NoticeDialog({ notice, onClose }: { notice: NoticeRow | null; on
     if (mutation.isPending) return
     const result = validateNotice(values, new Date())
     if (!result.ok) {
-      setErrors(result.errors)
+      // Commit the errors first, so the field is already invalid (and
+      // described by its error) when it receives focus.
+      flushSync(() => setErrors(result.errors))
       const first = firstInvalid(NOTICE_FIELDS, result.errors)
       if (first) document.getElementById(id(first))?.focus()
       return

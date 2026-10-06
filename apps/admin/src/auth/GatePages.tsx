@@ -55,9 +55,9 @@ export function StatusErrorPage({ error, ownerHint }: { error: unknown; ownerHin
           <p className="m-0">
             You can still open the console: the kill switches, hiding posts and notices talk to the database directly, and
             the database checks that you are the owner on every change. Account management, deleting posts and the
-            status figures need owner-admin.
+            status figures need owner-admin. Signing out then ends only this session.
           </p>
-          <Button onClick={session.continueLimited} className="self-start">
+          <Button onClick={() => void session.continueLimited()} className="self-start">
             Continue in limited mode
           </Button>
         </Callout>

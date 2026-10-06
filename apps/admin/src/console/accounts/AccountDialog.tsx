@@ -102,7 +102,7 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
     case 'factors':
       return {
         label: 'Remove 2FA devices',
-        summary: 'For a lost phone: they sign in with the password alone and enrol again.',
+        summary: 'Only the devices: the password stays. For a lost phone, use Hand over, or reset the password first.',
         title: `Remove all 2FA devices of ${a.username}?`,
         effect: (
           <>
@@ -111,8 +111,12 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
               new devices in Studio settings.
             </p>
             <p className="m-0">
-              Sessions that are already signed in stay signed in. If someone else may know the password, use Hand over
-              instead: it also changes the password and ends every session.
+              The password stays and no session ends. Anyone already signed in with the password alone, or who knows it,
+              gets full access without a code and could enrol a device of their own.
+            </p>
+            <p className="m-0">
+              For a lost phone, use Hand over instead: it changes the password (ending every session) before removing the
+              devices. Or reset the password first, then remove the devices.
             </p>
           </>
         ),

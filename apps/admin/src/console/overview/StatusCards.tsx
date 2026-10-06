@@ -11,6 +11,7 @@ import {
   percentOf,
   plural,
 } from '../../lib/format.ts'
+import { failedStepLabels, isSweepOverdue, readMaintenanceResult, runFailed, type MaintenanceResult } from '../../lib/maintenance.ts'
 import { errorMessage } from '../../lib/messages.ts'
 import { useStatus } from '../../lib/queries.ts'
 
@@ -22,7 +23,8 @@ function StatusBody({ status, children }: { status: StatusQuery; children: (data
   return <>{children(status.data)}</>
 }
 
-/** The maintenance heartbeat (written by the hourly cron run). */
+/** The maintenance heartbeat (written by the hourly cron run). The heartbeat
+ * time moves even when a run fails, so the result's ok/failed decide too. */
 export function MaintenanceCard({ status, now }: { status: StatusQuery; now: Date }) {
   const titleId = useId()
   return (
@@ -34,12 +36,17 @@ export function MaintenanceCard({ status, now }: { status: StatusQuery; now: Dat
         {(data) => {
           const at = data.last_maintenance_at
           const stale = isMaintenanceStale(at, now)
+          const result = readMaintenanceResult(data.last_maintenance_result)
+          const failed = runFailed(result)
           return (
             <>
-              <p className={stale ? 'm-0 text-lg font-semibold text-danger' : 'm-0 text-lg font-semibold'}>
+              <p className={stale || failed ? 'm-0 text-lg font-semibold text-danger' : 'm-0 text-lg font-semibold'}>
                 Last run:{' '}
                 {at ? <time dateTime={at}>{formatAge(at, now)}</time> : 'never'}{' '}
-                {stale ? <Badge tone="danger">Overdue</Badge> : <Badge tone="ok">On time</Badge>}
+                {stale ? <Badge tone="danger">Overdue</Badge> : null}
+                {stale && failed ? ' ' : null}
+                {failed ? <Badge tone="danger">Failed</Badge> : null}
+                {stale || failed ? null : <Badge tone="ok">On time</Badge>}
               </p>
               {at ? <p className="m-0 text-xs text-muted">{formatMytDateTime(at)}</p> : null}
               {stale ? (
@@ -51,7 +58,9 @@ export function MaintenanceCard({ status, now }: { status: StatusQuery; now: Dat
               ) : (
                 <p className="m-0 text-sm text-muted">The usmfomo-cron Worker runs it at minute 7 of every hour.</p>
               )}
-              <LastResult result={data.last_maintenance_result} />
+              {failed && result ? <FailedRun steps={result.failed} /> : null}
+              <LastResult result={result} />
+              <LastSweep result={result} now={now} />
             </>
           )
         }}
@@ -60,18 +69,34 @@ export function MaintenanceCard({ status, now }: { status: StatusQuery; now: Dat
   )
 }
 
-function num(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
+function FailedRun({ steps }: { steps: readonly string[] }) {
+  return (
+    <p className="m-0 text-sm">
+      {steps.length ? `The last run failed at: ${failedStepLabels(steps).join(', ')}.` : 'The last run reported a failure.'}{' '}
+      Failed steps are retried on the next run. If this stays red, read the maintenance function's logs in the Supabase
+      dashboard (event maintenance_step_failed).
+    </p>
+  )
+}
+
+/** "Daily sweep (orphaned files, old logs): last completed 5 h ago." Red, and
+ * "overdue", after 26 hours: a day was missed. */
+function LastSweep({ result, now }: { result: MaintenanceResult | null; now: Date }) {
+  const sweptAt = result?.sweptAt
+  if (!sweptAt) return null
+  const overdue = isSweepOverdue(sweptAt, now)
+  return (
+    <p className={overdue ? 'm-0 text-sm text-danger' : 'm-0 text-xs text-muted'}>
+      Daily sweep (orphaned files, old logs): {overdue ? 'overdue, last completed ' : 'last completed '}
+      <time dateTime={sweptAt}>{formatAge(sweptAt, now)}</time>.
+    </p>
+  )
 }
 
 /** "Last result: 3 posts and 1 notice purged, 6 files removed." (when the shape is known). */
-function LastResult({ result }: { result: unknown }) {
-  if (!result || typeof result !== 'object') return null
-  const r = result as { purged?: { posts?: unknown; notices?: unknown }; files?: unknown; orphans?: unknown }
-  const posts = num(r.purged?.posts)
-  const notices = num(r.purged?.notices)
-  const files = num(r.files)
-  const orphans = num(r.orphans)
+function LastResult({ result }: { result: MaintenanceResult | null }) {
+  if (!result) return null
+  const { posts, notices, files, orphans } = result
   const parts: string[] = []
   if (posts !== null || notices !== null) {
     parts.push(`${plural(posts ?? 0, 'post')} and ${plural(notices ?? 0, 'notice')} purged`)

@@ -12,6 +12,15 @@ export class NoRowsError extends Error {
   }
 }
 
+/** The aal1 pre-check couldn't tell whether this is the owner account, so the
+ * sign-in failed closed (signed out with scope local). */
+export class AccountCheckError extends Error {
+  constructor() {
+    super('account_check_failed')
+    this.name = 'AccountCheckError'
+  }
+}
+
 const ADMIN: Record<AdminErrorCode, string> = {
   bad_request: 'The server rejected the request. Check the details and try again.',
   unauthorized: 'Your session has ended. Sign in again.',
@@ -106,6 +115,9 @@ export function errorMessage(err: unknown): string {
   }
   if (err instanceof NoRowsError) {
     return 'Nothing changed: the item is gone, or your owner session has ended. Refresh, or sign in again.'
+  }
+  if (err instanceof AccountCheckError) {
+    return "Couldn't check this account, so it was signed out again. Check your connection and try again."
   }
   const code = typeof err === 'object' && err !== null ? (err as { code?: unknown }).code : undefined
   if (typeof code === 'string' && MFA[code]) return MFA[code]

@@ -108,9 +108,17 @@ describe('responses', () => {
   })
 
   it('reports optional counters as null when missing, without failing the action', async () => {
-    expect(await fakeInvoke(ok({ removedFiles: 3, pendingFiles: 0 })).api.deletePost('p')).toBe(3)
-    expect(await fakeInvoke(ok({})).api.deletePost('p')).toBeNull()
+    expect(await fakeInvoke(ok({ removedFiles: 3 })).api.deleteAccount('u')).toBe(3)
+    expect(await fakeInvoke(ok({})).api.deleteAccount('u')).toBeNull()
     expect(await fakeInvoke(ok({ removed: 1 })).api.removeFactors('u')).toBe(1)
+  })
+
+  it('reads the files Storage refused to delete for delete_post and remove_post_image', async () => {
+    expect(await fakeInvoke(ok({ removedFiles: 1, failedFiles: 1 })).api.deletePost('p')).toEqual({ removedFiles: 1, failedFiles: 1 })
+    expect(await fakeInvoke(ok({ removedFiles: 0, failedFiles: 2 })).api.removePostImage('p')).toEqual({ removedFiles: 0, failedFiles: 2 })
+    // Without failedFiles (an older function), nothing is known to be left: 0.
+    expect(await fakeInvoke(ok({ removedFiles: 2 })).api.deletePost('p')).toEqual({ removedFiles: 2, failedFiles: 0 })
+    expect(await fakeInvoke(ok({})).api.removePostImage('p')).toEqual({ removedFiles: null, failedFiles: 0 })
   })
 
   it('treats a 2xx without the envelope, or with the wrong shape, as bad_response', async () => {
