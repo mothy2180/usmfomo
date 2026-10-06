@@ -102,13 +102,25 @@ describe('create', () => {
 })
 
 describe('reset-password', () => {
-  it('works for club accounts and, as break-glass, for the owner', async () => {
+  it('works for club accounts and, as break-glass, for the owner: database grant, then Auth', async () => {
     for (const [username, id] of [['csoc', CLUB_ID], ['owner', OWNER_ID]] as const) {
-      const { run, io, calls } = setup()
+      const { run, io, writeCalls } = setup()
       await run({ name: 'reset-password', username })
-      assert.deepEqual(calls.at(-1), ['updateAuthUser', id, { password: PASSWORD }])
+      assert.deepEqual(writeCalls(), [
+        ['allowPasswordChange', id],
+        ['updateAuthUser', id, { password: PASSWORD }],
+      ])
       printedOnce(io.all())
     }
+  })
+
+  it('a refused grant stops before Auth and prints no password', async () => {
+    const { run, io, writes } = setup({
+      allowPasswordChange: () => Promise.reject(new ApiError('rest', 400, 'P0001', 'user_not_found')),
+    })
+    await assert.rejects(run({ name: 'reset-password', username: 'csoc' }), ApiError)
+    assert.deepEqual(writes(), ['allowPasswordChange'])
+    assert.equal(io.all().includes(PASSWORD), false)
   })
 
   it('unknown username', async () => {
@@ -120,11 +132,12 @@ describe('reset-password', () => {
 
 describe('handover', () => {
   it('deactivate, new password, remove every factor, reactivate', async () => {
-    const { run, io, calls } = setup()
+    const { run, io, writeCalls } = setup()
     await run({ name: 'handover', username: 'csoc' })
-    assert.deepEqual(calls.filter(([op]) => op !== 'listAccounts'), [
+    assert.deepEqual(writeCalls(), [
       ['setAccountActive', CLUB_ID, false],
       ['updateAuthUser', CLUB_ID, { ban_duration: BAN_DURATION }],
+      ['allowPasswordChange', CLUB_ID],
       ['updateAuthUser', CLUB_ID, { password: PASSWORD }],
       ['listFactorIds', CLUB_ID],
       ['deleteFactor', CLUB_ID, 'f1'],
@@ -146,7 +159,7 @@ describe('deactivate / activate', () => {
   it('database flag first, then the Auth ban; the owner is allowed (break-glass)', async () => {
     const off = setup()
     await off.run({ name: 'deactivate', username: 'owner' })
-    assert.deepEqual(off.calls.filter(([op]) => op !== 'listAccounts'), [
+    assert.deepEqual(off.writeCalls(), [
       ['setAccountActive', OWNER_ID, false],
       ['updateAuthUser', OWNER_ID, { ban_duration: BAN_DURATION }],
     ])
@@ -154,7 +167,7 @@ describe('deactivate / activate', () => {
 
     const on = setup()
     await on.run({ name: 'activate', username: 'csoc' })
-    assert.deepEqual(on.calls.filter(([op]) => op !== 'listAccounts'), [
+    assert.deepEqual(on.writeCalls(), [
       ['setAccountActive', CLUB_ID, true],
       ['updateAuthUser', CLUB_ID, { ban_duration: 'none' }],
     ])
@@ -209,9 +222,10 @@ describe('delete', () => {
 
 describe('owner-reset-mfa', () => {
   it('new password first (ends sessions), then every factor', async () => {
-    const { run, io, calls } = setup()
+    const { run, io, writeCalls } = setup()
     await run({ name: 'owner-reset-mfa', username: 'owner' })
-    assert.deepEqual(calls.filter(([op]) => op !== 'listAccounts'), [
+    assert.deepEqual(writeCalls(), [
+      ['allowPasswordChange', OWNER_ID],
       ['updateAuthUser', OWNER_ID, { password: PASSWORD }],
       ['listFactorIds', OWNER_ID],
       ['deleteFactor', OWNER_ID, 'f1'],
@@ -225,6 +239,47 @@ describe('owner-reset-mfa', () => {
     const { run, writes } = setup()
     await failsWith(run({ name: 'owner-reset-mfa', username: 'csoc' }), /not the owner account/)
     assert.deepEqual(writes(), [])
+  })
+})
+
+describe('account lookups', () => {
+  // As if the account sorted past a page that PostgREST cut at 100 rows: only
+  // the direct lookup by username may decide whether an account exists.
+  const noListScans = { listAccounts: () => Promise.reject(new Error('commands must not search the list')) }
+
+  it('every account command finds its account directly, never in the account list', async () => {
+    const commands: Command[] = [
+      { name: 'reset-password', username: 'csoc' },
+      { name: 'handover', username: 'csoc' },
+      { name: 'deactivate', username: 'csoc' },
+      { name: 'activate', username: 'csoc' },
+      { name: 'remove-factors', username: 'csoc' },
+      { name: 'delete', username: 'csoc', yes: true },
+      { name: 'owner-reset-mfa', username: 'owner' },
+    ]
+    for (const cmd of commands) {
+      const { run, calls } = setup(noListScans)
+      await run(cmd)
+      assert.deepEqual(calls[0], ['getAccountByUsername', cmd.name === 'owner-reset-mfa' ? 'owner' : 'csoc'], cmd.name)
+      assert.equal(calls.some(([op]) => op === 'listAccounts'), false, cmd.name)
+    }
+  })
+
+  it('create-owner and seed-local check existing usernames directly too', async () => {
+    const owner = setup(noListScans, [CLUB])
+    await owner.run({ name: 'create-owner', username: 'tim' })
+    assert.deepEqual(owner.calls[0], ['getAccountByUsername', 'tim'])
+
+    const seed = setup(noListScans, [])
+    await seed.run({ name: 'seed-local' })
+    assert.deepEqual(seed.writes(), [
+      'createAuthUser',
+      'linkOwner',
+      'createAuthUser',
+      'createOrgAccount',
+      'createAuthUser',
+      'createOrgAccount',
+    ])
   })
 })
 

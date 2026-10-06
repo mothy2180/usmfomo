@@ -48,21 +48,28 @@ export const CLUB = accountRow()
 
 export type Call = [op: string, ...args: unknown[]]
 
+/** Port operations that only read. */
+export const READS: ReadonlySet<string> = new Set(['listAccounts', 'getAccount', 'getAccountByUsername'])
+
 /** A recording CliPort over an in-memory account list. */
 export function fakePort(initial: AccountRow[] = [OWNER, CLUB], overrides: Partial<CliPort> = {}) {
   const accounts = initial.map((a) => ({ ...a }))
   const calls: Call[] = []
   let created = 0
+  const copy = (row: AccountRow | undefined) => (row ? { ...row } : null)
   const defaults: CliPort = {
     verifyToken: () => Promise.reject(new Error('unused')),
     sessionUserId: () => Promise.reject(new Error('unused')),
     isOwner: (id) => Promise.resolve(accounts.some((a) => a.user_id === id && a.is_owner)),
     status: () => Promise.resolve({}),
     listAccounts: () => Promise.resolve(accounts.map((a) => ({ ...a }))),
+    getAccount: (id) => Promise.resolve(copy(accounts.find((a) => a.user_id === id))),
+    getAccountByUsername: (name) => Promise.resolve(copy(accounts.find((a) => a.username === name))),
     authUserExists: () => Promise.resolve(false),
     listFactorIds: () => Promise.resolve(['f1', 'f2']),
     orgObjects: (orgId) => Promise.resolve([`${orgId}/a.webp`, `${orgId}/a-thumb.webp`]),
     createAuthUser: () => Promise.resolve(`00000000-0000-4000-8000-1000000000${String(++created).padStart(2, '0')}`),
+    allowPasswordChange: () => Promise.resolve(),
     updateAuthUser: () => Promise.resolve(),
     deleteFactor: () => Promise.resolve(),
     deleteAuthUser: () => Promise.resolve(),
@@ -109,8 +116,10 @@ export function fakePort(initial: AccountRow[] = [OWNER, CLUB], overrides: Parti
     port: recorded as unknown as CliPort,
     calls,
     accounts,
-    /** Operation names in call order, without the read-only listAccounts. */
-    writes: () => calls.map(([op]) => op).filter((op) => op !== 'listAccounts'),
+    /** Operation names in call order, without the reads. */
+    writes: () => calls.map(([op]) => op).filter((op) => !READS.has(op)),
+    /** Calls in order, without the reads. */
+    writeCalls: () => calls.filter(([op]) => !READS.has(op)),
   }
 }
 

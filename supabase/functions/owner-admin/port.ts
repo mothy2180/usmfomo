@@ -3,6 +3,7 @@
 import type { AdminClient } from '../_shared/client.ts'
 import { rpc } from '../_shared/db.ts'
 import { HttpError } from '../_shared/http.ts'
+import { readAllPages } from '../_shared/paging.ts'
 import { posterRemover, removeInBatches } from '../_shared/storage.ts'
 import type { AccountRow, OwnerAdminPort, PosterPaths } from './types.ts'
 
@@ -54,7 +55,12 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
     isOwner: (userId) => rpc<boolean>(client, 'admin_is_owner', { p_uid: userId }),
 
     status: () => rpc<unknown>(client, 'admin_status'),
-    listAccounts: () => rpc<AccountRow[]>(client, 'admin_list_accounts'),
+    listAccounts: () =>
+      readAllPages(
+        (offset, limit) => rpc<AccountRow[]>(client, 'admin_list_accounts', { p_limit: limit, p_offset: offset }),
+        (row) => row.user_id,
+      ),
+    getAccount: (userId) => rpc<AccountRow | null>(client, 'admin_get_account', { p_user: userId }),
     async authUserExists(userId) {
       const { data, error } = await admin.getUserById(userId)
       if (error) {
@@ -70,8 +76,7 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
       return data.factors.map((f) => f.id)
     },
     async orgObjects(orgId) {
-      const rows = await rpc<{ name: string }[]>(client, 'admin_org_objects', { p_org: orgId })
-      return rows.map((r) => r.name)
+      return (await rpc<string[] | null>(client, 'admin_org_objects', { p_org: orgId })) ?? []
     },
 
     async createAuthUser(email, password) {
@@ -79,6 +84,9 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
       if (error) throw httpErrorFromAuth(error)
       if (!data.user) throw new HttpError('internal')
       return data.user.id
+    },
+    async allowPasswordChange(userId) {
+      await rpc<null>(client, 'admin_allow_password_change', { p_user: userId })
     },
     async updateAuthUser(userId, update) {
       const { error } = await admin.updateUserById(userId, update)

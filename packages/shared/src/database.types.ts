@@ -69,7 +69,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "admin_create_org_account":
+            "admin_allow_password_change":
+{ Args: { "p_user": string }; Returns: undefined
+                           },
+"admin_create_org_account":
 { Args: { "p_campus": Database["public"]['Enums']["campus"],"p_org_name": string,"p_org_slug": string,"p_type": Database["public"]['Enums']["org_type"],"p_user": string,"p_username": string }; Returns: string
                            },
 "admin_delete_org":
@@ -80,6 +83,12 @@ isOneToOne: false
               "poster_path": string,"thumb_path": string
             }[]
                            },
+"admin_get_account":
+{ Args: { "p_user": string }; Returns: Json
+                           },
+"admin_get_account_by_username":
+{ Args: { "p_username": string }; Returns: Json
+                           },
 "admin_is_owner":
 { Args: { "p_uid": string }; Returns: boolean
                            },
@@ -87,14 +96,12 @@ isOneToOne: false
 { Args: { "p_user": string,"p_username": string }; Returns: undefined
                            },
 "admin_list_accounts":
-{ Args: Record<PropertyKey, never>; Returns: {
+{ Args: { "p_limit"?: number,"p_offset"?: number }; Returns: {
               "account_active": boolean,"banned_until": string,"created_at": string,"factor_count": number,"is_owner": boolean,"last_sign_in_at": string,"live_posts": number,"newest_factor_at": string,"org_active": boolean,"org_campus": Database["public"]['Enums']["campus"],"org_id": string,"org_name": string,"org_slug": string,"org_type": Database["public"]['Enums']["org_type"],"user_id": string,"username": string
             }[]
                            },
 "admin_org_objects":
-{ Args: { "p_org": string }; Returns: {
-              "name": string
-            }[]
+{ Args: { "p_org": string }; Returns: Json
                            },
 "admin_remove_post_image":
 { Args: { "p_post": string }; Returns: {
@@ -114,14 +121,10 @@ isOneToOne: false
 { Args: { "p_result"?: Json }; Returns: string
                            },
 "maint_orphans":
-{ Args: { "p_limit"?: number,"p_older_than"?: string }; Returns: {
-              "name": string
-            }[]
+{ Args: { "p_limit"?: number,"p_older_than"?: string }; Returns: Json
                            },
 "maint_purge_expired":
-{ Args: { "p_limit"?: number }; Returns: {
-              "id": string,"kind": string,"poster_path": string,"thumb_path": string
-            }[]
+{ Args: { "p_limit"?: number }; Returns: Json
                            },
 "maint_retention":
 { Args: Record<PropertyKey, never>; Returns: Json

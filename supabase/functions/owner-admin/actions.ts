@@ -7,6 +7,9 @@
 //
 // The owner CLI runs these same functions through its own fetch-based port
 // (scripts/lib/port.ts), so keep this file free of runtime-specific imports.
+//
+// Every decision about one account looks it up directly (getAccount), never
+// by searching the account list.
 import { HttpError } from '../_shared/http.ts'
 import { usernameToEmail } from '../_shared/validate.ts'
 import type { ActionRequest, CreateAccountInput } from './request.ts'
@@ -23,6 +26,8 @@ export type ActionDeps = {
 export type CreatedAccount = { userId: string; orgId: string; username: string; password: string }
 export type NewPassword = { password: string }
 export type RemovedFiles = { removedFiles: number }
+/** Poster files of a deleted post or removed image: failedFiles stay public until the daily orphan sweep. */
+export type PosterFiles = { removedFiles: number; failedFiles: number }
 
 export async function runAction(req: ActionRequest, deps: ActionDeps): Promise<unknown> {
   const { port } = deps
@@ -50,19 +55,15 @@ export async function runAction(req: ActionRequest, deps: ActionDeps): Promise<u
     case 'delete_account':
       return await deleteAccount(port, req.userId)
     case 'delete_post':
-      return await removedFiles(port, await port.deletePost(req.postId))
+      return await removePosterFiles(port, await port.deletePost(req.postId))
     case 'remove_post_image':
-      return await removedFiles(port, await port.removePostImage(req.postId))
+      return await removePosterFiles(port, await port.removePostImage(req.postId))
   }
-}
-
-async function findAccount(port: OwnerAdminPort, userId: string): Promise<AccountRow | undefined> {
-  return (await port.listAccounts()).find((a) => a.user_id === userId)
 }
 
 /** The club/school account with this user id: 404 when unknown, 403 for the owner account. */
 async function clubAccount(port: OwnerAdminPort, userId: string): Promise<AccountRow & { org_id: string }> {
-  const row = await findAccount(port, userId)
+  const row = await port.getAccount(userId)
   if (!row) throw new HttpError('not_found')
   if (row.is_owner || row.org_id === null) throw new HttpError('forbidden')
   return { ...row, org_id: row.org_id }
@@ -86,11 +87,20 @@ export async function createAccount(deps: ActionDeps, input: CreateAccountInput)
   }
 }
 
+/**
+ * Sets a new password, which ends every session of that user. The database
+ * refuses a new password without a one-time grant (0052), so the grant goes
+ * right before the change.
+ */
+export async function setPassword(port: OwnerAdminPort, userId: string, password: string): Promise<void> {
+  await port.allowPasswordChange(userId)
+  await port.updateAuthUser(userId, { password })
+}
+
 async function resetPassword(deps: ActionDeps, userId: string): Promise<NewPassword> {
   await clubAccount(deps.port, userId)
   const password = deps.generatePassword()
-  // Changing the password ends every session of that user.
-  await deps.port.updateAuthUser(userId, { password })
+  await setPassword(deps.port, userId, password)
   return { password }
 }
 
@@ -121,17 +131,18 @@ export async function handover(deps: ActionDeps, userId: string): Promise<NewPas
   await clubAccount(port, userId)
   await setActive(port, userId, false)
   const password = deps.generatePassword()
-  await port.updateAuthUser(userId, { password })
+  await setPassword(port, userId, password)
   await removeAllFactors(port, userId)
   await setActive(port, userId, true)
   return { password }
 }
 
 export async function deleteAccount(port: OwnerAdminPort, userId: string): Promise<RemovedFiles> {
-  const row = await findAccount(port, userId)
+  const row = await port.getAccount(userId)
   if (!row) {
-    // Left over by a failed create or delete: an auth user without an account
-    // row can only be garbage (sign-ups are off), so finish the job.
+    // The direct lookup found no account row. An auth user without one was
+    // left over by a failed create or delete and can only be garbage
+    // (sign-ups are off), so finish the job.
     if (await port.authUserExists(userId)) {
       await port.deleteAuthUser(userId)
       return { removedFiles: 0 }
@@ -154,9 +165,10 @@ export async function deleteAccount(port: OwnerAdminPort, userId: string): Promi
  * Files of a post the database already changed. The row change stands even
  * when Storage fails: files it could not remove are no longer referenced, so
  * the daily orphan sweep deletes them later (removeInBatches logs the count).
+ * failedFiles tells the console that those files stay public until then.
  */
-async function removedFiles(port: OwnerAdminPort, rows: PosterPaths[]): Promise<RemovedFiles> {
+async function removePosterFiles(port: OwnerAdminPort, rows: PosterPaths[]): Promise<PosterFiles> {
   if (rows.length === 0) throw new HttpError('not_found')
   const removal = await port.removeFiles(rows.flatMap((r) => [r.poster_path, r.thumb_path]))
-  return { removedFiles: removal.removed }
+  return { removedFiles: removal.removed, failedFiles: removal.failed }
 }

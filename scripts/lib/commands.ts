@@ -5,6 +5,9 @@
 // The CLI is also the break-glass for the owner account, so unlike the
 // console it can reset the owner's password, deactivate or activate it, and
 // owner-reset-mfa replaces the owner's password and removes its 2FA factors.
+//
+// A command finds its account with a direct lookup by username, never by
+// searching the account list.
 import { usernameToEmail } from '../../packages/shared/src/supabase.ts'
 import {
   createAccount,
@@ -12,6 +15,7 @@ import {
   handover,
   removeAllFactors,
   setActive,
+  setPassword,
 } from '../../supabase/functions/owner-admin/actions.ts'
 import type { CreateAccountInput } from '../../supabase/functions/owner-admin/request.ts'
 import type { AccountRow } from '../../supabase/functions/owner-admin/types.ts'
@@ -45,12 +49,8 @@ function printPassword(io: Io, password: string): void {
   io.out('  (shown once and saved nowhere: put it in a password manager now)')
 }
 
-async function findAccount(port: CliPort, username: string): Promise<AccountRow | undefined> {
-  return (await port.listAccounts()).find((a) => a.username === username)
-}
-
 async function requireAccount(port: CliPort, username: string): Promise<AccountRow> {
-  const row = await findAccount(port, username)
+  const row = await port.getAccountByUsername(username)
   if (!row) throw new CliError(`no account named "${username}" (see: pnpm account list)`)
   return row
 }
@@ -63,7 +63,7 @@ async function requireClubAccount(port: CliPort, username: string, ownerHint: st
 
 async function createOwner(deps: CommandDeps, username: string): Promise<void> {
   const { port, io } = deps
-  if (await findAccount(port, username)) throw new CliError(`an account named "${username}" already exists`)
+  if (await port.getAccountByUsername(username)) throw new CliError(`an account named "${username}" already exists`)
   const password = deps.generatePassword()
   const userId = await port.createAuthUser(usernameToEmail(username), password)
   try {
@@ -95,7 +95,7 @@ async function resetPassword(deps: CommandDeps, username: string): Promise<void>
   const row = await requireAccount(deps.port, username)
   const password = deps.generatePassword()
   // A new password ends every session of the account.
-  await deps.port.updateAuthUser(row.user_id, { password })
+  await setPassword(deps.port, row.user_id, password)
   deps.io.out(`New password for "${username}"; every session of this account has ended.`)
   printPassword(deps.io, password)
 }
@@ -151,7 +151,7 @@ async function ownerResetMfa(deps: CommandDeps, username: string): Promise<void>
   // The new password first: it ends every session, so nobody holding the old
   // password or an old session can enrol a factor of their own afterwards.
   const password = deps.generatePassword()
-  await port.updateAuthUser(row.user_id, { password })
+  await setPassword(port, row.user_id, password)
   const removed = await removeAllFactors(port, row.user_id)
   io.out(`Owner "${username}": new password, ${removed} 2FA factor(s) removed, every session ended.`)
   printPassword(io, password)
@@ -161,14 +161,14 @@ async function ownerResetMfa(deps: CommandDeps, username: string): Promise<void>
 async function seedLocal(deps: CommandDeps): Promise<void> {
   const { port, io } = deps
   if (!deps.local) throw new CliError('seed-local only runs against the local stack (SUPABASE_URL on 127.0.0.1)')
-  const existing = new Set((await port.listAccounts()).map((a) => a.username))
+  const exists = async (name: string) => (await port.getAccountByUsername(name)) !== null
   const skip = (name: string) =>
     io.out(`"${name}" already exists, skipped (run "pnpm account reset-password ${name}" for a new password)`)
 
-  if (existing.has(SEED_OWNER)) skip(SEED_OWNER)
+  if (await exists(SEED_OWNER)) skip(SEED_OWNER)
   else await createOwner(deps, SEED_OWNER)
   for (const input of SEED_ACCOUNTS) {
-    if (existing.has(input.username)) skip(input.username)
+    if (await exists(input.username)) skip(input.username)
     else await create(deps, input)
   }
 }

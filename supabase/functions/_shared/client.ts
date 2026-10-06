@@ -1,5 +1,6 @@
 // Service client for the Edge Functions: SUPABASE_URL plus the secret key
-// from SUPABASE_SECRET_KEYS.default (never SUPABASE_SERVICE_ROLE_KEY).
+// from SUPABASE_SECRET_KEYS ("default", else the only one; see env.ts), never
+// SUPABASE_SERVICE_ROLE_KEY.
 import { createClient, type SupabaseClient } from './deps.ts'
 import { type EnvReader, parseSecretKeys, requireEnv } from './env.ts'
 

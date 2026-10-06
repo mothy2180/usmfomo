@@ -4,25 +4,33 @@ import { MIN_SECRET_LENGTH, secretMatches } from '../_shared/crypto.ts'
 import { describeError, errorResponse, json } from '../_shared/http.ts'
 import { type MaintenancePort, runMaintenance } from './run.ts'
 
+/** CRON_SECRET in supabase/.env.example. It is public, so only the local stack may use it. */
+export const LOCAL_EXAMPLE_CRON_SECRET = 'local-dev-cron-secret-not-for-production'
+
 export type MaintenanceDeps = {
   /** CRON_SECRET, read per request. */
   secret: string | undefined
+  /** True on the local stack only (isLocalSupabaseUrl of SUPABASE_URL). */
+  local: boolean
   /** Created lazily, so unauthorised requests never touch configuration. */
   port: () => MaintenancePort
   now?: () => Date
 }
 
+/** Why CRON_SECRET cannot be used (logged, never the value), or null when it can. */
+export function secretProblem(secret: string | undefined, local: boolean): string | null {
+  if (!secret || secret.length < MIN_SECRET_LENGTH) return 'CRON_SECRET unset or shorter than 32 characters'
+  if (!local && secret === LOCAL_EXAMPLE_CRON_SECRET) {
+    return 'CRON_SECRET is the published example from supabase/.env.example'
+  }
+  return null
+}
+
 export async function handleMaintenance(req: Request, deps: MaintenanceDeps): Promise<Response> {
-  const authorised = await secretMatches(req.headers.get('x-cron-secret'), deps.secret)
+  const problem = secretProblem(deps.secret, deps.local)
+  const authorised = problem === null && await secretMatches(req.headers.get('x-cron-secret'), deps.secret)
   if (!authorised || req.method !== 'POST') {
-    if (!deps.secret || deps.secret.length < MIN_SECRET_LENGTH) {
-      console.error(
-        JSON.stringify({
-          event: 'maintenance_misconfigured',
-          reason: 'CRON_SECRET unset or shorter than 32 characters',
-        }),
-      )
-    }
+    if (problem) console.error(JSON.stringify({ event: 'maintenance_misconfigured', reason: problem }))
     return errorResponse('unauthorized')
   }
 

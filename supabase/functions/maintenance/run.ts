@@ -5,7 +5,8 @@
 //      orphan sweep + retention
 //   4. final heartbeat with the counts
 // Idempotent and bounded: ≤ 100 rows of each kind, ≤ 200 purge files and
-// ≤ 500 orphan files per run. A failing step never discards earlier results.
+// ≤ 500 orphan files per run (each list is one jsonb array, which PostgREST's
+// 100-row cap does not cut). A failing step never discards earlier results.
 import type { RemoveResult } from '../_shared/storage.ts'
 import { describeError } from '../_shared/http.ts'
 

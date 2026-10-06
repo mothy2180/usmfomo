@@ -1,6 +1,6 @@
 -- Deny-by-default: what each API role can reach at all.
 begin;
-select plan(15);
+select plan(16);
 
 select is(
   (select count(*)::int from pg_tables
@@ -55,10 +55,22 @@ select set_eq(
   array['search_posts', 'my_posting_status'],
   'authenticated can execute only search_posts and my_posting_status in public');
 
-select ok(
-  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public' and (p.proname like 'maint\_%' or p.proname like 'admin\_%')) >= 15,
-  'the maint_/admin_ RPCs exist');
+select set_eq(
+  $$ select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and (p.proname like 'maint\_%' or p.proname like 'admin\_%') $$,
+  array['maint_heartbeat', 'maint_purge_expired', 'maint_orphans', 'maint_retention',
+        'admin_is_owner', 'admin_create_org_account', 'admin_link_owner', 'admin_set_account_active',
+        'admin_update_org', 'admin_list_accounts', 'admin_get_account', 'admin_get_account_by_username',
+        'admin_org_objects', 'admin_delete_org', 'admin_delete_post', 'admin_remove_post_image',
+        'admin_status', 'admin_allow_password_change'],
+  'the service-only maint_/admin_ RPCs are exactly these');
+
+select is(
+  (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and (p.proname like 'maint\_%' or p.proname like 'admin\_%')
+     and (not p.prosecdef
+          or (select count(*) from pg_proc q where q.pronamespace = p.pronamespace and q.proname = p.proname) > 1)),
+  0, 'every maint_/admin_ RPC is SECURITY DEFINER and has one signature (no stale overload)');
 
 select is(
   (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace

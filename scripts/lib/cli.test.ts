@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { main } from './cli.ts'
-import { captureIo, CLUB, OWNER } from './testing.ts'
+import { accountRow, captureIo, CLUB, OWNER } from './testing.ts'
 
 const KEY = 'sb_secret_FakeForTests-0123456789_abcdef'
 const PASSWORD = 'FakeForTests23456789abcd'
@@ -21,6 +21,8 @@ function fakeSupabase() {
     switch (`${init?.method} ${url.pathname}`) {
       case 'POST /rest/v1/rpc/admin_list_accounts':
         return json([OWNER, CLUB])
+      case 'POST /rest/v1/rpc/admin_get_account_by_username':
+        return json([OWNER, CLUB].find((a) => a.username === body?.p_username) ?? null)
       case 'POST /auth/v1/admin/users':
         return json({ id: NEW_USER })
       case 'POST /rest/v1/rpc/admin_create_org_account':
@@ -84,6 +86,28 @@ describe('main', () => {
     assert.deepEqual(seen[0]?.body, { email: 'robotics@usmfomo.pages.dev', password: PASSWORD, email_confirm: true })
     assert.equal(io.all().split(PASSWORD).length - 1, 1)
     assert.equal(io.all().includes(KEY), false)
+  })
+
+  it('list: every account and the true total, although each reply is cut at 100 rows', async () => {
+    const clubs = Array.from({ length: 149 }, (_, i) =>
+      accountRow({
+        user_id: `00000000-0000-4000-8000-c${String(i).padStart(11, '0')}`,
+        username: `club-${String(i).padStart(3, '0')}`,
+        org_name: `Club ${String(i).padStart(3, '0')}`,
+        org_slug: `club-${String(i).padStart(3, '0')}`,
+      }))
+    const rows = [OWNER, ...clubs]
+    const fetch = (async (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
+      const { p_limit, p_offset } = JSON.parse(String(init?.body)) as { p_limit: number; p_offset: number }
+      assert.equal(new URL(String(input)).pathname, '/rest/v1/rpc/admin_list_accounts')
+      // PostgREST's max_rows = 100.
+      return new Response(JSON.stringify(rows.slice(p_offset, p_offset + Math.min(p_limit, 100))))
+    }) as typeof globalThis.fetch
+    const io = captureIo()
+    const code = await main(['list'], { env: {}, io, fetch, readLocalStatus: statusWithKey })
+    assert.equal(code, 0)
+    assert.match(io.stdout.join('\n'), /^club-148\s/m)
+    assert.match(io.stdout.join('\n'), /150 account\(s\): 1 owner, 149 club, 0 school/)
   })
 
   it('a hosted project without a key exits 1 before any request', async () => {

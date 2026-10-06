@@ -189,3 +189,57 @@ Deno.test('admin calls: paths, bodies and error mapping', async () => {
     assertEquals(await port.removeFiles(['o/a.webp', 'o/a-thumb.webp', null]), { removed: 1, failed: 0 })
   })
 })
+
+Deno.test('listAccounts: reads every page although PostgREST cuts each reply at 100 rows', async () => {
+  const rows = Array.from(
+    { length: 101 },
+    (_, i) => ({ user_id: `user-${String(i).padStart(3, '0')}`, username: `c${i}` }),
+  )
+  const asked: unknown[] = []
+  const handler: Handler = async (url, req) => {
+    assertEquals(`${req.method} ${url.pathname}`, 'POST /rest/v1/rpc/admin_list_accounts')
+    const body = (await req.json()) as { p_limit: number; p_offset: number }
+    asked.push(body)
+    // max_rows = 100: never more rows than that, whatever the request asks for.
+    return json(rows.slice(body.p_offset, body.p_offset + Math.min(body.p_limit, 100)))
+  }
+  await withPort(handler, async (port) => {
+    const all = await port.listAccounts()
+    assertEquals(all.map((a) => a.user_id), rows.map((r) => r.user_id))
+  })
+  assertEquals(asked, [{ p_limit: 100, p_offset: 0 }, { p_limit: 100, p_offset: 100 }])
+})
+
+Deno.test('getAccount, allowPasswordChange, orgObjects: one direct RPC each', async () => {
+  const OTHER_ID = '00000000-0000-4000-8000-000000000009'
+  const ORG = '00000000-0000-4000-8000-0000000000bb'
+  const seen: Array<[string, unknown]> = []
+  const handler: Handler = async (url, req) => {
+    assertEquals(req.headers.get('apikey'), KEY)
+    const body = await req.json()
+    seen.push([url.pathname, body])
+    switch (url.pathname) {
+      case '/rest/v1/rpc/admin_get_account':
+        // A jsonb result: one value, which max_rows never cuts; null without an account row.
+        return json(body.p_user === USER_ID ? { user_id: USER_ID, username: 'csoc' } : null)
+      case '/rest/v1/rpc/admin_allow_password_change':
+        return new Response(null, { status: 204 })
+      case '/rest/v1/rpc/admin_org_objects':
+        return json([`${ORG}/a.webp`, `${ORG}/a-thumb.webp`])
+      default:
+        return json({ msg: url.pathname }, 418)
+    }
+  }
+  await withPort(handler, async (port) => {
+    assertEquals((await port.getAccount(USER_ID))?.username, 'csoc')
+    assertEquals(await port.getAccount(OTHER_ID), null)
+    await port.allowPasswordChange(USER_ID)
+    assertEquals(await port.orgObjects(ORG), [`${ORG}/a.webp`, `${ORG}/a-thumb.webp`])
+  })
+  assertEquals(seen, [
+    ['/rest/v1/rpc/admin_get_account', { p_user: USER_ID }],
+    ['/rest/v1/rpc/admin_get_account', { p_user: OTHER_ID }],
+    ['/rest/v1/rpc/admin_allow_password_change', { p_user: USER_ID }],
+    ['/rest/v1/rpc/admin_org_objects', { p_org: ORG }],
+  ])
+})

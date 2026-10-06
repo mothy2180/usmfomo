@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import { HttpError } from '../../supabase/functions/_shared/http.ts'
 import { createCliPort } from './port.ts'
 import { ApiError, type RestClient, type Service } from './rest.ts'
-import { CLUB_ID, ORG_ID } from './testing.ts'
+import { accountRow, CLUB, CLUB_ID, ORG_ID } from './testing.ts'
 
 type Request = { service: Service; method: string; path: string; body: unknown }
 
@@ -75,8 +75,55 @@ describe('createCliPort', () => {
         path: '/rpc/admin_update_org',
         body: { p_org: ORG_ID, p_name: 'CS', p_slug: 'cs', p_type: 'school', p_campus: 'health', p_active: false },
       },
-      { service: 'rest', method: 'POST', path: '/rpc/admin_list_accounts', body: {} },
+      { service: 'rest', method: 'POST', path: '/rpc/admin_list_accounts', body: { p_limit: 100, p_offset: 0 } },
       { service: 'rest', method: 'POST', path: '/rpc/admin_delete_post', body: { p_post: 'p' } },
+    ])
+  })
+
+  it('reads every page of admin_list_accounts although PostgREST cuts each reply at 100 rows', async () => {
+    const rows = Array.from({ length: 205 }, (_, i) => accountRow({ user_id: `user-${i}`, username: `club-${i}` }))
+    const { client, requests } = fakeClient((req) => {
+      const { p_limit, p_offset } = req.body as { p_limit: number; p_offset: number }
+      // max_rows = 100: never more rows than that, whatever the request asks for.
+      return rows.slice(p_offset, p_offset + Math.min(p_limit, 100))
+    })
+    const all = await createCliPort(client).listAccounts()
+    assert.deepEqual(all.map((a) => a.username), rows.map((r) => r.username))
+    assert.deepEqual(requests.map((r) => [r.path, r.body]), [
+      ['/rpc/admin_list_accounts', { p_limit: 100, p_offset: 0 }],
+      ['/rpc/admin_list_accounts', { p_limit: 100, p_offset: 100 }],
+      ['/rpc/admin_list_accounts', { p_limit: 100, p_offset: 200 }],
+    ])
+  })
+
+  it('looks accounts up directly, grants a password change and lists org files as jsonb', async () => {
+    const { client, requests } = fakeClient((req) => {
+      const body = req.body as Record<string, string>
+      switch (req.path) {
+        case '/rpc/admin_get_account':
+          return body.p_user === CLUB_ID ? CLUB : null
+        case '/rpc/admin_get_account_by_username':
+          return body.p_username === 'csoc' ? CLUB : null
+        case '/rpc/admin_org_objects':
+          return [`${ORG_ID}/a.webp`]
+        default:
+          return null
+      }
+    })
+    const port = createCliPort(client)
+    assert.deepEqual(await port.getAccount(CLUB_ID), CLUB)
+    assert.equal(await port.getAccount(ORG_ID), null)
+    assert.deepEqual(await port.getAccountByUsername('csoc'), CLUB)
+    assert.equal(await port.getAccountByUsername('nobody'), null)
+    await port.allowPasswordChange(CLUB_ID)
+    assert.deepEqual(await port.orgObjects(ORG_ID), [`${ORG_ID}/a.webp`])
+    assert.deepEqual(requests.map((r) => [r.service, r.method, r.path, r.body]), [
+      ['rest', 'POST', '/rpc/admin_get_account', { p_user: CLUB_ID }],
+      ['rest', 'POST', '/rpc/admin_get_account', { p_user: ORG_ID }],
+      ['rest', 'POST', '/rpc/admin_get_account_by_username', { p_username: 'csoc' }],
+      ['rest', 'POST', '/rpc/admin_get_account_by_username', { p_username: 'nobody' }],
+      ['rest', 'POST', '/rpc/admin_allow_password_change', { p_user: CLUB_ID }],
+      ['rest', 'POST', '/rpc/admin_org_objects', { p_org: ORG_ID }],
     ])
   })
 

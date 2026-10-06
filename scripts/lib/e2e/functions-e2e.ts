@@ -5,16 +5,18 @@
 //
 // It creates throwaway accounts named zz-e2e-<run>-* (the owner through the
 // CLI), signs in with the CAPTCHA test token, enrols TOTP with codes computed
-// here (RFC 6238), runs every owner-admin action, and removes everything it
-// created, also when a check fails. Output is one line per check; passwords,
-// tokens and keys are never printed.
+// here (RFC 6238), runs every owner-admin action, checks that a club cannot
+// change its own password and that lists, lookups and deletes still work past
+// PostgREST's 100-row cap (101 more accounts, an org with 105 files), and
+// removes everything it created, also when a check fails. Output is one line
+// per check; passwords, tokens and keys are never printed.
 import { execFileSync } from 'node:child_process'
 import { createHmac, randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { usernameToEmail } from '../../../packages/shared/src/supabase.ts'
-import { hasRequiredClasses, PASSWORD_LENGTH } from '../../../supabase/functions/_shared/password.ts'
-import { deleteAccount } from '../../../supabase/functions/owner-admin/actions.ts'
+import { generatePassword, hasRequiredClasses, PASSWORD_LENGTH } from '../../../supabase/functions/_shared/password.ts'
+import { createAccount, deleteAccount } from '../../../supabase/functions/owner-admin/actions.ts'
 import { main } from '../cli.ts'
 import { createCliPort } from '../port.ts'
 import { createRestClient } from '../rest.ts'
@@ -353,6 +355,92 @@ async function corsAndAuthChecks(ownerAal1: string, ownerAal2: string): Promise<
   )
 }
 
+/** Runs the owner CLI in-process; stdout comes back, stderr is dropped. */
+async function cli(...argv: string[]): Promise<{ code: number; out: string }> {
+  const out: string[] = []
+  const code = await main(argv, { env: process.env, io: { out: (l) => out.push(l), err: () => {} } })
+  return { code, out: out.join('\n') }
+}
+
+const printedPassword = (out: string) => /password: (\S+)/.exec(out)?.[1] ?? ''
+
+/** A club session sets a valid new password itself (PUT /auth/v1/user); the database must refuse it (0052). */
+async function selfChange(token: string): Promise<{ refused: boolean; attempted: string; detail: string }> {
+  const attempted = generatePassword()
+  const res = await http('PUT', '/auth/v1/user', { token, body: { password: attempted } })
+  return {
+    refused: res.status >= 400 && res.json?.message === 'password_change_refused',
+    attempted,
+    detail: `${res.status} ${res.json?.message ?? res.json?.error_code ?? ''}`,
+  }
+}
+
+/** A poster file uploaded with the secret key, which the 40-file limit for clubs does not cover. */
+async function uploadAsService(path: string): Promise<void> {
+  const res = await http('POST', `/storage/v1/object/posters/${path}`, {
+    apikey: target.key,
+    body: TINY_WEBP,
+    headers: { 'Content-Type': 'image/webp', 'x-upsert': 'false' },
+  })
+  if (res.status !== 200) throw new Error(`service upload answered ${res.status}`)
+}
+
+/**
+ * More accounts and files than PostgREST's max_rows (100), which cuts every
+ * set-returning RPC: the account list, per-account actions and deletes on
+ * accounts past the first page, and an org with more than 100 poster files.
+ */
+async function beyondMaxRowsChecks(ok: (body: Record<string, unknown>) => Promise<any>): Promise<void> {
+  const inputs = Array.from({ length: 101 }, (_, i) => {
+    const n = String(i + 1).padStart(3, '0')
+    const name = `zz-e2e-${RUN}-b${n}`
+    return { username: name, orgName: `ZZ E2E ${RUN} Bulk ${n}`, orgSlug: name, type: 'club', campus: 'main' } as const
+  })
+  const bulk: Array<{ userId: string; orgId: string; username: string }> = []
+  for (let i = 0; i < inputs.length; i += 10) {
+    const batch = inputs.slice(i, i + 10).map((input) => createAccount({ port, generatePassword }, input))
+    bulk.push(...(await Promise.all(batch)))
+  }
+  const [big, last] = bulk.slice(-2)
+  if (!big || !last) throw new Error('bulk accounts missing')
+
+  const listed = (await ok({ action: 'list_accounts' })) as Array<{ username: string }>
+  const ours = listed.filter((a) => a.username.startsWith(`zz-e2e-${RUN}-b`)).length
+  check(`list_accounts returns every account (${listed.length}, more than 100)`, listed.length > 100 && ours === 101)
+  const reset = await ok({ action: 'reset_password', userId: last.userId })
+  check('reset_password of an account past the first page', typeof reset.password === 'string')
+
+  const list = await cli('list')
+  const total = /^(\d+) account\(s\)/m.exec(list.out)?.[1]
+  check('CLI list shows every account and the true total', list.code === 0 && total === String(listed.length), total)
+  const off = await cli('deactivate', last.username)
+  const on = await cli('activate', last.username)
+  check('CLI deactivate and activate an account past the first page', off.code === 0 && on.code === 0)
+
+  // delete_account lists the org's files in one jsonb value (0051), so all 105 go.
+  const files = Array.from({ length: 105 }, () => `${big.orgId}/${randomUUID()}.webp`)
+  for (let i = 0; i < files.length; i += 15) await Promise.all(files.slice(i, i + 15).map(uploadAsService))
+  check('an org with 105 poster files', (await port.orgObjects(big.orgId)).length === 105)
+  const bigGone = await ok({ action: 'delete_account', userId: big.userId })
+  check(
+    'delete_account removes all 105 files, the org and the account',
+    bigGone.removedFiles === 105 && (await port.orgObjects(big.orgId)).length === 0 &&
+      (await port.getAccount(big.userId)) === null && (await publicObject(files[104] ?? '')) !== 200,
+    JSON.stringify(bigGone),
+  )
+
+  // The direct lookup finds the account, so delete_account takes the full path
+  // and the org goes too (not only the sign-in).
+  const lastGone = await ok({ action: 'delete_account', userId: last.userId })
+  const orgLeft = await http('GET', `/rest/v1/orgs?select=id&slug=eq.${last.username}`)
+  check(
+    'delete_account of the last-sorting account removes its org, not just the sign-in',
+    lastGone.removedFiles === 0 && (await port.getAccount(last.userId)) === null &&
+      Array.isArray(orgLeft.json) && orgLeft.json.length === 0,
+    JSON.stringify(orgLeft.json),
+  )
+}
+
 async function run(): Promise<void> {
   await maintenanceChecks()
 
@@ -476,10 +564,22 @@ async function run(): Promise<void> {
   const clubAal1 = await session(names.club, club.password)
   const clubAt1 = await ownerAdmin(clubAal1, { action: 'status' })
   check('club account at aal1 -> 403 mfa_required', clubAt1.status === 403 && clubAt1.json?.error === 'mfa_required')
+
+  // A club cannot change its own password: the database refuses it (0052).
+  const selfAal1 = await selfChange(clubAal1)
+  check('club changes its own password (no 2FA) -> refused by the database', selfAal1.refused, selfAal1.detail)
+  check(
+    'after the refused change the owner-issued password still works, the attempted one does not',
+    (await signIn(names.club, club.password)).status === 200 &&
+      (await signIn(names.club, selfAal1.attempted)).status === 400,
+  )
+
   const clubFactor = await enrolTotp(clubAal1, 'club phone')
   const clubToken = clubFactor.token
   const clubAt2 = await ownerAdmin(clubToken, { action: 'status' })
   check('club account at aal2 -> 403 forbidden', clubAt2.status === 403 && clubAt2.json?.error === 'forbidden')
+  const selfAal2 = await selfChange(clubToken)
+  check('club changes its own password at aal2 -> refused by the database', selfAal2.refused, selfAal2.detail)
 
   // Posters: remove_post_image and delete_post remove the files at once.
   const p1 = await postWithPoster(clubToken, club.orgId)
@@ -489,14 +589,14 @@ async function run(): Promise<void> {
   const afterImg = await ownPost(clubToken, p1.id)
   check(
     'remove_post_image -> files gone, post kept',
-    img.removedFiles === 2 && afterImg.length === 1 && afterImg[0]?.poster_path === null &&
+    img.removedFiles === 2 && img.failedFiles === 0 && afterImg.length === 1 && afterImg[0]?.poster_path === null &&
       (await publicObject(p1.files[0] ?? '')) !== 200,
     JSON.stringify(img),
   )
   const del = await ok({ action: 'delete_post', postId: p2.id })
   check(
     'delete_post -> post and files gone',
-    del.removedFiles === 2 && (await ownPost(clubToken, p2.id)).length === 0 &&
+    del.removedFiles === 2 && del.failedFiles === 0 && (await ownPost(clubToken, p2.id)).length === 0 &&
       (await publicObject(p2.files[1] ?? '')) !== 200,
     JSON.stringify(del),
   )
@@ -550,6 +650,13 @@ async function run(): Promise<void> {
   info(`GET /auth/v1/user with a banned user's live token answers ${bannedUser.status}`)
   await ok({ action: 'set_account_active', userId: fresh.userId, active: true })
   check('reactivated: sign-in works', (await signIn(names.fresh, reset.password)).status === 200)
+
+  // The CLI asks the database for the one-time grant too.
+  const cliReset = await cli('reset-password', names.fresh)
+  check(
+    'CLI reset-password: the new password works',
+    cliReset.code === 0 && (await signIn(names.fresh, printedPassword(cliReset.out))).status === 200,
+  )
 
   // update_org
   await ok({
@@ -635,6 +742,8 @@ async function run(): Promise<void> {
   const gone2 = await ok({ action: 'delete_account', userId: fresh.userId })
   check('delete_account of an account without files', gone2.removedFiles === 0)
 
+  await beyondMaxRowsChecks(ok)
+
   // An ended owner session is refused even while its access token is unexpired.
   const second = await session(names.owner, ownerPassword)
   const secondAal2 = await verifyFactor(second, ownerFactor.factorId, ownerFactor.secret)
@@ -647,13 +756,23 @@ async function run(): Promise<void> {
     `${logout.status}/${ended.status}`,
   )
   check('the other owner session is unaffected', (await ownerAdmin(owner, { action: 'status' })).status === 200)
+
+  // Break-glass: the CLI resets the owner's own password through a grant too.
+  // Last, because it ends every owner session.
+  const ownerReset = await cli('reset-password', names.owner)
+  check(
+    'CLI reset-password of the owner: the new password works',
+    ownerReset.code === 0 && (await signIn(names.owner, printedPassword(ownerReset.out))).status === 200,
+  )
 }
 
 async function cleanup(): Promise<void> {
-  const accounts = await port.listAccounts()
-  for (const a of accounts.filter((x) => x.username.startsWith(`zz-e2e-${RUN}-`))) {
-    if (a.is_owner) await port.deleteAuthUser(a.user_id)
-    else await deleteAccount(port, a.user_id)
+  const ours = (await port.listAccounts()).filter((x) => x.username.startsWith(`zz-e2e-${RUN}-`))
+  // Ten at a time: the bulk check leaves about a hundred accounts behind.
+  for (let i = 0; i < ours.length; i += 10) {
+    await Promise.all(
+      ours.slice(i, i + 10).map((a) => a.is_owner ? port.deleteAuthUser(a.user_id) : deleteAccount(port, a.user_id)),
+    )
   }
   // Sign-ins left without an account row (only if a rollback had failed).
   const users = (await createRestClient(target).request('auth', 'GET', '/admin/users?page=1&per_page=1000')) as {

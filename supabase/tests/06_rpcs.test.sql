@@ -86,19 +86,21 @@ insert into private.post_log (org_id, post_id, created_at) values (tests.fx('oa'
 
 select tests.become_service();
 select results_eq(
-  $$ select kind, poster_path from public.maint_purge_expired() order by kind $$,
-  format($f$ values ('notice'::text, null::text), ('post', %L) $f$,
-         tests.fx('oa') || '/11111111-1111-4111-8111-111111111111.webp'),
-  'maintenance deletes expired posts and notices and returns their files');
+  $$ select e ->> 'kind', e ->> 'poster_path', e ->> 'thumb_path'
+     from jsonb_array_elements(public.maint_purge_expired()) e order by 1 $$,
+  format($f$ values ('notice'::text, null::text, null::text), ('post', %L, %L) $f$,
+         tests.fx('oa') || '/11111111-1111-4111-8111-111111111111.webp',
+         tests.fx('oa') || '/11111111-1111-4111-8111-111111111111-thumb.webp'),
+  'maintenance deletes expired posts and notices and returns their files (one jsonb array)');
 select throws_ok($$ select count(*) from public.posts $$, '42501', null,
   'the service role has no direct table access (RPCs only)');
 select tests.become_postgres();
 select is((select count(*)::int from public.posts), 5, 'live and hidden posts survive maintenance');
 select tests.become_service();
-select results_eq(
-  $$ select name from public.maint_orphans() $$,
-  format($f$ values (%L::text) $f$, tests.fx('oa') || '/22222222-2222-4222-8222-222222222222.webp'),
-  'orphan sweep finds unreferenced files older than 24 h only');
+select is(
+  public.maint_orphans(),
+  jsonb_build_array(tests.fx('oa') || '/22222222-2222-4222-8222-222222222222.webp'),
+  'orphan sweep finds unreferenced files older than 24 h only (one jsonb array of names)');
 select is((public.maint_retention() ->> 'post_log')::int, 1, 'retention removes post_log rows older than 2 days');
 select ok(public.maint_heartbeat() is not null, 'heartbeat records the run');
 select is(

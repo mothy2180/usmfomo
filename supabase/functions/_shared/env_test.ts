@@ -1,27 +1,56 @@
 import { assertEquals, assertThrows } from '@std/assert'
 import { apikeyOnlyFetch } from './client.ts'
-import { parseSecretKeys, requireEnv } from './env.ts'
+import { isLocalSupabaseUrl, parseSecretKeys, requireEnv } from './env.ts'
 
 const KEY = 'sb_secret_FakeForTests00000000000000000'
+const OTHER_KEY = 'sb_secret_FakeForTests11111111111111111'
 
-Deno.test('parseSecretKeys: returns .default', () => {
-  assertEquals(parseSecretKeys(JSON.stringify({ default: KEY, other: 'sb_secret_other' })), KEY)
+Deno.test('parseSecretKeys: returns .default, also when other keys exist', () => {
+  assertEquals(parseSecretKeys(JSON.stringify({ default: KEY, other: OTHER_KEY })), KEY)
 })
 
-Deno.test('parseSecretKeys: refuses missing, malformed or non-secret values without echoing them', () => {
+Deno.test('parseSecretKeys: without "default", the only secret key (a replacement under another name)', () => {
+  assertEquals(parseSecretKeys(JSON.stringify({ 'default-2026': KEY })), KEY)
+  assertEquals(parseSecretKeys(JSON.stringify({ rotated: KEY, note: 'sb_publishable_abc', n: 1 })), KEY)
+})
+
+Deno.test('parseSecretKeys: refuses missing, malformed, ambiguous or non-secret values without echoing them', () => {
   const cases: Array<[string | undefined, string]> = [
     [undefined, 'SUPABASE_SECRET_KEYS is not set'],
     ['', 'SUPABASE_SECRET_KEYS is not set'],
     ['{not json', 'not valid JSON'],
-    ['null', 'no "default" secret key'],
-    ['[]', 'no "default" secret key'],
-    [JSON.stringify({ owner: KEY }), 'no "default" secret key'],
+    ['null', 'has no secret key'],
+    ['[]', 'has no secret key'],
+    [JSON.stringify([KEY]), 'has no secret key'],
+    [JSON.stringify({ owner: 'sb_publishable_abc' }), 'has no secret key'],
+    [JSON.stringify({ a: KEY, b: OTHER_KEY }), 'several secret keys and none is named "default"'],
+    // A "default" that is not a secret key is refused, not replaced by another key.
+    [JSON.stringify({ default: 'sb_publishable_abc', other: KEY }), 'no "default" secret key'],
     [JSON.stringify({ default: 'sb_publishable_abc' }), 'no "default" secret key'],
     [JSON.stringify({ default: 'eyJhbGciOiJIUzI1NiJ9.e30.x' }), 'no "default" secret key'],
   ]
   for (const [raw, message] of cases) {
     const err = assertThrows(() => parseSecretKeys(raw), Error, message)
     assertEquals(err.message.includes('sb_'), false)
+  }
+})
+
+Deno.test('isLocalSupabaseUrl: the local gateway only, never a hosted project', () => {
+  for (const url of ['http://kong:8000', 'http://127.0.0.1:54321', 'http://localhost:54321', 'http://[::1]:54321']) {
+    assertEquals(isLocalSupabaseUrl(url), true, url)
+  }
+  for (
+    const url of [
+      undefined,
+      '',
+      'not a url',
+      'https://abcdefghijklmnop.supabase.co',
+      'http://abcdefghijklmnop.supabase.co',
+      'https://localhost:54321',
+      'http://kong.example.com',
+    ]
+  ) {
+    assertEquals(isLocalSupabaseUrl(url), false, String(url))
   }
 })
 

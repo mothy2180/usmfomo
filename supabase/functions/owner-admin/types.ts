@@ -7,7 +7,7 @@ import type { OrgCampus, OrgType } from '../_shared/validate.ts'
 import type { RemoveResult } from '../_shared/storage.ts'
 import type { CreateAccountInput, UpdateOrgInput } from './request.ts'
 
-/** A row of admin_list_accounts() (0050_service_rpcs.sql). */
+/** A row of admin_list_accounts(), or the object admin_get_account() returns (0051). */
 export type AccountRow = {
   user_id: string
   username: string
@@ -41,12 +41,17 @@ export interface OwnerAdminPort {
   isOwner(userId: string): Promise<boolean>
 
   status(): Promise<unknown>
+  /** Every account: admin_list_accounts read page by page (PostgREST cuts a reply at 100 rows). */
   listAccounts(): Promise<AccountRow[]>
+  /** admin_get_account: the account with this user id, or null when there is no account row. */
+  getAccount(userId: string): Promise<AccountRow | null>
   authUserExists(userId: string): Promise<boolean>
   listFactorIds(userId: string): Promise<string[]>
   orgObjects(orgId: string): Promise<string[]>
 
   createAuthUser(email: string, password: string): Promise<string>
+  /** admin_allow_password_change: the database takes this user's next new password (0052). */
+  allowPasswordChange(userId: string): Promise<void>
   updateAuthUser(userId: string, update: AuthUserUpdate): Promise<void>
   /** Throws HttpError('not_found') when the factor is already gone. */
   deleteFactor(userId: string, factorId: string): Promise<void>

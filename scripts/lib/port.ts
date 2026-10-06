@@ -3,6 +3,7 @@
 // this port, so the CLI and the owner console behave the same way.
 import type { Database } from '../../packages/shared/src/database.types.ts'
 import { HttpError } from '../../supabase/functions/_shared/http.ts'
+import { readAllPages } from '../../supabase/functions/_shared/paging.ts'
 import { POSTERS_BUCKET, removeInBatches } from '../../supabase/functions/_shared/storage.ts'
 import type { CreateAccountInput, UpdateOrgInput } from '../../supabase/functions/owner-admin/request.ts'
 import type { AccountRow, OwnerAdminPort, PosterPaths } from '../../supabase/functions/owner-admin/types.ts'
@@ -12,6 +13,8 @@ type Functions = Database['public']['Functions']
 type AdminFunction = Extract<keyof Functions, `admin_${string}`>
 
 export interface CliPort extends OwnerAdminPort {
+  /** admin_get_account_by_username: the account with this username, or null. */
+  getAccountByUsername(username: string): Promise<AccountRow | null>
   /** admin_link_owner: marks an existing auth user as the owner account. */
   linkOwner(userId: string, username: string): Promise<void>
 }
@@ -33,7 +36,16 @@ export function createCliPort(client: RestClient): CliPort {
     isOwner: async (userId) => (await rpc('admin_is_owner', { p_uid: userId })) === true,
 
     status: () => rpc('admin_status', {}),
-    listAccounts: async () => ((await rpc('admin_list_accounts', {})) ?? []) as AccountRow[],
+    // PostgREST cuts each reply at 100 rows, so the list is read page by page.
+    listAccounts: () =>
+      readAllPages(
+        async (offset, limit) =>
+          ((await rpc('admin_list_accounts', { p_limit: limit, p_offset: offset })) ?? []) as AccountRow[],
+        (row) => row.user_id,
+      ),
+    getAccount: async (userId) => ((await rpc('admin_get_account', { p_user: userId })) ?? null) as AccountRow | null,
+    getAccountByUsername: async (username) =>
+      ((await rpc('admin_get_account_by_username', { p_username: username })) ?? null) as AccountRow | null,
     async authUserExists(userId) {
       try {
         await client.request('auth', 'GET', user(userId))
@@ -47,10 +59,7 @@ export function createCliPort(client: RestClient): CliPort {
       const factors = (await client.request('auth', 'GET', `${user(userId)}/factors`)) as Array<{ id: string }> | null
       return (factors ?? []).map((f) => f.id)
     },
-    async orgObjects(orgId) {
-      const rows = (await rpc('admin_org_objects', { p_org: orgId })) as Array<{ name: string }> | null
-      return (rows ?? []).map((r) => r.name)
-    },
+    orgObjects: async (orgId) => ((await rpc('admin_org_objects', { p_org: orgId })) ?? []) as string[],
 
     async createAuthUser(email, password) {
       const created = (await client.request('auth', 'POST', '/admin/users', {
@@ -60,6 +69,9 @@ export function createCliPort(client: RestClient): CliPort {
       })) as { id?: unknown } | null
       if (typeof created?.id !== 'string') throw new ApiError('auth', 200, '', 'Auth returned no user id')
       return created.id
+    },
+    async allowPasswordChange(userId) {
+      await rpc('admin_allow_password_change', { p_user: userId })
     },
     async updateAuthUser(userId, update) {
       await client.request('auth', 'PUT', user(userId), update)

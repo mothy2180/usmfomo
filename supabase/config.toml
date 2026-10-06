@@ -12,7 +12,9 @@ port = 54321
 # Only `public` is exposed to the Data API; `private` and `audit` never are.
 schemas = ["public"]
 extra_search_path = ["public", "extensions"]
-# Hard cap on rows per request; every list in the app pages below it.
+# Hard cap on rows per request, set-returning RPCs included (a cut reply is
+# still a 200). Every list in the app pages below it; admin and maintenance
+# lists that can grow past it return one jsonb value (0051).
 max_rows = 100
 # New tables need explicit GRANTs (same as new hosted projects).
 auto_expose_new_tables = false
