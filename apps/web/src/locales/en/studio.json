@@ -14,7 +14,9 @@
     "captchaNeeded": "Complete the security check first.",
     "captchaError": "The security check couldn't load. Check your connection or turn off content blockers for this site, then try again.",
     "captchaRetry": "Load the check again",
-    "ownerAccount": "This is the owner account — use the owner console."
+    "ownerAccount": "This is the owner account — use the owner console.",
+    "sharedComputer": "Using a shared computer? Always press Sign out when you're done. Closing the tab doesn't sign you out.",
+    "idleNotice": "You were signed out after 30 minutes without activity."
   },
   "mfa": {
     "pageTitle": "Two-factor code",
@@ -35,7 +37,7 @@
     "home": "Studio home",
     "settings": "Settings",
     "signOut": "Sign out",
-    "signOutFailed": "Couldn't reach usmfomo to sign out. Close this tab to end the session on this computer.",
+    "signOutFailed": "Couldn't reach usmfomo to sign out. Check your connection and press Sign out again. On a shared computer, don't leave until you're signed out: closing the tab isn't enough.",
     "backToStudio": "Back to studio"
   },
   "guard": {
@@ -43,6 +45,12 @@
     "ended": "Your session ended. Please sign in again.",
     "signInAgain": "Sign in again",
     "signInClub": "Sign in with a club or school account"
+  },
+  "idle": {
+    "title": "Still there?",
+    "body": "For safety, you'll be signed out in {{time}} because there has been no activity for a while.",
+    "stay": "Stay signed in",
+    "signOutNow": "Sign out now"
   },
   "home": {
     "title": "Studio",
@@ -130,7 +138,8 @@
     "endedNoEdit": "This event has ended, so it can't be edited. It will be deleted automatically within the hour.",
     "hiddenNote": "The usmfomo admin has hidden this post. Editing it won't make it visible again — message the admin from your club's official channel.",
     "pausedNoForm": "You can't create or edit posts while posting is paused.",
-    "editsFull": "You've reached {{limit}} edits in the last 24 hours. Try again later."
+    "editsFull": "You've reached {{limit}} edits in the last 24 hours. Try again later.",
+    "unconfirmed": "We couldn't confirm that your post went live, because no answer came back. Check your connection and press Publish again: it won't be posted twice."
   },
   "poster": {
     "label": "Poster (optional)",
@@ -187,6 +196,6 @@
     "nameTaken": "There's already a device with that name. Use a different name.",
     "tooMany": "This account has the maximum number of devices. Remove one first.",
     "passwordTitle": "Password",
-    "passwordBody": "Passwords are managed by the usmfomo admin. To change it, <contact>message the admin</contact> from your club's official channel."
+    "passwordBody": "The usmfomo admin sets your club's password. To change it, <contact>message the admin</contact> from your club's official channel. If the password stops working and nobody asked for a change, tell the admin straight away."
   }
 }

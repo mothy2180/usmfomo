@@ -1,12 +1,14 @@
 // Club studio session: who is signed in, whether they may use the studio,
 // and signing out. The database decides (my_posting_status, RLS); this only
-// routes the UI. Sessions live in sessionStorage (see db.ts).
+// routes the UI. Sessions live in sessionStorage (see db.ts), and a session
+// whose tab has gone 30 minutes without input is never used (see idle.ts).
 import type { Session } from '@supabase/supabase-js'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { CAMPUSES, LIMITS, ORG_TYPES, type Campus, type OrgType } from '@usmfomo/shared/config'
 import { errorKey } from '@usmfomo/shared/errors'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { studioDb } from './db.ts'
+import { idleExpired, readLastActivity } from './idle.ts'
 
 /** Every studio query key starts with this, so sign-out can drop them all. */
 export const STUDIO_QUERY_KEY = ['studio'] as const
@@ -87,13 +89,14 @@ export type StudioDecision = 'ok' | 'login' | 'mfa' | 'inactive' | 'owner' | 'en
 export type AalInfo = { currentLevel: string | null; nextLevel: string | null }
 
 /**
- * Does this session still need a TOTP code? Either supabase-js says so (a
- * verified factor exists, session at aal1) or the database does — it also
- * knows about a factor another committee member added after this session
- * signed in, which the cached user object may not.
+ * Does this session still need a TOTP code? The database decides whenever it
+ * answered: it sees devices other committee members (or the admin) added or
+ * removed after this session signed in, which the cached user object behind
+ * supabase-js's AAL does not. The cached AAL is only the fallback.
  */
 export function needsSecondFactor(aal: AalInfo | null, status: { state: PostingState } | null): boolean {
-  return (aal?.currentLevel === 'aal1' && aal.nextLevel === 'aal2') || status?.state === 'mfa_required'
+  if (status) return status.state === 'mfa_required'
+  return aal?.currentLevel === 'aal1' && aal.nextLevel === 'aal2'
 }
 
 /**
@@ -104,6 +107,8 @@ export function needsSecondFactor(aal: AalInfo | null, status: { state: PostingS
  *   ended    — the session was revoked (password reset / handover)
  *   mfa      — a verified factor exists but this session is still aal1
  *   ok       — may use the studio
+ * my_posting_status says 'ok' only when MFA is satisfied, so 'ok' wins over a
+ * cached AAL that still counts removed devices (no /studio <-> /login/mfa loop).
  */
 export function decideStudioAccess(
   session: object | null,
@@ -112,6 +117,10 @@ export function decideStudioAccess(
 ): StudioDecision {
   if (!session) return 'login'
   switch (status?.state) {
+    case 'ok':
+      return 'ok'
+    case 'mfa_required':
+      return 'mfa'
     case 'owner':
       return 'owner'
     case 'inactive':
@@ -122,11 +131,9 @@ export function decideStudioAccess(
     case 'anonymous':
       return 'login'
     default:
-      break
+      // No answer: never 'ok'.
+      return needsSecondFactor(aal, null) ? 'mfa' : 'ended'
   }
-  if (needsSecondFactor(aal, status)) return 'mfa'
-  if (status?.state === 'ok') return 'ok'
-  return 'ended'
 }
 
 /** Claims we key caches on. Reading our own token is not a security check:
@@ -150,6 +157,44 @@ export function tokenClaims(accessToken: string): { aal: string | null; sessionI
 
 type SessionState = { ready: boolean; session: Session | null }
 
+// "You were signed out after 30 minutes without activity" on /login. Set by
+// whichever page signed the tab out; cleared when a new sign-in starts.
+let idleNotice = false
+const noticeListeners = new Set<() => void>()
+
+function setIdleNotice(next: boolean): void {
+  idleNotice = next
+  for (const listener of noticeListeners) listener()
+}
+
+function subscribeIdleNotice(listener: () => void): () => void {
+  noticeListeners.add(listener)
+  return () => {
+    noticeListeners.delete(listener)
+  }
+}
+
+export const noteIdleSignOut = (): void => setIdleNotice(true)
+export const clearIdleSignOut = (): void => setIdleNotice(false)
+export const useIdleSignOutNotice = (): boolean => useSyncExternalStore(subscribeIdleNotice, () => idleNotice)
+
+/** This tab has gone without input for the idle limit (see idle.ts). */
+const idleTooLong = (): boolean => idleExpired(readLastActivity())
+
+/**
+ * This tab's own session, or null. One whose tab has gone without input for
+ * the idle limit is signed out here (local scope), before anything uses it:
+ * closing a tab doesn't end its session, and reopening the tab or restoring
+ * the browser session brings it back.
+ */
+async function loadOwnSession(queryClient: QueryClient): Promise<Session | null> {
+  const { data } = await studioDb.auth.getSession()
+  if (!data.session || !idleTooLong()) return data.session
+  noteIdleSignOut()
+  await signOutStudio(queryClient)
+  return null
+}
+
 /** The studio session from sessionStorage, kept current via onAuthStateChange. */
 export function useStudioSession(): SessionState {
   const queryClient = useQueryClient()
@@ -157,14 +202,23 @@ export function useStudioSession(): SessionState {
 
   useEffect(() => {
     let active = true
-    void studioDb.auth.getSession().then(({ data }) => {
-      if (active) setState({ ready: true, session: data.session })
-    })
+    const settle = () =>
+      void loadOwnSession(queryClient).then((session) => {
+        if (active) setState({ ready: true, session })
+      })
+    settle()
     // Only set state here: calling other auth methods inside this callback
     // can deadlock supabase-js.
     const { data } = studioDb.auth.onAuthStateChange((event, session) => {
       if (!active) return
-      setState({ ready: true, session })
+      if (session && idleTooLong()) {
+        // E.g. the token refreshed once a restored tab got back online. Never
+        // use it: check (and end) this tab's own copy outside this callback.
+        setState({ ready: false, session: null })
+        window.setTimeout(settle, 0)
+      } else {
+        setState({ ready: true, session })
+      }
       // Shared lab PCs: drop the club's cached data as soon as it signs out.
       if (event === 'SIGNED_OUT') queryClient.removeQueries({ queryKey: STUDIO_QUERY_KEY })
     })
@@ -197,7 +251,12 @@ async function loadAccess(): Promise<AccessData> {
     if (errorKey(statusRes.error) === 'session_ended') return { aal, status: { state: 'session_ended', username: null } }
     throw statusRes.error
   }
-  return { aal, status: parsePostingStatus(statusRes.data) }
+  const status = parsePostingStatus(statusRes.data)
+  // The cached session still lists 2FA devices that were removed since it
+  // signed in (by another member or the admin): refresh it, so supabase-js
+  // stops saying a code is needed. The decision already follows the database.
+  if (status.state === 'ok' && status.factors === 0 && aal.nextLevel === 'aal2') await refreshStudioSession()
+  return { aal, status }
 }
 
 /** Query key for the access check: a new user, session or AAL refetches. */
@@ -243,11 +302,20 @@ export function useStudioAccess(): StudioAccess {
 /**
  * Sign out THIS browser only. Never { scope: 'global' }: a committee shares
  * one account, and a global sign-out would end everyone's session.
- * Returns the error when the server could not be reached (the local session
- * then stays until the tab is closed, because sessionStorage is per tab).
+ * Returns the error when usmfomo could not be reached. supabase-js still drops
+ * this tab's copy then, unless the access token had expired as well (it must
+ * refresh before it can sign out): that copy stays until a sign-out gets
+ * through. Closing the tab does not end it; the idle check above does, once
+ * the tab has gone 30 minutes without input.
  */
 export async function signOutStudio(queryClient?: QueryClient): Promise<{ error: unknown }> {
   const { error } = await studioDb.auth.signOut({ scope: 'local' })
   queryClient?.removeQueries({ queryKey: STUDIO_QUERY_KEY })
   return { error: error ?? null }
+}
+
+/** Gets a new token and the account's current user (and 2FA devices) from
+ * Auth. Best effort: a failure is harmless, the token refreshes on its own. */
+export async function refreshStudioSession(): Promise<void> {
+  await studioDb.auth.refreshSession().catch(() => undefined)
 }

@@ -14,7 +14,9 @@
     "captchaNeeded": "Lengkapkan semakan keselamatan dahulu.",
     "captchaError": "Semakan keselamatan tidak dapat dimuatkan. Semak sambungan anda atau matikan penyekat kandungan untuk laman ini, kemudian cuba lagi.",
     "captchaRetry": "Muatkan semakan sekali lagi",
-    "ownerAccount": "Ini akaun pemilik — gunakan konsol pemilik."
+    "ownerAccount": "Ini akaun pemilik — gunakan konsol pemilik.",
+    "sharedComputer": "Menggunakan komputer yang dikongsi? Sentiasa tekan Log keluar apabila selesai. Menutup tab tidak melog keluar anda.",
+    "idleNotice": "Anda telah dilog keluar selepas 30 minit tanpa aktiviti."
   },
   "mfa": {
     "pageTitle": "Kod dua faktor",
@@ -35,7 +37,7 @@
     "home": "Laman utama studio",
     "settings": "Tetapan",
     "signOut": "Log keluar",
-    "signOutFailed": "Tidak dapat menghubungi usmfomo untuk log keluar. Tutup tab ini untuk menamatkan sesi pada komputer ini.",
+    "signOutFailed": "Tidak dapat menghubungi usmfomo untuk log keluar. Semak sambungan anda dan tekan Log keluar sekali lagi. Pada komputer yang dikongsi, jangan tinggalkan komputer sebelum anda log keluar: menutup tab sahaja tidak mencukupi.",
     "backToStudio": "Kembali ke studio"
   },
   "guard": {
@@ -43,6 +45,12 @@
     "ended": "Sesi anda telah tamat. Sila log masuk semula.",
     "signInAgain": "Log masuk semula",
     "signInClub": "Log masuk dengan akaun kelab atau pusat pengajian"
+  },
+  "idle": {
+    "title": "Masih di sana?",
+    "body": "Demi keselamatan, anda akan dilog keluar dalam {{time}} kerana tiada aktiviti untuk seketika.",
+    "stay": "Kekal log masuk",
+    "signOutNow": "Log keluar sekarang"
   },
   "home": {
     "title": "Studio",
@@ -86,7 +94,7 @@
     "deleteTitle": "Padam siaran ini?",
     "deleteBody": "“{{title}}” dan posternya akan dibuang serta-merta. Tindakan ini tidak boleh dibatalkan, dan slot siaran baharu tidak akan dikembalikan.",
     "deleteConfirm": "Padam siaran",
-    "keep": "Simpan"
+    "keep": "Kekalkan"
   },
   "form": {
     "newTitle": "Siaran baharu",
@@ -130,7 +138,8 @@
     "endedNoEdit": "Acara ini telah tamat, jadi ia tidak boleh disunting. Ia akan dipadam secara automatik dalam masa sejam.",
     "hiddenNote": "Pentadbir usmfomo telah menyembunyikan siaran ini. Menyuntingnya tidak akan memaparkannya semula — hubungi pentadbir melalui saluran rasmi kelab anda.",
     "pausedNoForm": "Anda tidak boleh membuat atau menyunting siaran semasa penyiaran dihentikan sementara.",
-    "editsFull": "Anda telah mencapai {{limit}} suntingan dalam 24 jam lalu. Cuba lagi nanti."
+    "editsFull": "Anda telah mencapai {{limit}} suntingan dalam 24 jam lalu. Cuba lagi nanti.",
+    "unconfirmed": "Kami tidak dapat memastikan siaran anda telah dipaparkan kerana tiada jawapan diterima. Semak sambungan anda dan tekan Siarkan sekali lagi: siaran tidak akan disiarkan dua kali."
   },
   "poster": {
     "label": "Poster (pilihan)",
@@ -187,6 +196,6 @@
     "nameTaken": "Sudah ada peranti dengan nama itu. Gunakan nama lain.",
     "tooMany": "Akaun ini sudah mencapai bilangan peranti maksimum. Buang satu dahulu.",
     "passwordTitle": "Kata laluan",
-    "passwordBody": "Kata laluan diuruskan oleh pentadbir usmfomo. Untuk menukarnya, <contact>hubungi pentadbir</contact> melalui saluran rasmi kelab anda."
+    "passwordBody": "Pentadbir usmfomo menetapkan kata laluan kelab anda. Untuk menukarnya, <contact>hubungi pentadbir</contact> melalui saluran rasmi kelab anda. Jika kata laluan tidak lagi berfungsi sedangkan tiada sesiapa meminta pertukaran, maklumkan kepada pentadbir dengan segera."
   }
 }

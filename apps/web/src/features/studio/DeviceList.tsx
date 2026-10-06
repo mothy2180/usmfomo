@@ -13,8 +13,8 @@ import { removeDevice } from './mfa.ts'
 type Props = {
   devices: TotpFactor[]
   now: Date
-  /** Called with the device's name after it was removed. */
-  onRemoved: (name: string) => void
+  /** Called after a device was removed (the list reloads afterwards). */
+  onRemoved: (removed: { id: string; name: string }) => void
 }
 
 /** Verified 2FA devices with "Remove" (needs an aal2 session). */
@@ -39,9 +39,8 @@ export function DeviceList({ devices, now, onRemoved }: Props) {
     setError(null)
     try {
       await removeDevice(target.id)
-      const name = nameOf(target)
       setTarget(null)
-      onRemoved(name)
+      onRemoved({ id: target.id, name: nameOf(target) })
     } catch (err) {
       const key = studioErrorKey(err)
       if (key === 'errors:mfa_required') {

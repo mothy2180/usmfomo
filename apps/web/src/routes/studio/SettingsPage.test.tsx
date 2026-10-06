@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { fakeSession, okStatusJson, type FakeStudioDb } from '../../features/studio/fakeStudioDb.ts'
 import { renderRoute } from '../../features/studio/renderRoute.tsx'
 import i18n from '../../lib/i18n.ts'
+import { saveLastActivity } from '../../lib/idle.ts'
 import { SettingsPage } from './SettingsPage.tsx'
 
 const mock = vi.hoisted(() => ({ fake: null as FakeStudioDb | null }))
@@ -44,6 +45,8 @@ describe('SettingsPage', () => {
     vi.clearAllMocks()
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
+    window.sessionStorage.clear()
+    saveLastActivity()
     fake().setSession(fakeSession('aal2'), 'INITIAL_SESSION')
     fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal2', 'aal2'))
     fake().db.rpc.mockResolvedValue({ data: okStatusJson({ factors: 2 }), error: null })
@@ -61,7 +64,9 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy()
     expect(screen.getByText('Kelab Robotik')).toBeTruthy()
     expect(screen.getByText(/Enrol everyone in one sitting/)).toBeTruthy()
-    expect(screen.getByText(/Passwords are managed by the usmfomo admin/)).toBeTruthy()
+    expect(screen.getByText(/The usmfomo admin sets your club's password/)).toBeTruthy()
+    // A password changed without asking is a takeover sign (any club session can change it).
+    expect(screen.getByText(/If the password stops working and nobody asked for a change, tell the admin straight away/)).toBeTruthy()
     const region = screen.getByRole('region', { name: 'Devices' })
     const items = within(await within(region).findByRole('list')).getAllByRole('listitem')
     expect(items.map((li) => li.querySelector('p')?.textContent)).toEqual(['Aina (Secretary)', 'Hafiz'])
@@ -138,6 +143,10 @@ describe('SettingsPage', () => {
     expect(await screen.findByText("Removed Hafiz's device.")).toBeTruthy()
     expect(fake().db.auth.mfa.unenroll).toHaveBeenCalledWith({ factorId: 'f-hafiz' })
     expect(fake().db.auth.refreshSession).toHaveBeenCalled()
+    // Its Remove button went away with the reloaded list: focus is on the
+    // Devices heading, not lost to <body>.
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove: Hafiz' })).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Devices' })))
   })
 
   it('warns before removing the last device', async () => {

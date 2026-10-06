@@ -12,6 +12,7 @@ const ports = vi.hoisted(() => ({
   insert: vi.fn(async (_row: unknown) => ({ id: '22222222-2222-4222-8222-222222222222' })),
   update: vi.fn(async (_id: string, _patch: unknown) => {}),
   delete: vi.fn(async (_id: string) => {}),
+  findOwn: vi.fn(async (_orgId: string, _row: unknown): Promise<{ id: string } | null> => null),
 }))
 
 vi.mock('./ports.ts', () => ({ studioPorts: ports }))
@@ -151,6 +152,28 @@ describe('PostForm', () => {
     click('Publish')
     expect((await screen.findByRole('alert')).textContent).toBe("You've made 5 new posts in the last 24 hours. Try again later.")
     expect(screen.getByRole('button', { name: 'Publish' })).toBeTruthy()
+  })
+
+  it('after a lost answer, Publish again finds the post instead of posting it twice', async () => {
+    const POST = '22222222-2222-4222-8222-222222222222'
+    ports.insert.mockRejectedValueOnce({ code: '', message: 'TypeError: Failed to fetch', details: '', hint: '', status: 0 })
+    renderForm()
+    await screen.findByLabelText('Event name')
+    fillValid()
+    click('Preview')
+    await screen.findByText('This goes live immediately.')
+    click('Publish')
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      "We couldn't confirm that your post went live, because no answer came back. Check your connection and press Publish again: it won't be posted twice.",
+    )
+    expect(ports.findOwn).not.toHaveBeenCalled()
+    // The insert had in fact gone through.
+    ports.findOwn.mockResolvedValueOnce({ id: POST })
+    click('Publish')
+    expect(await screen.findByRole('heading', { name: 'Published' })).toBeTruthy()
+    expect(ports.insert).toHaveBeenCalledTimes(1)
+    expect(ports.findOwn).toHaveBeenCalledWith(ORG.id, ports.insert.mock.calls[0]![0])
+    expect(screen.getByRole('link', { name: 'View public page' }).getAttribute('href')).toBe(`/e/${POST}`)
   })
 
   it('disables uploads and publishing while posting is paused', async () => {

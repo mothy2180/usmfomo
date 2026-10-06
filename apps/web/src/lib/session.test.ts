@@ -36,13 +36,17 @@ describe('decideStudioAccess', () => {
     expect(decideStudioAccess(SESSION, AAL2, { state: 'ok' })).toBe('ok')
   })
 
-  it('asks for the code when a factor exists but the session is aal1', () => {
+  it('lets the database decide over a cached AAL that still counts removed devices', () => {
+    // The admin (or another member) removed every device after this session
+    // signed in: 'ok' means MFA is satisfied, so no loop back to /login/mfa.
+    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'ok' })).toBe('ok')
+  })
+
+  it('asks for the code when the database says a factor exists and the session is aal1', () => {
     expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'mfa_required' })).toBe('mfa')
     // A committee member added a factor elsewhere: this session's cached user
     // still says aal1/aal1, but the database knows better.
     expect(decideStudioAccess(SESSION, AAL1_ONLY, { state: 'mfa_required' })).toBe('mfa')
-    // Client-side AAL alone is enough to ask for the code.
-    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'ok' })).toBe('mfa')
   })
 
   it('keeps the owner out of the studio, even before the code', () => {
@@ -65,18 +69,22 @@ describe('decideStudioAccess', () => {
     expect(decideStudioAccess(SESSION, AAL2, { state: 'anonymous' })).toBe('login')
   })
 
-  it('never says ok without a status', () => {
+  it('never says ok without a status, and then falls back to the cached AAL', () => {
     expect(decideStudioAccess(SESSION, AAL2, null)).toBe('ended')
+    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, null)).toBe('mfa')
   })
 })
 
 describe('needsSecondFactor', () => {
-  it('follows supabase-js, or the database when the cached user is stale', () => {
-    expect(needsSecondFactor(AAL1_NEEDS_2, { state: 'ok' })).toBe(true)
+  it('follows the database when it answered, and supabase-js only without an answer', () => {
     expect(needsSecondFactor(AAL1_ONLY, { state: 'mfa_required' })).toBe(true)
     expect(needsSecondFactor(null, { state: 'mfa_required' })).toBe(true)
+    // Stale cached user: the devices were removed since this session signed in.
+    expect(needsSecondFactor(AAL1_NEEDS_2, { state: 'ok' })).toBe(false)
     expect(needsSecondFactor(AAL1_ONLY, { state: 'ok' })).toBe(false)
     expect(needsSecondFactor(AAL2, { state: 'ok' })).toBe(false)
+    expect(needsSecondFactor(AAL1_NEEDS_2, null)).toBe(true)
+    expect(needsSecondFactor(AAL1_ONLY, null)).toBe(false)
     expect(needsSecondFactor(null, null)).toBe(false)
   })
 })

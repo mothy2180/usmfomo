@@ -1,8 +1,10 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { FakeStudioDb } from '../../features/studio/fakeStudioDb.ts'
+import { fakeSession, type FakeStudioDb } from '../../features/studio/fakeStudioDb.ts'
 import { renderRoute } from '../../features/studio/renderRoute.tsx'
 import i18n from '../../lib/i18n.ts'
+import { readLastActivity, saveLastActivity } from '../../lib/idle.ts'
+import { clearIdleSignOut, noteIdleSignOut } from '../../lib/session.ts'
 import { LoginPage } from './LoginPage.tsx'
 
 const mock = vi.hoisted(() => ({
@@ -39,6 +41,8 @@ describe('LoginPage', () => {
     mock.captcha.token = 'tok-1'
     mock.captcha.status = 'solved'
     mock.captcha.reset = vi.fn()
+    window.sessionStorage.clear()
+    clearIdleSignOut()
     fake().setSession(null, 'INITIAL_SESSION')
     fake().db.rpc.mockResolvedValue({ data: { state: 'ok', username: 'robotik' }, error: null })
     fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal1'))
@@ -53,6 +57,8 @@ describe('LoginPage', () => {
     expect(link.getAttribute('href')).toBe('https://instagram.com/usmfomo')
     expect(screen.getByLabelText('Username').getAttribute('autocomplete')).toBe('username')
     expect(screen.getByLabelText('Password').getAttribute('autocomplete')).toBe('current-password')
+    // Closing the tab does not end a session (tab and session restore bring it back).
+    expect(screen.getByText("Using a shared computer? Always press Sign out when you're done. Closing the tab doesn't sign you out.")).toBeTruthy()
   })
 
   it('checks the fields before calling Auth and focuses the first problem', async () => {
@@ -129,9 +135,46 @@ describe('LoginPage', () => {
   })
 
   it('sends a tab that is already signed in straight to the studio', async () => {
-    const { fakeSession } = await import('../../features/studio/fakeStudioDb.ts')
+    saveLastActivity()
     fake().setSession(fakeSession())
     renderRoute('/login', '/login', LoginPage)
     expect(await screen.findByText('route:/studio')).toBeTruthy()
+  })
+
+  it('starts the idle clock before signing in, so the new session is never taken for an idle one', async () => {
+    let stampAtSignIn: number | null = null
+    fake().db.auth.signInWithPassword.mockImplementationOnce(async () => {
+      stampAtSignIn = readLastActivity()
+      return { data: {}, error: null }
+    })
+    renderRoute('/login', '/login', LoginPage)
+    await screen.findByLabelText('Username')
+    expect(readLastActivity()).toBeNull()
+    fill('robotik', 'correct horse')
+    submit()
+    expect(await screen.findByText('route:/studio')).toBeTruthy()
+    expect(stampAtSignIn).not.toBeNull()
+  })
+
+  it('says the studio signed this tab out after 30 idle minutes, until the next sign-in starts', async () => {
+    const notice = 'You were signed out after 30 minutes without activity.'
+    noteIdleSignOut()
+    renderRoute('/login', '/login', LoginPage)
+    expect(await screen.findByText(notice)).toBeTruthy()
+    fake().db.auth.signInWithPassword.mockResolvedValueOnce({ data: {}, error: { code: 'invalid_credentials', status: 400 } })
+    fill('robotik', 'wrong password')
+    submit()
+    expect((await screen.findByRole('alert')).textContent).toBe('Wrong username or password.')
+    expect(screen.queryByText(notice)).toBeNull()
+  })
+
+  it('signs out an idle session restored on this page instead of opening the studio', async () => {
+    saveLastActivity(Date.now() - 31 * 60_000)
+    fake().setSession(fakeSession())
+    renderRoute('/login', '/login', LoginPage)
+    expect(await screen.findByText('You were signed out after 30 minutes without activity.')).toBeTruthy()
+    expect(fake().db.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(screen.queryByText('route:/studio')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Club & school sign in' })).toBeTruthy()
   })
 })

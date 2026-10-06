@@ -10,6 +10,7 @@ import { CODE_INPUT_SELECTOR, CodeField } from '../../features/studio/CodeField.
 import { ContactLink } from '../../features/studio/ContactLink.tsx'
 import { studioErrorKey } from '../../features/studio/errorMessage.ts'
 import { initialFactorId, isCompleteCode, type TotpFactor } from '../../features/studio/factors.ts'
+import { IdleSignOut } from '../../features/studio/IdleSignOut.tsx'
 import { loadMfaLogin, verifyCode } from '../../features/studio/mfa.ts'
 import { mfaStep, readLastFactor, saveLastFactor } from '../../features/studio/mfaLogin.ts'
 import { useDocumentTitle } from '../../features/studio/useDocumentTitle.ts'
@@ -46,6 +47,8 @@ export function MfaPage() {
         <h1 className="m-0 text-2xl font-bold">{t('mfa.title')}</h1>
         {body}
       </div>
+      {/* A password-only session waiting here times out like the studio. */}
+      <IdleSignOut enabled={Boolean(session)} />
     </AppShell>
   )
 }

@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Button, Field } from '../../components/ui.tsx'
 import { formatBytes, type ProcessedPoster } from '../../lib/poster.ts'
@@ -25,29 +27,47 @@ type Props = {
 
 const ACCEPT = 'image/jpeg,image/png,image/webp'
 const PREVIEW_CLASS = 'max-h-80 w-auto max-w-full self-start rounded-lg border border-line bg-ink object-contain'
+const FILE_INPUT = 'input[type="file"]'
 
 export function PosterPicker({ selection, busy, error, existingUrl, disabled, onPick, onRemove, onUndoRemove }: Props) {
   const { t } = useTranslation('studio')
+  const rootRef = useRef<HTMLDivElement>(null)
   const hasPoster = selection.kind === 'new' || selection.kind === 'existing'
 
+  // "Remove poster" and "Keep the current poster" each disappear with the
+  // selection they change: focus the first of `targets` that replaced them,
+  // instead of letting it fall to <body>.
+  const changeThenFocus = (change: () => void, ...targets: string[]) => {
+    flushSync(change)
+    for (const selector of targets) {
+      const el = rootRef.current?.querySelector<HTMLElement>(selector)
+      if (el) return el.focus()
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={rootRef} className="flex flex-col gap-3">
       <Field label={t('poster.label')} hint={t('poster.hint')} error={error ? t(error) : null}>
         {({ id, describedBy }) => (
           <input
             id={id}
             type="file"
             accept={ACCEPT}
-            disabled={disabled || busy}
+            // While a poster is processed the input keeps focus (a real
+            // `disabled` would drop it to <body>, and the result would go
+            // unheard): it is marked aria-disabled and ignores picks.
+            disabled={disabled}
+            aria-disabled={busy || undefined}
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}
+            onClick={busy ? (e) => e.preventDefault() : undefined}
             onChange={(e) => {
               const file = e.currentTarget.files?.[0]
               // Clear it so choosing the same file again still fires onChange.
               e.currentTarget.value = ''
-              if (file) onPick(file)
+              if (file && !busy) onPick(file)
             }}
-            className="block min-h-11 w-full text-sm text-muted file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-lg file:border file:border-line file:bg-surface-2 file:px-4 file:py-2 file:text-sm file:text-text hover:file:border-sky disabled:opacity-50"
+            className="block min-h-11 w-full text-sm text-muted file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-lg file:border file:border-field-line file:bg-surface-2 file:px-4 file:py-2 file:text-sm file:text-text hover:file:border-sky disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:file:cursor-not-allowed"
           />
         )}
       </Field>
@@ -81,12 +101,17 @@ export function PosterPicker({ selection, busy, error, existingUrl, disabled, on
 
       <div className="flex flex-wrap gap-2 empty:hidden">
         {hasPoster ? (
-          <Button variant="danger" onClick={onRemove} disabled={disabled || busy}>
+          <Button
+            variant="danger"
+            data-remove-poster
+            onClick={() => changeThenFocus(onRemove, '[data-keep-poster]', FILE_INPUT)}
+            disabled={disabled || busy}
+          >
             {t('poster.remove')}
           </Button>
         ) : null}
         {selection.kind === 'removed' ? (
-          <Button onClick={onUndoRemove} disabled={disabled || busy}>
+          <Button data-keep-poster onClick={() => changeThenFocus(onUndoRemove, '[data-remove-poster]')} disabled={disabled || busy}>
             {t('poster.undoRemove')}
           </Button>
         ) : null}

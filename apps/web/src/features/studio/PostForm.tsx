@@ -25,8 +25,8 @@ import {
   type ValidPost,
 } from './postForm.ts'
 import { studioPorts } from './ports.ts'
-import { createPost, updatePost, type PosterChange, type PosterFiles } from './submitPost.ts'
-import type { PostRow } from './types.ts'
+import { createPost, UnconfirmedCreate, updatePost, type PosterChange, type PosterFiles } from './submitPost.ts'
+import type { PostInsertRow, PostRow } from './types.ts'
 
 type Step = 'form' | 'preview' | 'done'
 type TextField = Exclude<PostField, 'campus'>
@@ -76,6 +76,8 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // A new post whose answer was lost: the next Publish looks for it first.
+  const [unconfirmed, setUnconfirmed] = useState<PostInsertRow | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
   // What to focus after the next render: an invalid field, a step heading, ...
   const [focusTarget, setFocusTarget] = useState<{ selector: string; n: number } | null>(null)
@@ -163,11 +165,14 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
         await updatePost(studioPorts, post, toUpdatePatch(post, valid, cancelled), change)
         setSavedId(post.id)
       } else {
-        setSavedId(await createPost(studioPorts, org.id, valid, poster.kind === 'new' ? toFiles(poster.processed) : null))
+        const files = poster.kind === 'new' ? toFiles(poster.processed) : null
+        setSavedId(await createPost(studioPorts, org.id, valid, files, { unconfirmed }))
+        setUnconfirmed(null)
       }
       setStep('done')
       focusSoon('[data-step-heading]')
     } catch (e) {
+      setUnconfirmed(e instanceof UnconfirmedCreate ? e.row : null)
       setSubmitError(studioErrorKey(e))
     } finally {
       submittingRef.current = false

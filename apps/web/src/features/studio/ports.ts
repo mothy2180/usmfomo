@@ -1,5 +1,6 @@
 // The real I/O behind submitPost.ts: Supabase Storage + PostgREST, as the
 // signed-in club (RLS decides; see 0020_posts.sql and 0040_storage_posters.sql).
+import type { PostgrestError } from '@supabase/supabase-js'
 import type { Database } from '@usmfomo/shared'
 import { BUCKET, POSTER } from '@usmfomo/shared/config'
 import { studioDb } from '../../lib/db.ts'
@@ -11,6 +12,16 @@ type PostsInsert = Database['public']['Tables']['posts']['Insert']
 /** Zero rows written means RLS filtered the row out (deleted, or this session
  * may no longer write): report it like the database's own refusal. */
 const NO_ROWS = { code: '42501', message: 'no rows matched' }
+
+/** PostgREST's error plus the response's HTTP status (0 when none came), so
+ * submitPost can tell a refusal from a lost answer (isRefusal). */
+const failure = (error: PostgrestError, status: number) => ({
+  code: error.code,
+  message: error.message,
+  details: error.details,
+  hint: error.hint,
+  status,
+})
 
 export const studioPorts: PostPorts = {
   async upload(path, file, contentType) {
@@ -28,18 +39,29 @@ export const studioPorts: PostPorts = {
   async insert(row) {
     // The generated Insert type requires org_id, but the column has no INSERT
     // grant: posts_guard fills it from the session. Sending it would fail.
-    const { data, error } = await studioDb
+    const { data, error, status } = await studioDb
       .from('posts')
       .insert(row as PostsInsert)
       .select('id')
       .single()
-    if (error) throw error
+    if (error) throw failure(error, status)
     return data
   },
   async update(id, patch) {
-    const { data, error } = await studioDb.from('posts').update(patch).eq('id', id).select('id')
-    if (error) throw error
+    const { data, error, status } = await studioDb.from('posts').update(patch).eq('id', id).select('id')
+    if (error) throw failure(error, status)
     if (data.length === 0) throw NO_ROWS
+  },
+  async findOwn(orgId, row) {
+    // A poster file name is random, so it alone identifies the row. Without
+    // one, the same details: a second identical post would be a duplicate.
+    const own = studioDb.from('posts').select('id').eq('org_id', orgId)
+    const query = row.poster_path
+      ? own.eq('poster_path', row.poster_path)
+      : own.eq('title', row.title).eq('venue', row.venue).eq('starts_at', row.starts_at).eq('ends_at', row.ends_at).is('poster_path', null)
+    const { data, error, status } = await query.limit(1)
+    if (error) throw failure(error, status)
+    return data[0] ?? null
   },
   async delete(id) {
     // Idempotent: zero rows means the post is already gone (purged after it

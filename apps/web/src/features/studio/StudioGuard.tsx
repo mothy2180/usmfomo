@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ButtonLink, ErrorState, Spinner } from '../../components/ui.tsx'
 import { signOutStudio, useStudioAccess, type OkStatus } from '../../lib/session.ts'
+import { IdleSignOut } from './IdleSignOut.tsx'
 import { StudioFrame } from './StudioFrame.tsx'
 
 type Terminal = 'owner' | 'inactive' | 'ended'
@@ -13,7 +14,8 @@ type Terminal = 'owner' | 'inactive' | 'ended'
  * Renders a studio page only for a session the database accepts
  * (my_posting_status = ok). Otherwise: /login, /login/mfa, or a message for
  * the owner account, a paused account or a revoked session — and those three
- * are signed out of this browser straight away.
+ * are signed out of this browser straight away. While the page is shown, 30
+ * minutes without input sign this browser out (IdleSignOut).
  */
 export function StudioGuard({
   title,
@@ -65,7 +67,12 @@ export function StudioGuard({
     )
   }
   if (access.phase === 'ready' && access.decision === 'ok') {
-    return <>{children({ status: access.status, session: access.session })}</>
+    return (
+      <>
+        {children({ status: access.status, session: access.session })}
+        <IdleSignOut enabled />
+      </>
+    )
   }
   return (
     <StudioFrame title={title}>

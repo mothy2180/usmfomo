@@ -14,7 +14,7 @@
   "quota_edits": "You've reached 30 edits in the last 24 hours. Try again later.",
   "end_in_past": "The event must end in the future (at least 15 minutes from now for a new post).",
   "start_too_early": "The new start time can't be more than an hour in the past.",
-  "start_too_late": "Events can be posted at most a year ahead.",
+  "start_too_late": "The event's start date can't be more than a year from now.",
   "too_long": "This post would stay up too long. Create a new post for the next event.",
   "path_invalid": "The poster upload failed. Please choose the image again.",
   "owner_only": "Only the usmfomo admin can do that.",

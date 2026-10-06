@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeSession, okStatusJson, ORG, type FakeStudioDb } from '../../features/studio/fakeStudioDb.ts'
 import { renderRoute } from '../../features/studio/renderRoute.tsx'
 import type { PostRow } from '../../features/studio/types.ts'
 import i18n from '../../lib/i18n.ts'
+import { saveLastActivity } from '../../lib/idle.ts'
 import { StudioHome } from './StudioHome.tsx'
 
 const mock = vi.hoisted(() => ({
@@ -77,6 +78,9 @@ describe('StudioHome', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
     window.localStorage.clear()
+    window.sessionStorage.clear()
+    // This tab had input just now (see lib/idle.ts).
+    saveLastActivity()
     mock.posts = [UPCOMING, NOW_ON, HIDDEN, ENDED]
     fake().setSession(fakeSession('aal1'), 'INITIAL_SESSION')
     fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal1'))
@@ -167,5 +171,44 @@ describe('StudioHome', () => {
     fake().db.rpc.mockResolvedValue({ data: { state: 'mfa_required', username: 'robotik' }, error: null })
     renderRoute('/studio', '/studio', StudioHome)
     expect(await screen.findByText('route:/login/mfa')).toBeTruthy()
+  })
+
+  it('stays in the studio when every 2FA device was removed elsewhere (no loop to /login/mfa)', async () => {
+    // The cached session still lists a device; the database knows it is gone.
+    fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal2'))
+    fake().db.rpc.mockResolvedValue({ data: okStatusJson({ factors: 0 }), error: null })
+    renderRoute('/studio', '/studio', StudioHome)
+    expect(await screen.findByRole('heading', { level: 3, name: 'Hack Night' })).toBeTruthy()
+    expect(screen.queryByText('route:/login/mfa')).toBeNull()
+    // The stale cached session is refreshed, so supabase-js agrees.
+    expect(fake().db.auth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('signs out a session restored after 30 minutes without input, before using it', async () => {
+    // A closed tab reopened (or a browser session restored) on a lab PC.
+    saveLastActivity(NOW.getTime() - 31 * 60_000)
+    renderRoute('/studio', '/studio', StudioHome)
+    expect(await screen.findByText('route:/login')).toBeTruthy()
+    expect(fake().db.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(fake().db.rpc).not.toHaveBeenCalled()
+  })
+
+  it('never uses a session that comes back after the tab went 30 minutes without input', async () => {
+    renderRoute('/studio', '/studio', StudioHome)
+    await screen.findByRole('heading', { level: 3, name: 'Hack Night' })
+    // E.g. a restored tab that was offline: its token refreshes once it is back online.
+    saveLastActivity(NOW.getTime() - 31 * 60_000)
+    act(() => fake().setSession(fakeSession('aal1'), 'TOKEN_REFRESHED'))
+    expect(await screen.findByText('route:/login')).toBeTruthy()
+    expect(fake().db.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('asks to sign out again when that failed, and never says closing the tab is enough', async () => {
+    fake().db.auth.signOut.mockResolvedValueOnce({ error: { name: 'AuthRetryableFetchError', message: 'Failed to fetch', status: 0 } })
+    renderRoute('/studio', '/studio', StudioHome)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      "Couldn't reach usmfomo to sign out. Check your connection and press Sign out again. On a shared computer, don't leave until you're signed out: closing the tab isn't enough.",
+    )
   })
 })

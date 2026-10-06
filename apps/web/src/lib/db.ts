@@ -10,8 +10,11 @@ export const publicDb = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_K
   storageKey: 'usmfomo-public',
 })
 
-/** Club studio: session kept in sessionStorage (closing the tab signs out;
- * shared lab PCs). Sign out with { scope: 'local' } so one committee member
+/** Club studio: session kept in sessionStorage, one per tab (shared lab PCs).
+ * Closing the tab does NOT end it: reopening the tab or restoring the browser
+ * session brings it back. So the studio signs out after 30 minutes without
+ * input, and never uses a session whose tab has been idle that long (idle.ts,
+ * session.ts). Sign out with { scope: 'local' } so one committee member
  * doesn't sign everyone else out. */
 export const studioDb = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   storage: typeof window === 'undefined' ? undefined : window.sessionStorage,

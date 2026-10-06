@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ErrorState, Spinner } from '../../components/ui.tsx'
 import { STUDIO_QUERY_KEY, type OkStatus } from '../../lib/session.ts'
@@ -33,6 +33,17 @@ function SettingsContent({ status, userId }: { status: OkStatus; userId: string 
     refetchOnWindowFocus: false,
   })
   const verified = devices.data?.verified ?? []
+  const devicesHeadingRef = useRef<HTMLHeadingElement>(null)
+  // A removed device's Remove button (focused again as the dialog closes)
+  // goes away when the list reloads: then focus the Devices heading.
+  const removedRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const id = removedRef.current
+    if (id === null || (!devices.isError && (devices.data?.verified ?? []).some((d) => d.id === id))) return
+    removedRef.current = null
+    devicesHeadingRef.current?.focus()
+  }, [devices.data, devices.isError])
 
   return (
     <StudioFrame title={t('settings.title')} orgName={status.org.name}>
@@ -56,7 +67,7 @@ function SettingsContent({ status, userId }: { status: OkStatus; userId: string 
         </p>
 
         <section aria-labelledby={`${ids}-devices`} className="flex flex-col gap-3">
-          <h2 id={`${ids}-devices`} className="m-0 text-lg font-bold">
+          <h2 id={`${ids}-devices`} ref={devicesHeadingRef} tabIndex={-1} className="m-0 text-lg font-bold">
             {t('settings.devicesTitle')}
           </h2>
           {devices.isPending ? (
@@ -68,7 +79,14 @@ function SettingsContent({ status, userId }: { status: OkStatus; userId: string 
               {verified.length === 1 ? (
                 <p className="m-0 rounded-xl border border-accent/50 bg-accent/10 p-4 text-sm font-semibold">{t('settings.oneDeviceWarning')}</p>
               ) : null}
-              <DeviceList devices={verified} now={now} onRemoved={(name) => setMessage(t('settings.removed', { name }))} />
+              <DeviceList
+                devices={verified}
+                now={now}
+                onRemoved={({ id, name }) => {
+                  removedRef.current = id
+                  setMessage(t('settings.removed', { name }))
+                }}
+              />
             </>
           )}
         </section>

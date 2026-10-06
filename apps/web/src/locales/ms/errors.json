@@ -14,7 +14,7 @@
   "quota_edits": "Anda telah mencapai 30 suntingan dalam 24 jam lalu. Cuba lagi nanti.",
   "end_in_past": "Acara mesti tamat pada masa hadapan (sekurang-kurangnya 15 minit dari sekarang untuk siaran baharu).",
   "start_too_early": "Masa mula yang baharu tidak boleh lebih sejam yang lalu.",
-  "start_too_late": "Acara boleh disiarkan paling awal setahun lebih awal.",
+  "start_too_late": "Tarikh mula acara tidak boleh lebih daripada setahun dari sekarang.",
   "too_long": "Siaran ini akan kekal terlalu lama. Buat siaran baharu untuk acara seterusnya.",
   "path_invalid": "Muat naik poster gagal. Sila pilih imej sekali lagi.",
   "owner_only": "Hanya pentadbir usmfomo boleh berbuat demikian.",

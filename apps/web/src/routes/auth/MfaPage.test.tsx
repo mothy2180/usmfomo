@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeSession, type FakeStudioDb } from '../../features/studio/fakeStudioDb.ts'
 import { readLastFactor } from '../../features/studio/mfaLogin.ts'
 import { renderRoute } from '../../features/studio/renderRoute.tsx'
 import i18n from '../../lib/i18n.ts'
+import { saveLastActivity } from '../../lib/idle.ts'
 import { MfaPage } from './MfaPage.tsx'
 
 const mock = vi.hoisted(() => ({ fake: null as FakeStudioDb | null }))
@@ -42,6 +43,8 @@ describe('MfaPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.localStorage.clear()
+    window.sessionStorage.clear()
+    saveLastActivity()
     fake().setSession(fakeSession('aal1'), 'INITIAL_SESSION')
     fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal2'))
     fake().db.auth.mfa.challengeAndVerify.mockResolvedValue({ data: {}, error: null })
@@ -116,6 +119,29 @@ describe('MfaPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use a different account' }))
     expect(await screen.findByText('route:/login')).toBeTruthy()
     expect(fake().db.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('refreshes a session that still lists removed devices, then goes on to the studio', async () => {
+    // The admin removed every device (lost phone) after this password sign-in:
+    // the cached session still says a code is needed, Auth lists none.
+    devices()
+    renderRoute('/login/mfa', '/login/mfa', MfaPage)
+    expect(await screen.findByText('route:/studio')).toBeTruthy()
+    expect(fake().db.auth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('signs a password-only session waiting here out after 30 minutes without input', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    try {
+      saveLastActivity()
+      renderRoute('/login/mfa', '/login/mfa', MfaPage)
+      await screen.findByLabelText('6-digit code')
+      act(() => vi.advanceTimersByTime(30 * 60_000 + 1000))
+      expect(await screen.findByText('route:/login')).toBeTruthy()
+      expect(fake().db.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('moves on when there is nothing to verify, or no session', async () => {

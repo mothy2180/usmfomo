@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { PosterError } from '../../lib/poster.ts'
 import { studioErrorKey } from './errorMessage.ts'
+import { UnconfirmedCreate } from './submitPost.ts'
+import type { PostInsertRow } from './types.ts'
 
 const storageError = (statusCode: string, extra: Record<string, unknown> = {}) => ({
   name: 'StorageApiError',
@@ -30,6 +32,14 @@ describe('studioErrorKey', () => {
     expect(studioErrorKey({ name: 'AuthApiError', code: 'too_many_enrolled_mfa_factors', status: 422 })).toBe('studio:settings.tooMany')
     expect(studioErrorKey({ name: 'AuthApiError', code: 'mfa_verification_failed', status: 422 })).toBe('errors:auth_bad_code')
     expect(studioErrorKey({ name: 'AuthApiError', code: 'insufficient_aal', status: 403 })).toBe('errors:mfa_required')
+  })
+
+  it('says a new post may be live when its answer was lost, unless the check itself was refused', () => {
+    const row = { title: 'Hack Night' } as PostInsertRow
+    expect(studioErrorKey(new UnconfirmedCreate(row, { code: '', message: 'TypeError: Failed to fetch', status: 0 }))).toBe('studio:form.unconfirmed')
+    expect(studioErrorKey(new UnconfirmedCreate(row, new TypeError('Failed to fetch')))).toBe('studio:form.unconfirmed')
+    // Looking for it on the retry: the session had ended meanwhile.
+    expect(studioErrorKey(new UnconfirmedCreate(row, { code: 'PGRST301', message: 'JWT expired', status: 401 }))).toBe('errors:session_ended')
   })
 
   it('falls back to the shared database/Auth mapping', () => {

@@ -6,6 +6,7 @@
 //     account's other sessions that are still at aal1;
 //   - removing a device downgrades the sessions that used it to aal1.
 import { studioDb } from '../../lib/db.ts'
+import { refreshStudioSession } from '../../lib/session.ts'
 import { otpauthHref, pendingTotp, qrImageSrc, verifiedTotp, type TotpFactor } from './factors.ts'
 import type { MfaLoginData } from './mfaLogin.ts'
 
@@ -36,6 +37,10 @@ export async function listDevices(): Promise<Devices> {
 export async function loadMfaLogin(): Promise<MfaLoginData> {
   const [aal, devices] = await Promise.all([studioDb.auth.mfa.getAuthenticatorAssuranceLevel(), listDevices()])
   if (aal.error) throw aal.error
+  // Every device was removed (by the admin or another member) after this
+  // session signed in, but the cached session still lists them: refresh it
+  // before the page moves on, so supabase-js agrees there is nothing to verify.
+  if (devices.verified.length === 0 && aal.data.nextLevel === 'aal2') await refreshStudioSession()
   return { currentLevel: aal.data.currentLevel, factors: devices.verified }
 }
 
@@ -81,5 +86,5 @@ export async function removeDevice(factorId: string): Promise<void> {
   // but supabase-js still holds the old token: refresh so the studio sees the
   // real level (and asks for another device's code). A failed refresh is
   // harmless — the token refreshes on its own soon.
-  await studioDb.auth.refreshSession().catch(() => undefined)
+  await refreshStudioSession()
 }

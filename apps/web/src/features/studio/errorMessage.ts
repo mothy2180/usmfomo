@@ -3,6 +3,7 @@
 // and a few Auth MFA codes it does not know are mapped here.
 import { errorKey } from '@usmfomo/shared/errors'
 import { PosterError } from '../../lib/poster.ts'
+import { isRefusal, UnconfirmedCreate } from './submitPost.ts'
 
 type Loose = { name?: unknown; code?: unknown; status?: unknown; statusCode?: unknown; message?: unknown }
 
@@ -27,6 +28,9 @@ const MFA_KEYS: Record<string, string> = {
 
 export function studioErrorKey(err: unknown): string {
   if (err instanceof PosterError) return `errors:${err.key}`
+  // A new post's answer was lost. A refusal while looking for it (the session
+  // ended, say) says more than "couldn't confirm".
+  if (err instanceof UnconfirmedCreate) return isRefusal(err.cause) ? studioErrorKey(err.cause) : 'studio:form.unconfirmed'
   if (typeof err === 'object' && err !== null) {
     const e = err as Loose
     const storage = storageKey(e)

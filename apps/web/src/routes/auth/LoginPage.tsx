@@ -10,7 +10,16 @@ import { AppShell } from '../../components/AppShell.tsx'
 import { Button, Field, Input } from '../../components/ui.tsx'
 import { studioDb } from '../../lib/db.ts'
 import { currentLang } from '../../lib/i18n.ts'
-import { needsSecondFactor, parsePostingStatus, signOutStudio, useStudioSession, type PostingStatus } from '../../lib/session.ts'
+import { saveLastActivity } from '../../lib/idle.ts'
+import {
+  clearIdleSignOut,
+  needsSecondFactor,
+  parsePostingStatus,
+  signOutStudio,
+  useIdleSignOutNotice,
+  useStudioSession,
+  type PostingStatus,
+} from '../../lib/session.ts'
 import { useTurnstile } from '../../lib/turnstile.ts'
 import { ContactLink } from '../../features/studio/ContactLink.tsx'
 import { useDocumentTitle } from '../../features/studio/useDocumentTitle.ts'
@@ -35,6 +44,7 @@ export function LoginPage() {
   const queryClient = useQueryClient()
   const ids = useId()
   const { ready, session } = useStudioSession()
+  const idleSignedOut = useIdleSignOutNotice()
   const captcha = useTurnstile('login', currentLang())
   const { attach: attachCaptcha } = captcha
   const [username, setUsername] = useState('')
@@ -83,8 +93,12 @@ export function LoginPage() {
     busyRef.current = true
     setBusy(true)
     setFormError(null)
+    clearIdleSignOut()
     let leaving = false
     try {
+      // Start this tab's idle clock first: the SIGNED_IN event that follows
+      // must not look like an idle session brought back (see session.ts).
+      saveLastActivity()
       const { error } = await studioDb.auth.signInWithPassword({
         email: usernameToEmail(parsed.data),
         password,
@@ -122,9 +136,16 @@ export function LoginPage() {
     <AppShell>
       <div className="mx-auto flex w-full max-w-md flex-col gap-5">
         <h1 className="m-0 text-2xl font-bold">{t('login.title')}</h1>
+        {/* Always rendered (out of the layout while empty): the notice can
+            also appear after this page loaded, when an idle session restored
+            here is signed out. */}
+        <div aria-live="polite" className={idleSignedOut ? undefined : 'sr-only'}>
+          {idleSignedOut ? <p className="m-0 rounded-xl border border-sky/40 bg-sky/5 p-4 text-sm">{t('login.idleNotice')}</p> : null}
+        </div>
         <p className="m-0 text-sm text-muted">
           <Trans t={t} i18nKey="login.note" components={{ contact: <ContactLink /> }} />
         </p>
+        <p className="m-0 text-sm text-muted">{t('login.sharedComputer')}</p>
 
         <form ref={formRef} noValidate onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
           <Field label={t('login.username')} error={errors.username}>
