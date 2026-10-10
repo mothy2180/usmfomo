@@ -26,8 +26,8 @@
   "packageManager": "pnpm@12.9.1",
   "devDependencies": {
     "@types/node": "26.6.4",
-    "supabase": "2.119.0",
+    "supabase": "2.120.0",
     "typescript": "7.0.2",
-    "wrangler": "4.147.0"
+    "wrangler": "4.148.0"
   }
 }
