@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react'
 import { Button } from '../components/ui.tsx'
 import { cx } from '../lib/cx.ts'
+import { useConsoleLiveUpdates } from '../lib/queries.ts'
 import { useSession } from '../lib/sessionContext.ts'
 import { SECTIONS, type SectionId } from './sections.ts'
 
 export function ConsoleLayout({ section, children }: { section: SectionId; children: ReactNode }) {
   const session = useSession()
+  useConsoleLiveUpdates()
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main" className="sr-only-focusable absolute left-2 top-2 z-50 rounded bg-accent px-3 py-2 text-accent-ink">

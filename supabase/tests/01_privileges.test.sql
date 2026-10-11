@@ -20,8 +20,8 @@ select is(
 select set_eq(
   $$ select table_name::text from information_schema.role_table_grants
      where table_schema = 'public' and grantee = 'anon' and privilege_type = 'SELECT' $$,
-  array['notices', 'orgs', 'posts', 'site_settings'],
-  'anon can SELECT exactly orgs, posts, notices and site_settings');
+  array['live_state', 'notices', 'orgs', 'posts', 'site_settings'],
+  'anon can SELECT exactly orgs, posts, notices, site_settings and live_state');
 
 select is(
   (select count(*)::int from information_schema.role_table_grants

@@ -2,6 +2,10 @@
   "appName": "usmfomo",
   "tagline": "Apa yang berlaku di USM",
   "skipToContent": "Langkau ke kandungan",
+  "live": {
+    "paused": "Kemas kini langsung dijeda semasa anda tiada.",
+    "resume": "Kemas kini sekarang"
+  },
   "nav": {
     "label": "Utama",
     "dashboard": "Acara",
@@ -15,7 +19,7 @@
     "disclaimer": "usmfomo ialah projek pelajar yang bebas dan tidak rasmi, tidak bergabung dengan atau disokong oleh Universiti Sains Malaysia. Acara disiarkan oleh kelab dan pusat pengajian sendiri.",
     "report": "Laporkan masalah pada siaran",
     "rules": "Peraturan siaran",
-    "createdBy": "Oleh"
+    "createdBy": "Oleh <creator>seorang pelajar CS</creator>"
   },
   "lang": {
     "label": "Bahasa",

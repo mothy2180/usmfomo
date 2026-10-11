@@ -2,7 +2,8 @@
 // the owner may read every row) for settings, posts and notices, so the kill
 // switches and moderation still work when the Edge Function is down.
 import type { QueryData } from '@supabase/supabase-js'
-import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import { adminApi, ownerDb } from './db.ts'
 import { NoRowsError } from './messages.ts'
 import { verifiedTotpFactors } from './mfa.ts'
@@ -14,6 +15,7 @@ export const qk = {
   posts: ['posts'],
   notices: ['notices'],
   factors: ['factors'],
+  live: ['live'],
 } as const
 
 export function useStatus() {
@@ -50,6 +52,56 @@ export function useSettings() {
 export async function setSwitch(name: SwitchName, value: boolean): Promise<SiteSettings> {
   const patch = name === 'posting_enabled' ? { posting_enabled: value } : { public_reads_enabled: value }
   const { data, error } = await ownerDb.from('site_settings').update(patch).eq('id', 1).select(SETTINGS_COLUMNS)
+  if (error) throw error
+  const row = data[0]
+  if (!row) throw new NoRowsError()
+  return row
+}
+
+// ---------------------------------------------------------------------------
+// Live updates (public.live_state, 0054): the public pages poll changed_at
+// every poll_seconds; the console follows the same row so moderation and
+// notices show what clubs just did.
+// ---------------------------------------------------------------------------
+
+export const POLL_CHOICES = [0, 30, 60, 120, 300] as const
+export type PollSeconds = (typeof POLL_CHOICES)[number]
+export type LiveState = { changed_at: string; poll_seconds: number }
+
+async function fetchLive(): Promise<LiveState> {
+  const { data, error } = await ownerDb.from('live_state').select('changed_at,poll_seconds').eq('id', 1).single()
+  if (error) throw error
+  return data
+}
+
+export function useLiveState() {
+  return useQuery({
+    queryKey: qk.live,
+    queryFn: fetchLive,
+    staleTime: 0,
+    refetchInterval: (query) => {
+      const s = query.state.data?.poll_seconds ?? 0
+      return s > 0 ? s * 1000 : false
+    },
+  })
+}
+
+/** Reloads moderation, notices and status when anything the public sees changed. */
+export function useConsoleLiveUpdates(): void {
+  const queryClient = useQueryClient()
+  const changedAt = useLiveState().data?.changed_at
+  const seen = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!changedAt) return
+    if (seen.current !== undefined && seen.current !== changedAt) {
+      for (const queryKey of [qk.posts, qk.notices, qk.status]) void queryClient.invalidateQueries({ queryKey })
+    }
+    seen.current = changedAt
+  }, [changedAt, queryClient])
+}
+
+export async function setPollSeconds(poll_seconds: PollSeconds): Promise<LiveState> {
+  const { data, error } = await ownerDb.from('live_state').update({ poll_seconds }).eq('id', 1).select('changed_at,poll_seconds')
   if (error) throw error
   const row = data[0]
   if (!row) throw new NoRowsError()

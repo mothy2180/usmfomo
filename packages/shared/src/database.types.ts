@@ -5,7 +5,20 @@ export type Database = {
   
   "public": {
           Tables: {
-            "notices": {
+            "live_state": {
+                  Row: {
+                    "changed_at": string,"id": number,"poll_seconds": number
+                  }
+                  Insert: {
+                    "changed_at"?: string,"id"?: number,"poll_seconds"?: number
+                  }
+                  Update: {
+                    "changed_at"?: string,"id"?: number,"poll_seconds"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"notices": {
                   Row: {
                     "body": string,"created_at": string,"ends_at": string,"id": string,"link_url": string | null,"starts_at": string,"title": string,"updated_at": string
                   }

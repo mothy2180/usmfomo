@@ -2,6 +2,10 @@
   "appName": "usmfomo",
   "tagline": "What's on at USM",
   "skipToContent": "Skip to content",
+  "live": {
+    "paused": "Live updates are paused while you're away.",
+    "resume": "Update now"
+  },
   "nav": {
     "label": "Main",
     "dashboard": "What's on",
@@ -15,7 +19,7 @@
     "disclaimer": "usmfomo is an independent, unofficial student project, not affiliated with or endorsed by Universiti Sains Malaysia. Events are posted by the clubs and schools themselves.",
     "report": "Report a problem with a post",
     "rules": "Posting rules",
-    "createdBy": "By"
+    "createdBy": "By <creator>a CS student</creator>"
   },
   "lang": {
     "label": "Language",

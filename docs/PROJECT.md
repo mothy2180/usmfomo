@@ -18,6 +18,7 @@ rule, the UI only mirrors it · unofficial project, says so on every page.
 
 | Date | Decision | Options considered | Chosen | Why |
 |---|---|---|---|---|
+| 2026-10-12 | Live updates | Realtime; poll the lists every N s; poll a change stamp | poll `public.live_state.changed_at` (≈0.2 KB) every `poll_seconds` (default 30 s, owner-set: off/30/60/120/300) and reload lists only when it moves; hidden tabs and tabs idle 30 min don't poll; ended events drop out on the client (0054) | Realtime caps at 200 connections on Free; polling full lists every 60 s would add ≈6 GB egress a month at 3,000 visits a day, the change stamp ≈0.5 GB at 30 s; the owner can slow it without a deploy |
 | 2026-10-06 | Hosted Realtime | leave the default; turn it off | off right after the project is created (deploy.md step 1) | usmfomo never uses it, a hosted project has it on with public channels open to the publishable key, and `config.toml` only switches the local one off |
 | 2026-10-06 | Pages Functions at the daily limit | fail closed; fail open | fail open on both Pages projects (deploy.md step 0) | the static site keeps working; posters fall back to direct Supabase URLs |
 | 2026-10-06 | Where the CI tokens live | password manager + GitHub; GitHub only | GitHub environment secrets only, environment created before the tokens; make a new token if lost | fewer copies of a deploy credential; both tokens are shown once and are cheap to replace |

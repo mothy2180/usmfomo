@@ -5,6 +5,8 @@ import i18n, { setLanguage } from '../lib/i18n.ts'
 import { AppShell } from './AppShell.tsx'
 
 vi.mock('../env.ts', () => ({ CONTACT_URL: '' }))
+// Live polling has its own tests (lib/live.test.tsx).
+vi.mock('../lib/live.ts', () => ({ useLiveUpdates: () => ({ paused: false }) }))
 
 async function renderShell() {
   const root = createRootRoute({

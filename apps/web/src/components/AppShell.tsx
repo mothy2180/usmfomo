@@ -1,8 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { CONTACT_URL } from '../env.ts'
-import { CREATOR_NAME, CREATOR_URL } from '../lib/credit.ts'
+import { CREATOR_URL } from '../lib/credit.ts'
+import { useLiveUpdates } from '../lib/live.ts'
 import { LanguageSwitch } from './LanguageSwitch.tsx'
 
 export function SiteFooter() {
@@ -22,17 +23,39 @@ export function SiteFooter() {
           </Link>
         </nav>
         <p className="m-0">
-          {t('footer.createdBy')}{' '}
-          {CREATOR_URL.startsWith('https://') ? (
-            <a href={CREATOR_URL} target="_blank" rel="noopener noreferrer" className="underline">
-              {CREATOR_NAME}
-            </a>
-          ) : (
-            CREATOR_NAME
-          )}
+          <Trans
+            t={t}
+            i18nKey="footer.createdBy"
+            components={{
+              creator: CREATOR_URL.startsWith('https://') ? (
+                <a href={CREATOR_URL} target="_blank" rel="noopener noreferrer" className="underline" />
+              ) : (
+                <span />
+              ),
+            }}
+          />
         </p>
       </div>
     </footer>
+  )
+}
+
+/** Keeps the page's lists live; says so while it has paused for inactivity
+ * (any input resumes it, the button only makes that obvious). */
+function LiveStatus() {
+  const { t } = useTranslation()
+  const { paused } = useLiveUpdates()
+  return (
+    <div role="status" className={paused ? 'mx-auto mt-3 flex w-full max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 text-sm text-muted' : 'sr-only'}>
+      {paused ? (
+        <>
+          <span>{t('live.paused')}</span>
+          <button type="button" className="underline">
+            {t('live.resume')}
+          </button>
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -64,6 +87,7 @@ export function AppShell({ children, wide }: { children: ReactNode; wide?: boole
           </nav>
         </div>
       </header>
+      <LiveStatus />
       <main id="main" className={wide ? 'mx-auto w-full max-w-6xl flex-1 px-4 py-6' : 'mx-auto w-full max-w-3xl flex-1 px-4 py-6'}>
         {children}
       </main>

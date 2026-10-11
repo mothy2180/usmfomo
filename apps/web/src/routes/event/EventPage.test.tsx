@@ -23,6 +23,8 @@ vi.mock('../../lib/db.ts', async () => {
   }
 })
 vi.mock('../../env.ts', () => ({ CONTACT_URL: '' }))
+// Live polling has its own tests (lib/live.test.tsx).
+vi.mock('../../lib/live.ts', () => ({ useLiveUpdates: () => ({ paused: false }) }))
 
 const NOW = new Date('2026-10-11T04:00:00Z') // Sun 11 Oct, 12:00 MYT
 const ID = '906e23b1-9e25-4939-9fb5-3a723547810b'

@@ -6,6 +6,7 @@ import { qk, useStatus } from '../../lib/queries.ts'
 import { useNow } from '../../lib/useNow.ts'
 import { DevicesCard } from './DevicesCard.tsx'
 import { KillSwitches } from './KillSwitches.tsx'
+import { LiveUpdatesCard } from './LiveUpdatesCard.tsx'
 import { ContentCard, MaintenanceCard, StorageCard } from './StatusCards.tsx'
 
 export function OverviewPage() {
@@ -17,6 +18,7 @@ export function OverviewPage() {
     void status.refetch()
     void queryClient.invalidateQueries({ queryKey: qk.settings })
     void queryClient.invalidateQueries({ queryKey: qk.factors })
+    void queryClient.invalidateQueries({ queryKey: qk.live })
   }
   return (
     <>
@@ -37,6 +39,7 @@ export function OverviewPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <MaintenanceCard status={status} now={now} />
         <KillSwitches />
+        <LiveUpdatesCard />
         <StorageCard status={status} />
         <ContentCard status={status} />
         <DevicesCard />
@@ -45,7 +48,7 @@ export function OverviewPage() {
             Weekly check
           </h2>
           <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm">
-            <li>Supabase → Usage: egress (5 GB), storage (1 GB), function calls (500k). Over quota means one grace period, then HTTP 402 everywhere.</li>
+            <li>Supabase → Usage: egress (5 GB), storage (1 GB), function calls (500k). Over quota means one grace period, then HTTP 402 everywhere. Egress over 3.5 GB mid-month: set Live updates to every 2 minutes.</li>
             <li>Cloudflare → Workers: usmfomo-cron runs every hour without errors.</li>
             <li>Accounts: any 2FA device added recently that a club didn't expect?</li>
           </ul>

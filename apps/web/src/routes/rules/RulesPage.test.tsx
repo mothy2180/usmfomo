@@ -6,6 +6,8 @@ import i18n from '../../lib/i18n.ts'
 import { RulesPage } from './RulesPage.tsx'
 
 vi.mock('../../env.ts', () => ({ CONTACT_URL: 'https://www.instagram.com/usmfomo.admin' }))
+// Live polling has its own tests (lib/live.test.tsx).
+vi.mock('../../lib/live.ts', () => ({ useLiveUpdates: () => ({ paused: false }) }))
 
 function renderRules() {
   const rootRoute = createRootRoute({ component: () => <Outlet /> })

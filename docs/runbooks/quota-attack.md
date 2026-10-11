@@ -11,7 +11,9 @@ project under quota. It is an accepted residual risk (docs/PROJECT.md).
 
 - Supabase dashboard → **Usage**: egress (5 GB + 5 GB cached), Edge Function
   invocations (500k/month), database size (500 MB), storage (1 GB). Normal use is
-  roughly 1–3 GB egress a month.
+  roughly 1–3 GB egress a month, plus up to ≈0.5 GB for live updates at 30 s.
+- Egress over 3.5 GB before mid-month: owner console → **Overview** → **Live
+  updates** → every 2 minutes (or Off). Open pages follow on their next check.
 - Supabase → Logs (one day kept on Free): API and function logs, for the paths
   and user agents of the flood.
 - Cloudflare → Workers & Pages → `usmfomo` → Metrics: the `/i/*` Function's
