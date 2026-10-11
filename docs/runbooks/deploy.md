@@ -147,9 +147,13 @@ Project Settings → **API Keys**:
 
 Account (your avatar) → **Access Tokens** → generate a token:
 
-- Name `usmfomo-github-deploy`; scope it to the **usmfomo** organisation/project
-  only, with the narrowest permissions that still allow database migrations and
-  Edge Function deploys; expiry about one year. Put the expiry date in your calendar.
+- Name `usmfomo-github-deploy`; Resource access **Project** → usmfomo; expiry
+  as long as offered (or Never). Permissions: **Edge Functions · Read-write**,
+  everything else None. CI never runs `supabase link` (it reads the project's
+  API keys, which a scoped token can only do with "API Key Secrets", the
+  `sb_secret` keys): migrations go to the session pooler with the database
+  password instead. Access can't be changed after creation: to change it,
+  delete the token and make a new one.
 - If your dashboard offers no scoping, the token reaches every project of your
   account. Step 1's separate organisation then matters even more: keep nothing
   else there, and treat the token like a password.
@@ -279,6 +283,7 @@ Repository → Settings → **Environments** → New environment `production`:
 | Environment `production` · secret | `CLOUDFLARE_API_TOKEN` | token from step 8 |
 | Environment `production` · variable | `SUPABASE_PROJECT_ID` | `<ref>` |
 | Environment `production` · variable | `CLOUDFLARE_ACCOUNT_ID` | Account ID from step 0 |
+| Environment `production` · variable | `SUPABASE_POOLER_HOST` | `aws-0-<region>.pooler.supabase.com` (Connect → Session pooler, or `supabase/.temp/pooler-url` after step 6) |
 | Repository · variable | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` |
 | Repository · variable | `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` (step 2) |
 | Repository · variable | `VITE_TURNSTILE_SITE_KEY` | site key (step 4) |

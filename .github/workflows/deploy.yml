@@ -249,26 +249,31 @@ jobs:
           node_modules/.bin/wrangler --version
 
       # ---- Supabase: migrations and Edge Functions -------------------------------
-      - name: Link the production project
-        if: vars.SUPABASE_PROJECT_ID != ''
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
-        run: |
-          # The CLI refuses to load config.toml without the (git-ignored) signing-key
-          # file; production signs its own JWTs, so an empty key list is enough.
-          printf '[]' > supabase/signing_keys.json
-          # link only talks to the Management API (no database password: CLI
-          # 2.119.0 ignores it here) and records the IPv4 pooler that db push
-          # uses. GitHub runners have no IPv6, so never add --skip-pooler.
-          supabase link --project-ref "$PROJECT_ID"
+      # No `supabase link`: it reads the project's API keys, which a scoped
+      # token can only do with "API Key Secrets" (the sb_secret keys). Migrations
+      # go straight to the session pooler with the database password instead
+      # (IPv4: GitHub runners have no IPv6), so the token needs Edge Functions only.
       - name: Apply new migrations
         if: vars.SUPABASE_PROJECT_ID != ''
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        # --skip-vault: CI changes no project settings or secrets, only the schema.
-        run: supabase db push --linked --skip-vault --yes
+          PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+          POOLER_HOST: ${{ vars.SUPABASE_POOLER_HOST }}
+        run: |
+          if ! [[ "$POOLER_HOST" =~ ^aws-[0-9]+-[a-z0-9-]+\.pooler\.supabase\.com$ ]]; then
+            echo "::error::vars.SUPABASE_POOLER_HOST must be the project's pooler host (aws-N-<region>.pooler.supabase.com)"
+            exit 1
+          fi
+          # The CLI refuses to load config.toml without the (git-ignored) signing-key
+          # file; production signs its own JWTs, so an empty key list is enough.
+          printf '[]' > supabase/signing_keys.json
+          # The password goes into a URL, so percent-encode it, and mask the
+          # encoded form too (GitHub masks only the exact secret).
+          pw=$(node -e 'process.stdout.write(encodeURIComponent(process.env.SUPABASE_DB_PASSWORD))')
+          echo "::add-mask::$pw"
+          # --skip-vault: CI changes no project settings or secrets, only the schema.
+          supabase db push --skip-vault --yes \
+            --db-url "postgresql://postgres.${PROJECT_ID}:${pw}@${POOLER_HOST}:5432/postgres"
       - name: Deploy the Edge Functions
         if: vars.SUPABASE_PROJECT_ID != ''
         env:
