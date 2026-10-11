@@ -40,7 +40,7 @@ select set_eq(
      where table_schema = 'public' and table_name = 'posts'
        and grantee = 'authenticated' and privilege_type = 'INSERT' $$,
   array['campus', 'title', 'venue', 'description', 'link_url', 'starts_at', 'ends_at',
-        'poster_path', 'thumb_path', 'cancelled_at'],
+        'poster_path', 'thumb_path', 'cancelled_at', 'mycsd'],
   'clubs cannot set org_id, hidden_at or timestamps on insert');
 
 select set_eq(

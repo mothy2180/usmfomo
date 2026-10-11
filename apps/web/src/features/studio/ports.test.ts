@@ -38,6 +38,7 @@ const row: PostInsertRow = {
   venue: 'DK A',
   campus: 'main',
   description: null,
+  mycsd: false,
   link_url: null,
   starts_at: '2026-10-11T12:00:00.000Z',
   ends_at: '2026-10-11T14:00:00.000Z',

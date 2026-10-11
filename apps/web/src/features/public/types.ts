@@ -16,6 +16,8 @@ export type PostCard = {
   thumb_path: string | null
   cancelled_at: string | null
   details_changed_at: string | null
+  /** The club says the event counts for MyCSD. */
+  mycsd: boolean
   /** Full match count, repeated on every row of every page. */
   total: number
 }
@@ -49,6 +51,7 @@ export type EventDetail = {
   venue: string
   description: string | null
   link_url: string | null
+  mycsd: boolean
   starts_at: string
   ends_at: string
   poster_path: string | null

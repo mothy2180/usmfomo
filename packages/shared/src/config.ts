@@ -39,6 +39,8 @@ export const POSTER = {
 
 export const CAMPUSES = ['main', 'engineering', 'health', 'other', 'online'] as const
 export type Campus = (typeof CAMPUSES)[number]
+/** The campuses students can filter by on the dashboard (no "Other"). */
+export const FILTER_CAMPUSES: readonly Campus[] = ['main', 'engineering', 'health', 'online']
 
 export const ORG_TYPES = ['club', 'school'] as const
 export type OrgType = (typeof ORG_TYPES)[number]

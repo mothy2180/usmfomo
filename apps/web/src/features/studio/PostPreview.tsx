@@ -31,6 +31,7 @@ export function PostPreview({ data, orgName, poster, cancelled }: { data: ValidP
         <p className="m-0 break-words">
           {data.venue} · {t(`common:campus.${data.campus}`)}
         </p>
+        {data.mycsd ? <p className="m-0 font-semibold text-ok">{t('dashboard:card.mycsd')}</p> : null}
         {data.description ? <p className="m-0 break-words whitespace-pre-line text-muted">{data.description}</p> : null}
         {data.link_url ? (
           <p className="m-0">

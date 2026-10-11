@@ -29,7 +29,7 @@ import { createPost, UnconfirmedCreate, updatePost, type PosterChange, type Post
 import type { PostInsertRow, PostRow } from './types.ts'
 
 type Step = 'form' | 'preview' | 'done'
-type TextField = Exclude<PostField, 'campus'>
+type TextField = Exclude<PostField, 'campus' | 'mycsd'>
 
 const toFiles = (p: ProcessedPoster): PosterFiles => ({ poster: p.poster, thumb: p.thumb, ext: p.format.ext, contentType: p.format.type })
 const isCampus = (v: string): v is Campus => (CAMPUSES as readonly string[]).includes(v)
@@ -405,6 +405,24 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
               maxLength={LIMITS.linkMax}
               placeholder="https://"
             />
+          )}
+        </Field>
+
+        <Field label={t('form.mycsd')} hint={t('form.mycsdHint')}>
+          {({ id, describedBy }) => (
+            <Select
+              id={id}
+              aria-describedby={describedBy}
+              value={values.mycsd ? 'yes' : 'no'}
+              onChange={(e) => {
+                const yes = e.currentTarget.value === 'yes'
+                setValues((v) => ({ ...v, mycsd: yes }))
+              }}
+              className="max-w-32"
+            >
+              <option value="no">{t('form.no')}</option>
+              <option value="yes">{t('form.yes')}</option>
+            </Select>
           )}
         </Field>
 

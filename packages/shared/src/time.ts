@@ -5,8 +5,9 @@ export const MYT_TZ = 'Asia/Kuala_Lumpur'
 const MYT_OFFSET = '+08:00'
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export type Locale = 'en' | 'ms'
-const intlLocale = (l: Locale) => (l === 'ms' ? 'ms-MY' : 'en-MY')
+export type Locale = 'en' | 'ms' | 'zh'
+/** BCP 47 tag for Intl: Malaysian English, Malay, and Simplified Chinese as used in Malaysia. */
+export const intlLocale = (l: Locale) => (l === 'ms' ? 'ms-MY' : l === 'zh' ? 'zh-Hans-MY' : 'en-MY')
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/

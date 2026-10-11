@@ -15,6 +15,8 @@ export type PostFormValues = {
   campus: Campus
   description: string
   link_url: string
+  /** The event counts for MyCSD. */
+  mycsd: boolean
 }
 
 export type PostField = keyof PostFormValues
@@ -38,7 +40,7 @@ export const FIELD_ORDER: readonly PostField[] = [
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
-const REQUIRED: readonly PostField[] = ['title', 'startDate', 'startTime', 'endDate', 'endTime', 'venue']
+const REQUIRED: readonly Exclude<PostField, 'campus' | 'mycsd'>[] = ['title', 'startDate', 'startTime', 'endDate', 'endTime', 'venue']
 // Messages postFormSchema can produce; each has a translation under errors:.
 const SCHEMA_KEYS = new Set([
   'too_short',
@@ -60,10 +62,10 @@ const TIMING_FIELD: Record<string, PostField> = {
 export const normalizeIso = (iso: string): string => new Date(iso).toISOString()
 
 export function emptyPostValues(campus: Campus): PostFormValues {
-  return { title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus, description: '', link_url: '' }
+  return { title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus, description: '', link_url: '', mycsd: false }
 }
 
-type EditablePost = Pick<PostRow, 'title' | 'venue' | 'campus' | 'description' | 'link_url' | 'starts_at' | 'ends_at'>
+type EditablePost = Pick<PostRow, 'title' | 'venue' | 'campus' | 'description' | 'link_url' | 'mycsd' | 'starts_at' | 'ends_at'>
 
 export function postToValues(post: EditablePost): PostFormValues {
   const s = isoToMytInput(post.starts_at)
@@ -78,6 +80,7 @@ export function postToValues(post: EditablePost): PostFormValues {
     campus: post.campus,
     description: post.description ?? '',
     link_url: post.link_url ?? '',
+    mycsd: post.mycsd ?? false,
   }
 }
 
@@ -169,6 +172,7 @@ export function toInsertRow(data: ValidPost, poster: { poster: string; thumb: st
     campus: data.campus,
     description: data.description,
     link_url: data.link_url,
+    mycsd: data.mycsd,
     starts_at: data.starts_at,
     ends_at: data.ends_at,
     poster_path: poster?.poster ?? null,
@@ -188,6 +192,7 @@ export function toUpdatePatch(post: PostRow, data: ValidPost, cancelled: boolean
   if (data.campus !== post.campus) patch.campus = data.campus
   if (data.description !== post.description) patch.description = data.description
   if (data.link_url !== post.link_url) patch.link_url = data.link_url
+  if (data.mycsd !== (post.mycsd ?? false)) patch.mycsd = data.mycsd
   if (Date.parse(data.starts_at) !== Date.parse(post.starts_at)) patch.starts_at = data.starts_at
   if (Date.parse(data.ends_at) !== Date.parse(post.ends_at)) patch.ends_at = data.ends_at
   if (cancelled !== (post.cancelled_at !== null)) patch.cancelled_at = cancelled ? now.toISOString() : null

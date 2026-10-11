@@ -55,6 +55,8 @@ export const postFormSchema = z
       .transform((v) => (v === '' ? null : v))
       .nullable()
       .pipe(linkSchema.nullable()),
+    // Whether the event counts for MyCSD (no when left out).
+    mycsd: z.boolean().optional().transform((v) => v ?? false),
     startDate: dateInput,
     startTime: timeInput,
     endDate: dateInput,
@@ -70,7 +72,16 @@ export const postFormSchema = z
       ctx.addIssue({ code: 'custom', message: 'date_format', path: ['startDate'] })
       return z.NEVER
     }
-    return { title: v.title, venue: v.venue, campus: v.campus, description: v.description, link_url: v.link_url, starts_at, ends_at }
+    return {
+      title: v.title,
+      venue: v.venue,
+      campus: v.campus,
+      description: v.description,
+      link_url: v.link_url,
+      mycsd: v.mycsd,
+      starts_at,
+      ends_at,
+    }
   })
   .superRefine((v, ctx) => {
     const s = Date.parse(v.starts_at)

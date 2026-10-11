@@ -35,6 +35,7 @@ const existing: PostRow = {
   venue: 'DK A',
   description: null,
   link_url: null,
+  mycsd: false,
   starts_at: '2026-10-11T12:00:00+00:00',
   ends_at: '2026-10-11T14:00:00+00:00',
   poster_path: OLD_POSTER,
@@ -56,6 +57,7 @@ function fillValid() {
   change('End time', '22:00')
   change('Venue', 'DK A')
   change('Registration link (optional)', 'https://forms.gle/abc')
+  change('Counts for MyCSD?', 'yes')
 }
 
 const renderForm = (props: Partial<Parameters<typeof PostForm>[0]> = {}) =>
@@ -121,6 +123,7 @@ describe('PostForm', () => {
       campus: 'engineering',
       description: null,
       link_url: 'https://forms.gle/abc',
+      mycsd: true,
       starts_at: '2026-10-11T12:00:00.000Z',
       ends_at: '2026-10-11T14:00:00.000Z',
       poster_path: null,

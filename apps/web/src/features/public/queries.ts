@@ -85,7 +85,7 @@ export function useOrgs(enabled = true) {
 }
 
 const EVENT_COLUMNS =
-  'id,org_id,campus,title,venue,description,link_url,starts_at,ends_at,poster_path,thumb_path,cancelled_at,details_changed_at,updated_at,org:orgs(id,name,slug,type)'
+  'id,org_id,campus,title,venue,description,link_url,mycsd,starts_at,ends_at,poster_path,thumb_path,cancelled_at,details_changed_at,updated_at,org:orgs(id,name,slug,type)'
 
 /** The event page. null = no such visible post (ended, deleted or hidden —
  * the page deliberately can't tell which). Invalid ids never hit the API. */

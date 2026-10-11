@@ -111,6 +111,13 @@ describe('schemas', () => {
     expect(r.link_url).toBeNull()
   })
 
+  it('takes MyCSD as yes or no, no when left out', () => {
+    expect(postFormSchema.parse(base).mycsd).toBe(false)
+    expect(postFormSchema.parse({ ...base, mycsd: true }).mycsd).toBe(true)
+    expect(postFormSchema.parse({ ...base, mycsd: false }).mycsd).toBe(false)
+    expect(postFormSchema.safeParse({ ...base, mycsd: 'yes' }).success).toBe(false)
+  })
+
   it('rejects an end before the start and events over 31 days', () => {
     expect(postFormSchema.safeParse({ ...base, endTime: '19:00' }).success).toBe(false)
     expect(postFormSchema.safeParse({ ...base, endDate: '2026-11-20' }).success).toBe(false)

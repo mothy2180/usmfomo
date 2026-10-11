@@ -27,6 +27,7 @@ const filled = (over: Partial<PostFormValues> = {}): PostFormValues => ({
   campus: 'main',
   description: '',
   link_url: '',
+  mycsd: false,
   ...over,
 })
 
@@ -34,6 +35,7 @@ const row = (over: Partial<PostRow> = {}): PostRow => ({
   id: '22222222-2222-4222-8222-222222222222',
   org_id: ORG,
   campus: 'main',
+  mycsd: false,
   title: 'Hack Night',
   venue: 'DK A',
   description: null,
@@ -53,7 +55,7 @@ const row = (over: Partial<PostRow> = {}): PostRow => ({
 describe('form values', () => {
   it('starts empty on the organisation’s campus', () => {
     expect(emptyPostValues('health')).toEqual({
-      title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus: 'health', description: '', link_url: '',
+      title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus: 'health', description: '', link_url: '', mycsd: false,
     })
   })
 
@@ -137,10 +139,18 @@ describe('validatePostForm (create)', () => {
         campus: 'main',
         description: null,
         link_url: null,
+        mycsd: false,
         starts_at: '2026-10-11T12:00:00.000Z',
         ends_at: '2026-10-11T14:00:00.000Z',
       },
     })
+  })
+
+  it('carries the MyCSD yes/no through', () => {
+    const r = validatePostForm(filled({ mycsd: true }), { kind: 'create' }, NOW)
+    expect(r.ok && r.data.mycsd).toBe(true)
+    expect(postToValues(row({ mycsd: true })).mycsd).toBe(true)
+    expect(toUpdatePatch(row(), { ...(r.ok ? r.data : ({} as never)), campus: 'main', description: null, link_url: null }, false, NOW)).toMatchObject({ mycsd: true })
   })
 })
 
@@ -181,20 +191,21 @@ describe('payloads', () => {
     campus: 'engineering' as const,
     description: 'Bring a laptop',
     link_url: 'https://forms.gle/abc',
+    mycsd: false,
     starts_at: '2026-10-11T12:00:00.000Z',
     ends_at: '2026-10-11T14:00:00.000Z',
   }
 
   it('inserts only granted columns, never org_id', () => {
     const insert = toInsertRow(data, { poster: `${ORG}/a.webp`, thumb: `${ORG}/a-thumb.webp` })
-    expect(Object.keys(insert).sort()).toEqual(['campus', 'description', 'ends_at', 'link_url', 'poster_path', 'starts_at', 'thumb_path', 'title', 'venue'])
+    expect(Object.keys(insert).sort()).toEqual(['campus', 'description', 'ends_at', 'link_url', 'mycsd', 'poster_path', 'starts_at', 'thumb_path', 'title', 'venue'])
     expect(insert).toMatchObject({ poster_path: `${ORG}/a.webp`, thumb_path: `${ORG}/a-thumb.webp` })
     expect(toInsertRow(data, null)).toMatchObject({ poster_path: null, thumb_path: null })
   })
 
   it('updates only what changed (every update counts towards the edit limit)', () => {
     const post = row()
-    const same = { ...data, campus: 'main' as const, description: null, link_url: null }
+    const same = { ...data, campus: 'main' as const, description: null, link_url: null, mycsd: false }
     expect(toUpdatePatch(post, same, false, NOW)).toEqual({})
     expect(toUpdatePatch(post, { ...same, title: 'Hack Night II', ends_at: '2026-10-11T15:00:00.000Z' }, false, NOW)).toEqual({
       title: 'Hack Night II',
@@ -205,9 +216,9 @@ describe('payloads', () => {
   })
 
   it('sets and clears cancelled_at from the toggle', () => {
-    expect(toUpdatePatch(row(), { ...data, campus: 'main', description: null, link_url: null }, true, NOW)).toEqual({ cancelled_at: NOW.toISOString() })
+    expect(toUpdatePatch(row(), { ...data, campus: 'main', description: null, link_url: null, mycsd: false }, true, NOW)).toEqual({ cancelled_at: NOW.toISOString() })
     const cancelled = row({ cancelled_at: '2026-10-02T00:00:00+00:00' })
-    expect(toUpdatePatch(cancelled, { ...data, campus: 'main', description: null, link_url: null }, false, NOW)).toEqual({ cancelled_at: null })
-    expect(toUpdatePatch(cancelled, { ...data, campus: 'main', description: null, link_url: null }, true, NOW)).toEqual({})
+    expect(toUpdatePatch(cancelled, { ...data, campus: 'main', description: null, link_url: null, mycsd: false }, false, NOW)).toEqual({ cancelled_at: null })
+    expect(toUpdatePatch(cancelled, { ...data, campus: 'main', description: null, link_url: null, mycsd: false }, true, NOW)).toEqual({})
   })
 })

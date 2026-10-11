@@ -14,6 +14,7 @@ const data: ValidPost = {
   campus: 'main',
   description: null,
   link_url: null,
+  mycsd: false,
   starts_at: '2026-10-11T12:00:00.000Z',
   ends_at: '2026-10-11T14:00:00.000Z',
 }
@@ -125,6 +126,7 @@ describe('createPost', () => {
       campus: 'main',
       description: null,
       link_url: null,
+      mycsd: false,
       starts_at: data.starts_at,
       ends_at: data.ends_at,
       poster_path: `${ORG}/55555555-5555-4555-8555-555555555555.webp`,

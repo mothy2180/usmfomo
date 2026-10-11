@@ -2,7 +2,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
-
+  
   "public": {
           Tables: {
             "notices": {
@@ -16,7 +16,7 @@ export type Database = {
                     "body"?: string,"created_at"?: string,"ends_at"?: string,"id"?: string,"link_url"?: string | null,"starts_at"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
-
+                    
                   ]
                 },"orgs": {
                   Row: {
@@ -29,17 +29,17 @@ export type Database = {
                     "active"?: boolean,"campus"?: Database["public"]['Enums']["campus"],"created_at"?: string,"id"?: string,"name"?: string,"slug"?: string,"type"?: Database["public"]['Enums']["org_type"]
                   }
                   Relationships: [
-
+                    
                   ]
                 },"posts": {
                   Row: {
-                    "campus": Database["public"]['Enums']["campus"],"cancelled_at": string | null,"created_at": string,"description": string | null,"details_changed_at": string | null,"ends_at": string,"hidden_at": string | null,"id": string,"link_url": string | null,"org_id": string,"poster_path": string | null,"starts_at": string,"thumb_path": string | null,"title": string,"updated_at": string,"venue": string
+                    "campus": Database["public"]['Enums']["campus"],"cancelled_at": string | null,"created_at": string,"description": string | null,"details_changed_at": string | null,"ends_at": string,"hidden_at": string | null,"id": string,"link_url": string | null,"mycsd": boolean,"org_id": string,"poster_path": string | null,"starts_at": string,"thumb_path": string | null,"title": string,"updated_at": string,"venue": string
                   }
                   Insert: {
-                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at": string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"org_id": string,"poster_path"?: string | null,"starts_at": string,"thumb_path"?: string | null,"title": string,"updated_at"?: string,"venue": string
+                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at": string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"mycsd"?: boolean,"org_id": string,"poster_path"?: string | null,"starts_at": string,"thumb_path"?: string | null,"title": string,"updated_at"?: string,"venue": string
                   }
                   Update: {
-                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at"?: string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"org_id"?: string,"poster_path"?: string | null,"starts_at"?: string,"thumb_path"?: string | null,"title"?: string,"updated_at"?: string,"venue"?: string
+                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at"?: string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"mycsd"?: boolean,"org_id"?: string,"poster_path"?: string | null,"starts_at"?: string,"thumb_path"?: string | null,"title"?: string,"updated_at"?: string,"venue"?: string
                   }
                   Relationships: [
                     {
@@ -61,7 +61,7 @@ isOneToOne: false
                     "id"?: number,"posting_enabled"?: boolean,"public_reads_enabled"?: boolean,"updated_at"?: string
                   }
                   Relationships: [
-
+                    
                   ]
                 }
           }
@@ -134,7 +134,7 @@ isOneToOne: false
                            },
 "search_posts":
 { Args: { "p_campus"?: Database["public"]['Enums']["campus"],"p_limit"?: number,"p_offset"?: number,"p_org"?: string,"p_q"?: string,"p_type": Database["public"]['Enums']["org_type"] }; Returns: {
-              "campus": Database["public"]['Enums']["campus"],"cancelled_at": string,"details_changed_at": string,"ends_at": string,"id": string,"org_id": string,"org_name": string,"org_slug": string,"org_type": Database["public"]['Enums']["org_type"],"starts_at": string,"thumb_path": string,"title": string,"total": number,"venue": string
+              "campus": Database["public"]['Enums']["campus"],"cancelled_at": string,"details_changed_at": string,"ends_at": string,"id": string,"mycsd": boolean,"org_id": string,"org_name": string,"org_slug": string,"org_type": Database["public"]['Enums']["org_type"],"starts_at": string,"thumb_path": string,"title": string,"total": number,"venue": string
             }[]
                            }
           }
