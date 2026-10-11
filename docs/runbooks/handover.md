@@ -29,10 +29,10 @@ committee**. One click does, in this order: deactivate (and ban) → new passwor
 (ends every session) → delete every 2FA factor → reactivate. The new password
 is shown **once**.
 
-From your laptop instead (production: the `owner-cli` key for this command only):
+From your laptop instead (production: the `owner_cli` key for this command only):
 
 ```zsh
-read -rs 'k?owner-cli key: '; echo
+read -rs 'k?owner_cli key: '; echo
 SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account handover <username>; unset k
 ```
 

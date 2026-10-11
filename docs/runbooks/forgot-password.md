@@ -19,7 +19,7 @@ it. A reset is exactly what an attacker would ask for, so **identity comes first
 Owner console → Accounts → the organisation → **Reset password**, or:
 
 ```zsh
-read -rs 'k?owner-cli key: '; echo
+read -rs 'k?owner_cli key: '; echo
 SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account reset-password <username>; unset k
 ```
 

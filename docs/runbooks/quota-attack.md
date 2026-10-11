@@ -61,11 +61,11 @@ new name is not secret forever (it is in the public repo), but it buys time.
   use the only secret key there is, and with two or more keys but none named
   `default` both stop working (no cleanup, no console). So keep the name, and
   replace the keys in this order (Project Settings → API Keys):
-  1. `owner-cli`, if it may have leaked too: delete it, then create a new
-     secret key named `owner-cli` (password manager). The functions keep using
+  1. `owner_cli`, if it may have leaked too: delete it, then create a new
+     secret key named `owner_cli` (password manager). The functions keep using
      `default` meanwhile.
   2. Delete the `default` key, then create a new secret key named exactly
-     `default`. In between, the functions fall back to `owner-cli`, the only
+     `default`. In between, the functions fall back to `owner_cli`, the only
      other secret key; expect errors for a few minutes anyway, until step 3.
   3. Redeploy the Edge Functions so they read the new keys: Actions → Deploy →
      Run workflow (or `pnpm supabase functions deploy maintenance owner-admin`

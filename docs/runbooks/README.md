@@ -23,7 +23,7 @@ component contracts: [`../api.md`](../api.md).
 | [onboard-club.md](onboard-club.md) | a club or school asks for an account |
 | [handover.md](handover.md) | a committee changes (new office bearers) |
 | [forgot-password.md](forgot-password.md) | a club forgot its password or lost its 2FA device |
-| [owner-lockout.md](owner-lockout.md) | you (the owner) lost both TOTP devices, the password, or the `owner-cli` key |
+| [owner-lockout.md](owner-lockout.md) | you (the owner) lost both TOTP devices, the password, or the `owner_cli` key |
 | [account-takeover.md](account-takeover.md) | an account posts things its club did not, or a factor nobody recognises appears |
 | [quota-attack.md](quota-attack.md) | Supabase usage jumps or someone floods the public API |
 

@@ -6,7 +6,7 @@ logins at strange hours in the audit log. Contain first, investigate second.
 
 ## 1. Contain (minutes)
 
-Owner console (or the owner CLI with the `owner-cli` key):
+Owner console (or the owner CLI with the `owner_cli` key):
 
 1. **Pause account** (Accounts → Manage): it can no longer sign in, and posting
    stops at once (`pnpm account deactivate <username>`).
@@ -62,7 +62,7 @@ Treat everything the owner can reach as exposed and rotate it all, from your lap
 
 1. `pnpm account owner-reset-mfa <username>` (new owner password, every owner
    factor removed, every session ended), then enrol two new TOTP devices.
-2. Replace the `owner-cli` secret key, and the `default` one too if any secret
+2. Replace the `owner_cli` secret key, and the `default` one too if any secret
    key could have leaked, in the order of [quota-attack.md](quota-attack.md),
    section 4: the new Edge Functions key must be named exactly `default`, then
    redeploy the functions.

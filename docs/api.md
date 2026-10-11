@@ -180,11 +180,11 @@ Logs). Vars: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`; secret: `CRON_SECRET`.
 `pnpm account <command> [args]`, Node 26 (native TypeScript, no enums).
 Environment: `SUPABASE_URL` (default `http://127.0.0.1:54321`) and
 `SUPABASE_SECRET_KEY`. For a local URL the key may be omitted (read from
-`supabase status -o env`). For production, pass the named `owner-cli` secret
+`supabase status -o env`). For production, pass the named `owner_cli` secret
 key for one command only:
 
 ```
-read -rs 'k?owner-cli key: '; SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account list; unset k
+read -rs 'k?owner_cli key: '; SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account list; unset k
 ```
 
 Commands: `list` · `create-owner <username>` · `create <username> --org "<name>" --type club|school [--campus main] [--slug <slug>]` ·

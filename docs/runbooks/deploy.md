@@ -127,7 +127,7 @@ Claim both names before anything points at them.
 3. Note the **project ref** (Project Settings → General, or the `<ref>` in
    `https://<ref>.supabase.co`).
 
-## 2. API keys: publishable, and a named secret key `owner-cli`
+## 2. API keys: publishable, and a named secret key `owner_cli`
 
 Project Settings → **API Keys**:
 
@@ -137,7 +137,7 @@ Project Settings → **API Keys**:
 - A secret key named `default` exists. Edge Functions receive it automatically
   (`SUPABASE_SECRET_KEYS`); you never copy it anywhere. Keep that name: to
   replace the key, follow [quota-attack.md](quota-attack.md), section 4.
-- **Create a new secret key** named `owner-cli`. It is only for `pnpm account`
+- **Create a new secret key** named `owner_cli`. It is only for `pnpm account`
   on your laptop (owner bootstrap and break-glass, [owner-lockout.md](owner-lockout.md)).
   Copy it once into your password manager. Never into a file, `.env`, shell
   profile or GitHub.
@@ -366,7 +366,7 @@ The next run at :07 must be ok (`pnpm wrangler tail usmfomo-cron`).
 ## 13. Owner account
 
 ```zsh
-read -rs 'k?owner-cli key: '; echo
+read -rs 'k?owner_cli key: '; echo
 SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account create-owner <username>; unset k
 ```
 
@@ -462,7 +462,7 @@ After the first club posts a poster, open the event: the image URL is
 
 | Thing | Lives in |
 |---|---|
-| Database password, `owner-cli` key, owner password | your password manager (the database password also in its GitHub secret) |
+| Database password, `owner_cli` key, owner password | your password manager (the database password also in its GitHub secret) |
 | CI tokens (Supabase, Cloudflare) | GitHub environment secrets only; make a new one if lost |
 | Production Turnstile secret | Cloudflare (with the widget) + one copy in the Supabase dashboard; nowhere else |
 | `CRON_SECRET` | Supabase secrets + Worker secret + your password manager (nowhere else) |

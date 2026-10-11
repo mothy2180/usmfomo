@@ -67,7 +67,7 @@ export function SecondDevicePage() {
     <AuthLayout key="add" title="Add a second device">
       <p className="m-0 text-sm">
         The console opens once two devices are enrolled. With only one, losing it locks you out until you run the
-        break-glass command <code className="font-mono">pnpm account owner-reset-mfa</code> with the owner-cli secret key.
+        break-glass command <code className="font-mono">pnpm account owner-reset-mfa</code> with the owner_cli secret key.
       </p>
       <Callout tone="info" title="Any authenticator app works">
         <p className="m-0">

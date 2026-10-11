@@ -34,10 +34,10 @@ Logins are usernames only; behind the scenes they become
 
 - Owner console (<https://usmfomo-admin.pages.dev>) → **Accounts** → **Create
   account**. The generated password (24 characters) is shown **once**.
-- Or from your laptop, for production with the `owner-cli` key for this one command:
+- Or from your laptop, for production with the `owner_cli` key for this one command:
 
   ```zsh
-  read -rs 'k?owner-cli key: '; echo
+  read -rs 'k?owner_cli key: '; echo
   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k \
     pnpm account create robotics-club --org "USM Robotics Club" --type club --campus main --slug robotics-club
   unset k

@@ -69,7 +69,7 @@ export function resolveTarget(env: Env, readStatus: () => string = readLocalStat
   if (!key) {
     if (!local) {
       throw new ConfigError(
-        `SUPABASE_SECRET_KEY is required for ${url}: pass the owner-cli secret key for one command (docs/api.md)`,
+        `SUPABASE_SECRET_KEY is required for ${url}: pass the owner_cli secret key for one command (docs/api.md)`,
       )
     }
     let status: string
