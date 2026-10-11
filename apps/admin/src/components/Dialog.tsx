@@ -33,6 +33,11 @@ export function Dialog({ open, title, onClose, children, focusKey, preventEscape
   const onCloseRef = useRef(onClose)
   const openRef = useRef(open)
   const lockedRef = useRef(Boolean(preventEscape))
+  // Set when this component closes the dialog itself (effect cleanup). The
+  // browser fires "close" later, as a task: without this, StrictMode's
+  // mount-unmount-mount of a dialog that starts open looked like the user
+  // closing it, and the dialog vanished before it was ever seen.
+  const selfClosedRef = useRef(false)
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -50,6 +55,7 @@ export function Dialog({ open, title, onClose, children, focusKey, preventEscape
     el.querySelector<HTMLElement>('[data-autofocus]')?.focus()
     return () => {
       if (el.open) {
+        selfClosedRef.current = true
         if (typeof el.close === 'function') el.close()
         else el.removeAttribute('open')
       }
@@ -80,6 +86,10 @@ export function Dialog({ open, title, onClose, children, focusKey, preventEscape
       onClose={(e) => {
         // Closed by the browser itself: Chrome lets a repeated Escape through
         // even when "cancel" is prevented.
+        if (selfClosedRef.current) {
+          selfClosedRef.current = false
+          return
+        }
         if (!openRef.current) return
         if (lockedRef.current) show(e.currentTarget)
         else onCloseRef.current()
