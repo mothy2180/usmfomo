@@ -15,13 +15,13 @@
     "disclaimer": "usmfomo is an independent, unofficial student project, not affiliated with or endorsed by Universiti Sains Malaysia. Events are posted by the clubs and schools themselves.",
     "report": "Report a problem with a post",
     "rules": "Posting rules",
-    "source": "Source code",
-    "security": "Security"
+    "createdBy": "By"
   },
   "lang": {
     "label": "Language",
     "en": "English",
-    "ms": "Bahasa Melayu"
+    "ms": "Bahasa Melayu",
+    "zh": "中文"
   },
   "actions": {
     "retry": "Try again",

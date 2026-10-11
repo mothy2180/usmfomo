@@ -32,7 +32,8 @@
     "clearOrg": "Show all organisers"
   },
   "card": {
-    "organiser": "Organiser:"
+    "organiser": "Organiser:",
+    "mycsd": "Counts for MyCSD"
   },
   "badges": {
     "updatedHint": "(the time or venue changed)"
@@ -82,7 +83,10 @@
     "updatedNote": "The organiser changed the time or venue on {{day}}.",
     "addToCalendar": "Add to calendar",
     "googleCalendar": "Google Calendar",
-    "newTab": "(opens in a new tab)"
+    "newTab": "(opens in a new tab)",
+    "mycsd": "MyCSD",
+    "mycsdNote": "As stated by the organiser",
+    "mycsdYes": "Yes"
   },
   "share": {
     "copied": "Link copied.",

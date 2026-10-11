@@ -3,6 +3,8 @@ import enErrors from '../../locales/en/errors.json'
 import enStudio from '../../locales/en/studio.json'
 import msErrors from '../../locales/ms/errors.json'
 import msStudio from '../../locales/ms/studio.json'
+import zhErrors from '../../locales/zh/errors.json'
+import zhStudio from '../../locales/zh/studio.json'
 
 /** Every string in a namespace, by its dotted key. */
 function leaves(value: unknown, prefix = ''): Record<string, string> {
@@ -21,10 +23,12 @@ describe('studio and error translations', () => {
   const namespaces = [
     ['studio', enStudio, msStudio],
     ['errors', enErrors, msErrors],
+    ['studio (Chinese)', enStudio, zhStudio],
+    ['errors (Chinese)', enErrors, zhErrors],
   ] as const
 
   for (const [name, en, ms] of namespaces) {
-    it(`${name}: Malay has exactly the English keys, with the same placeholders and tags`, () => {
+    it(`${name}: the translation has exactly the English keys, with the same placeholders and tags`, () => {
       const english = leaves(en)
       const malay = leaves(ms)
       expect(Object.keys(malay).sort()).toEqual(Object.keys(english).sort())

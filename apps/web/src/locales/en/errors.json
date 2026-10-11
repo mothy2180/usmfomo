@@ -7,7 +7,6 @@
   "mfa_required": "Enter the code from your authenticator app to continue.",
   "duplicate": "That name is already taken.",
   "invalid_input": "Please check the highlighted fields.",
-
   "posting_paused": "Posting is paused by the usmfomo admin. Your live posts stay visible.",
   "quota_live": "You already have 15 live posts. Delete one or wait until one ends.",
   "quota_daily": "You've made 5 new posts in the last 24 hours. Try again later.",
@@ -18,7 +17,6 @@
   "too_long": "This post would stay up too long. Create a new post for the next event.",
   "path_invalid": "The poster upload failed. Please choose the image again.",
   "owner_only": "Only the usmfomo admin can do that.",
-
   "too_short": "Too short.",
   "too_long_text": "Too long.",
   "bad_chars": "Remove special or invisible characters.",
@@ -35,14 +33,12 @@
   "username_format": "3–32 lowercase letters, numbers or dashes.",
   "slug_format": "Lowercase letters, numbers and dashes only.",
   "campus_physical": "Choose a physical campus for the organisation.",
-
   "auth_invalid": "Wrong username or password.",
   "auth_captcha": "Please complete the check again.",
   "auth_paused": "This account is paused — contact the usmfomo admin.",
   "auth_bad_code": "That code didn't work — use the newest code and check your phone's clock.",
   "auth_rate_limited": "Too many attempts. Wait a few minutes and try again.",
   "weak_password": "That password is too weak.",
-
   "file_too_big": "That file is over 10 MB. Choose a smaller image.",
   "file_type": "Use a JPG, PNG or WebP image. (For PDF or HEIC, export as JPG or PNG first.)",
   "image_decode": "That image couldn't be read. Try exporting it again as JPG or PNG.",

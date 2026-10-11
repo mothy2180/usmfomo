@@ -44,6 +44,7 @@ const event = (extra: Partial<EventDetail> = {}): EventDetail => ({
   thumb_path: `${ORG_ID}/0e933cbb-0166-4b16-8dbd-caaba70c978b-thumb.webp`,
   cancelled_at: null,
   details_changed_at: null,
+  mycsd: false,
   updated_at: '2026-10-05T02:19:37Z',
   org: { id: ORG_ID, name: 'Computer Science Society', slug: 'computer-science-society', type: 'club' },
   ...extra,
@@ -107,7 +108,7 @@ describe('EventPage', () => {
     expect(post?.table).toBe('posts')
     expect(post?.chain[0]).toEqual([
       'select',
-      ['id,org_id,campus,title,venue,description,link_url,starts_at,ends_at,poster_path,thumb_path,cancelled_at,details_changed_at,updated_at,org:orgs(id,name,slug,type)'],
+      ['id,org_id,campus,title,venue,description,link_url,mycsd,starts_at,ends_at,poster_path,thumb_path,cancelled_at,details_changed_at,updated_at,org:orgs(id,name,slug,type)'],
     ])
     expect(post?.chain[1]).toEqual(['eq', ['id', ID]])
     expect(post?.chain.some(([method]) => method === 'maybeSingle')).toBe(true)

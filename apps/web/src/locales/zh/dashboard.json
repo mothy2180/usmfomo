@@ -1,0 +1,179 @@
+{
+  "dashboard": {
+    "title": "近期活动",
+    "docTitle": "近期活动 — usmfomo",
+    "intro": "USM 社团和学院的近期活动，一站看齐。无需注册。",
+    "tabsLabel": "活动主办方",
+    "countClub_one": "{{count}} 个社团活动",
+    "countClub_other": "{{count}} 个社团活动",
+    "countSchool_one": "{{count}} 个学院活动",
+    "countSchool_other": "{{count}} 个学院活动"
+  },
+  "sections": {
+    "now": "正在进行",
+    "today": "今天",
+    "tomorrow": "明天",
+    "week": "本周",
+    "later": "之后"
+  },
+  "panel": {
+    "loading": "正在加载活动…",
+    "showMore": "显示更多",
+    "showing": "显示 {{shown}} / {{total}} 个",
+    "empty": {
+      "club": "暂无即将举行的社团活动。",
+      "school": "暂无即将举行的学院活动。"
+    },
+    "emptyHint": "你在 USM 负责社团或学院吗？<rules>阅读发布规则</rules>，了解如何在这里发布活动。",
+    "noResultsQuery": "没有与“{{q}}”相符的结果。",
+    "noResultsFilters": "没有符合筛选条件的活动。",
+    "otherOrg": "仅显示 {{name}} 的活动。",
+    "otherOrgUnnamed": "仅显示一个主办方的活动。",
+    "clearOrg": "显示所有主办方"
+  },
+  "card": {
+    "organiser": "主办方：",
+    "mycsd": "计入 MyCSD"
+  },
+  "badges": {
+    "updatedHint": "（时间或地点有变）"
+  },
+  "filters": {
+    "label": "筛选活动",
+    "search": "搜索",
+    "searchPlaceholder": "活动、地点或主办方",
+    "campus": "校区",
+    "organiser": "主办方",
+    "organiserPlaceholder": "输入社团或学院名称",
+    "organiserLoading": "正在加载主办方…",
+    "organiserList": "主办方",
+    "organiserNone": "没有相符的主办方。",
+    "organiserMore": "继续输入以查看更多。",
+    "organisersFound_one": "找到 {{count}} 个主办方。使用上下方向键选择。",
+    "organisersFound_other": "找到 {{count}} 个主办方。使用上下方向键选择。",
+    "clearOrganiser": "清除主办方：{{name}}",
+    "clear": "清除筛选"
+  },
+  "notices": {
+    "heading": "公告",
+    "readMore": "展开",
+    "readLess": "收起",
+    "more_one": "更多公告（{{count}}）",
+    "more_other": "更多公告（{{count}}）",
+    "fewer": "隐藏其余公告",
+    "dismiss": "关闭公告：{{title}}",
+    "link": "了解更多"
+  },
+  "event": {
+    "back": "近期活动",
+    "docTitle": "{{title}} — usmfomo",
+    "loadingDocTitle": "活动 — usmfomo",
+    "goneDocTitle": "活动已结束或已移除 — usmfomo",
+    "goneTitle": "此活动已结束，或已被主办方移除。",
+    "goneBody": "USM 还有很多其他活动。",
+    "goneCta": "查看近期活动",
+    "errorTitle": "无法加载此活动",
+    "when": "时间",
+    "where": "地点",
+    "organiser": "主办方",
+    "about": "活动简介",
+    "link": "报名与详情",
+    "posterAlt": "海报：{{title}}",
+    "cancelledNote": "主办方已取消此活动。",
+    "updatedNote": "主办方已于{{day}}更改时间或地点。",
+    "addToCalendar": "添加到日历",
+    "googleCalendar": "Google 日历",
+    "newTab": "（在新标签页中打开）",
+    "mycsd": "MyCSD",
+    "mycsdNote": "由主办方提供",
+    "mycsdYes": "是"
+  },
+  "share": {
+    "copied": "链接已复制。",
+    "manual": "请复制此链接："
+  },
+  "org": {
+    "docTitle": "{{name}} — usmfomo",
+    "loadingDocTitle": "主办方 — usmfomo",
+    "missingDocTitle": "找不到主办方 — usmfomo",
+    "missingTitle": "找不到此主办方。",
+    "missingBody": "链接可能有误，或该主办方目前不在 usmfomo 上。",
+    "errorTitle": "无法加载此主办方",
+    "upcoming": "即将举行的活动",
+    "empty": "{{name}} 目前没有即将举行的活动。",
+    "emptyCta": "查看所有近期活动"
+  },
+  "degraded": {
+    "title": "活动暂时隐藏。",
+    "body": "usmfomo 暂时受限，目前无法显示活动。请稍后再来看看。"
+  },
+  "rules": {
+    "docTitle": "发布规则 — usmfomo",
+    "title": "发布规则",
+    "intro": "usmfomo 将 USM 社团和学院的近期活动汇集在一处。以下规则适用于每一则帖子，让平台对所有人都实用又安全。",
+    "who": {
+      "title": "谁可以发布",
+      "items": [
+        "社团：学生自主运营的团体，包括各类学会、宿舍区（Desasiswa）委员会及学生代表理事会（MPP）。",
+        "学院：学术与行政单位，包括学院、中心、研究所及 HEPA 单位。",
+        "每个社团或学院有一个账户，由 usmfomo 管理员开设。学生浏览无需账户。"
+      ]
+    },
+    "allowed": {
+      "title": "可以发布的内容",
+      "items": [
+        "由你的社团或学院主办的真实 USM 活动。",
+        "准确的详情：活动名称、日期和时间、地点，以及清楚的简介。如有变动，请编辑或取消帖子。",
+        "如实的链接：链接必须指向所说明的页面，例如你的报名表格或官方页面。"
+      ]
+    },
+    "notAllowed": {
+      "title": "不允许的内容",
+      "items": [
+        "针对任何个人或群体的仇恨言论或骚扰。",
+        "色情露骨内容。",
+        "政党内容或竞选宣传。",
+        "酒类或赌博。",
+        "他人的个人资料，例如未经同意分享的电话号码、身份证号码、地址或照片。"
+      ]
+    },
+    "limits": {
+      "title": "限制",
+      "items": [
+        "同时最多 {{live}} 个上线中的帖子。",
+        "任意 24 小时内最多 {{daily}} 个新帖子。删除帖子不会退回名额。",
+        "任意 24 小时内最多编辑 {{edits}} 次。",
+        "活动最长可持续 {{days}} 天。活动结束后帖子会自动消失。",
+        "海报：JPG、PNG 或 WebP，最大 {{mb}} MB。上传前会自动压缩。"
+      ]
+    },
+    "posters": {
+      "title": "海报小贴士",
+      "items": [
+        "把重点放在中间：活动列表会从中央裁切出正方形。",
+        "使用大字体。大多数学生会用手机看你的海报。",
+        "日期、时间和地点也要写在帖子里，不要只放在海报上。"
+      ]
+    },
+    "security": {
+      "title": "保护你的账户",
+      "items": [
+        "在工作室设置中开启两步验证（2FA）。这是可选的，但强烈建议开启。",
+        "每位委员会成员各自添加自己的手机，这样有人离开时账户也不会丢失。",
+        "切勿将密码分享给委员会以外的人。委员会换届时，请联系 usmfomo 管理员办理交接。"
+      ]
+    },
+    "moderation": {
+      "title": "内容管理",
+      "body": "usmfomo 管理员可隐藏或移除任何违反这些规则的帖子，并可暂停屡次违规的账户。"
+    },
+    "account": {
+      "title": "申请账户或新密码",
+      "body": "本平台不开放注册：账户由 usmfomo 管理员开设。如需申请账户、新密码或重置 2FA，请用你的社团或学院官方账号<contact>联系 usmfomo 管理员</contact>，以便我们确认是你本人。"
+    },
+    "disclaimer": {
+      "title": "非官方项目",
+      "body": "usmfomo 是一个独立、非官方的学生项目，与 Universiti Sains Malaysia 无关联，未获其认可，也不由其运营。活动均由各社团和学院自行发布。"
+    }
+  }
+}

@@ -61,7 +61,6 @@ function StudioHomeContent({ status }: { status: OkStatus }) {
           username={status.username}
           hasFactors={status.factors > 0}
           hasPosts={(posts.data?.length ?? 0) > 0}
-          onDismiss={() => headingRef.current?.focus()}
         />
 
         <div className="flex flex-wrap items-center gap-3">

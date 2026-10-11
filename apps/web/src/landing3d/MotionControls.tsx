@@ -11,7 +11,8 @@ type Props = {
 }
 
 /**
- * The always-visible "Pause motion" and "Lite mode" toggles (WCAG 2.2.2), plus
+ * The "Pause motion" (hidden in Lite mode, where nothing moves) and "Lite mode"
+ * toggles (WCAG 2.2.2), plus
  * the video's loading and tap-to-play notes. Toggle buttons keep a fixed name
  * and report their state with aria-pressed; the box before the label shows it.
  */
@@ -21,9 +22,12 @@ export function MotionControls({ paused, lite, status, onTogglePaused, onToggleL
   return (
     <div className="l3d-controls">
       <div className="l3d-buttons">
-        <button type="button" className="l3d-toggle" aria-pressed={paused} onClick={onTogglePaused}>
-          {t('pauseMotion')}
-        </button>
+        {/* Lite mode shows no motion at all, so there is nothing to pause. */}
+        {lite ? null : (
+          <button type="button" className="l3d-toggle" aria-pressed={paused} onClick={onTogglePaused}>
+            {t('pauseMotion')}
+          </button>
+        )}
         <button type="button" className="l3d-toggle" aria-pressed={lite} onClick={onToggleLite}>
           {t('liteMode')}
         </button>

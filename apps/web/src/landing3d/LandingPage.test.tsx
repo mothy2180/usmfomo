@@ -98,6 +98,14 @@ describe('LandingPage', () => {
     expect(window.localStorage.getItem(LITE_KEY)).toBe('on')
     expect(screen.getByRole('button', { name: 'Lite mode' }).getAttribute('aria-pressed')).toBe('true')
     await waitFor(() => expect(screen.queryByTestId('scene')).toBeNull())
+    // Nothing moves in Lite mode, so there is no Pause motion.
+    expect(screen.queryByRole('button', { name: 'Pause motion' })).toBeNull()
+    // Lite mode is plain black: no glass picture either.
+    expect(document.querySelector('.landing-bg')).toBeNull()
+    expect(document.querySelector('[data-page=landing]')?.classList.contains('landing-lite')).toBe(true)
+    // Off again: the glass picture is back.
+    fireEvent.click(screen.getByRole('button', { name: 'Lite mode' }))
+    expect(document.querySelector('.landing-bg')).toBeTruthy()
   })
 
   it('does not load anything for a page that starts paused', async () => {

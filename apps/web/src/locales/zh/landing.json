@@ -1,0 +1,14 @@
+{
+  "title": "usmfomo",
+  "docTitle": "usmfomo — USM 近期活动",
+  "tagline": "看看 USM 最近有什么活动",
+  "cta": "I'm FOMO",
+  "login": "登录",
+  "loginNote": "仅限社团与学院管理员",
+  "disclaimer": "usmfomo 是一个独立、非官方的学生项目，与 Universiti Sains Malaysia 无关联，也未获其认可。",
+  "pauseMotion": "暂停动画",
+  "playMotion": "播放动画",
+  "tapToPlay": "点击任意位置开始播放",
+  "loading": "正在加载玻璃效果… {{percent}}%",
+  "liteMode": "精简模式"
+}

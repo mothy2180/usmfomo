@@ -54,6 +54,7 @@ function post(org: OrgSummary, title: string, starts_at: string, ends_at: string
     thumb_path: null,
     cancelled_at: null,
     details_changed_at: null,
+    mycsd: false,
     total: 0,
   }
 }
@@ -405,7 +406,7 @@ describe('DashboardPage', () => {
     expect(searchCalls('school').every((c) => c.args?.p_org === undefined)).toBe(true)
   })
 
-  it('shows both panels side by side on wide screens', async () => {
+  it('shows one list at a time on wide screens too: Clubs or Schools, as the visitor picks', async () => {
     window.matchMedia = ((query: string) => ({
       matches: true,
       media: query,
@@ -417,8 +418,11 @@ describe('DashboardPage', () => {
       school: [post(SCHOOL, 'FYP talk', '2026-10-30T01:00:00Z', '2026-10-30T03:00:00Z')],
     })
     await renderDashboard()
-    expect(within(await screen.findByRole('region', { name: 'Clubs (1)' })).getByText('Robot race')).toBeTruthy()
-    expect(within(await screen.findByRole('region', { name: 'Schools (1)' })).getByText('FYP talk')).toBeTruthy()
-    expect(screen.queryByRole('tablist')).toBeNull()
+    expect(screen.getByRole('tablist')).toBeTruthy()
+    expect(within(await screen.findByRole('tabpanel', { name: 'Clubs (1)' })).getByText('Robot race')).toBeTruthy()
+    expect(screen.queryByRole('tabpanel', { name: 'Schools (1)' })).toBeNull()
+    fireEvent.click(await screen.findByRole('tab', { name: /Schools/ }))
+    expect(within(await screen.findByRole('tabpanel', { name: 'Schools (1)' })).getByText('FYP talk')).toBeTruthy()
+    expect(screen.queryByRole('tabpanel', { name: 'Clubs (1)' })).toBeNull()
   })
 })

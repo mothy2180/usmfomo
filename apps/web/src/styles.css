@@ -82,6 +82,11 @@ body {
   color: var(--color-text);
 }
 
+/* Lite mode: plain black, no glass picture and no 3D scene. */
+.landing.landing-lite {
+  background: #000;
+}
+
 .landing-bg {
   position: fixed;
   inset: 0;

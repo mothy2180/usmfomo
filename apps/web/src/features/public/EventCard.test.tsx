@@ -20,6 +20,7 @@ const post = (extra: Partial<PostCard> = {}): PostCard => ({
   org_name: 'Robotics Club',
   org_slug: 'robotics-club',
   org_type: 'club',
+  mycsd: false,
   campus: 'engineering',
   title: 'Line-follower robot competition',
   venue: 'Engineering Campus Main Hall',
@@ -90,8 +91,8 @@ describe('EventCard', () => {
     expect(img?.getAttribute('alt')).toBe('')
     expect(img?.getAttribute('loading')).toBe('lazy')
     expect(img?.getAttribute('decoding')).toBe('async')
-    expect(img?.getAttribute('width')).toBe('96')
-    expect(img?.getAttribute('height')).toBe('96')
+    expect(img?.getAttribute('width')).toBe('80')
+    expect(img?.getAttribute('height')).toBe('80')
   })
 
   it('draws a generated cover from the organiser initial when there is no poster', async () => {

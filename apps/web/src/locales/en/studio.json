@@ -76,8 +76,7 @@
     "rules": "Read the posting rules",
     "mfa": "Add 2FA for each committee member who posts",
     "firstPost": "Create your first post",
-    "done": "(done)",
-    "dismiss": "Hide this checklist"
+    "done": "(done)"
   },
   "posts": {
     "upcoming": "Upcoming",
@@ -139,7 +138,11 @@
     "hiddenNote": "The usmfomo admin has hidden this post. Editing it won't make it visible again — message the admin from your club's official channel.",
     "pausedNoForm": "You can't create or edit posts while posting is paused.",
     "editsFull": "You've reached {{limit}} edits in the last 24 hours. Try again later.",
-    "unconfirmed": "We couldn't confirm that your post went live, because no answer came back. Check your connection and press Publish again: it won't be posted twice."
+    "unconfirmed": "We couldn't confirm that your post went live, because no answer came back. Check your connection and press Publish again: it won't be posted twice.",
+    "mycsd": "Counts for MyCSD?",
+    "mycsdHint": "Choose Yes if students earn MyCSD points for joining this event.",
+    "yes": "Yes",
+    "no": "No"
   },
   "poster": {
     "label": "Poster (optional)",

@@ -1,6 +1,6 @@
 // 2FA devices (TOTP factors). One factor per committee member, named after
 // the person, so a lost phone can be removed without locking everyone out.
-import { MYT_TZ, type Locale } from '@usmfomo/shared/time'
+import { intlLocale, MYT_TZ, type Locale } from '@usmfomo/shared/time'
 
 export type TotpFactor = { id: string; friendly_name?: string; factor_type: string; status: string; created_at: string }
 
@@ -84,7 +84,7 @@ export function otpauthHref(uri: string): string | null {
 export function formatAddedDate(iso: string, locale: Locale): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat(locale === 'ms' ? 'ms-MY' : 'en-MY', {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

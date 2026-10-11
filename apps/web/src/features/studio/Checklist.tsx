@@ -1,51 +1,31 @@
 import { Link } from '@tanstack/react-router'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '../../components/ui.tsx'
 import { cx } from '../../lib/cx.ts'
+import { markVisited, readVisited, type OnboardingStep } from './onboarding.ts'
 
-// Per-browser convenience only (remembered in localStorage per account).
-const keyFor = (username: string) => `usmfomo.studio.checklistDismissed.${username}`
-
-function readDismissed(username: string): boolean {
-  try {
-    return window.localStorage.getItem(keyFor(username)) === '1'
-  } catch {
-    return false
-  }
-}
-
-function saveDismissed(username: string): void {
-  try {
-    window.localStorage.setItem(keyFor(username), '1')
-  } catch {
-    // storage blocked: the checklist simply shows again next time
-  }
-}
-
-/** First-login checklist: rules, 2FA per committee member, first post. */
+/** First-login checklist: rules, 2FA per committee member, first post. Each
+ * step ticks once its page has been opened (or the thing is done); the
+ * checklist goes away by itself when all three are ticked. */
 export function FirstLoginChecklist({
   username,
   hasFactors,
   hasPosts,
-  onDismiss,
 }: {
   username: string
   hasFactors: boolean
   hasPosts: boolean
-  /** Move focus somewhere sensible: the dismiss button disappears. */
-  onDismiss?: () => void
 }) {
   const { t } = useTranslation('studio')
   const titleId = useId()
-  const [dismissed, setDismissed] = useState(() => readDismissed(username))
-  if (dismissed) return null
+  const [visited, setVisited] = useState(() => readVisited(username))
 
-  const items = [
-    { key: 'rules', done: false, to: '/rules' as const, label: t('checklist.rules') },
-    { key: 'mfa', done: hasFactors, to: '/studio/settings' as const, label: t('checklist.mfa') },
-    { key: 'first', done: hasPosts, to: '/studio/new' as const, label: t('checklist.firstPost') },
+  const items: { key: OnboardingStep; done: boolean; to: '/rules' | '/studio/settings' | '/studio/new'; label: string }[] = [
+    { key: 'rules', done: visited.has('rules'), to: '/rules', label: t('checklist.rules') },
+    { key: 'mfa', done: visited.has('mfa') || hasFactors, to: '/studio/settings', label: t('checklist.mfa') },
+    { key: 'first', done: visited.has('first') || hasPosts, to: '/studio/new', label: t('checklist.firstPost') },
   ]
+  if (items.every((i) => i.done)) return null
 
   return (
     <section aria-labelledby={titleId} className="rounded-xl border border-sky/40 bg-sky/5 p-4">
@@ -64,24 +44,20 @@ export function FirstLoginChecklist({
             >
               {item.done ? '✓' : ''}
             </span>
-            <Link to={item.to} className={cx('inline-flex min-h-11 items-center underline', item.done ? 'text-muted' : 'text-sky')}>
+            <Link
+              to={item.to}
+              onClick={() => {
+                markVisited(username, item.key)
+                setVisited(readVisited(username))
+              }}
+              className={cx('inline-flex min-h-11 items-center underline', item.done ? 'text-muted' : 'text-sky')}
+            >
               {item.label}
               {item.done ? <span className="sr-only"> {t('checklist.done')}</span> : null}
             </Link>
           </li>
         ))}
       </ol>
-      <Button
-        variant="ghost"
-        className="mt-2"
-        onClick={() => {
-          saveDismissed(username)
-          setDismissed(true)
-          onDismiss?.()
-        }}
-      >
-        {t('checklist.dismiss')}
-      </Button>
     </section>
   )
 }

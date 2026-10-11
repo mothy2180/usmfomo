@@ -9,7 +9,7 @@ export function PostSections({
   sections,
   now,
   idPrefix,
-  layout = 'list',
+  layout = 'grid',
 }: {
   sections: readonly Section<PostCard>[]
   now: Date
@@ -26,7 +26,7 @@ export function PostSections({
             <h3 id={headingId} className="m-0 mb-2 text-sm font-bold uppercase tracking-wide text-muted">
               {t(`sections.${section.group}`)}
             </h3>
-            <ul className={cx('m-0 list-none p-0', layout === 'grid' ? 'grid gap-3 lg:grid-cols-2' : 'flex flex-col gap-3')}>
+            <ul className={cx('m-0 list-none p-0', layout === 'grid' ? 'grid gap-3 sm:grid-cols-2' : 'flex flex-col gap-3')}>
               {section.items.map((post) => (
                 <li key={post.id} data-post-id={post.id}>
                   <EventCard post={post} now={now} />

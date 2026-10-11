@@ -10,6 +10,7 @@ import { listDevices } from '../../features/studio/mfa.ts'
 import { StudioFrame } from '../../features/studio/StudioFrame.tsx'
 import { StudioGuard } from '../../features/studio/StudioGuard.tsx'
 import { useNow } from '../../features/studio/useNow.ts'
+import { useMarkVisited } from '../../features/studio/onboarding.ts'
 
 /** /studio/settings — 2FA devices (one per committee member) and password help. */
 export function SettingsPage() {
@@ -23,6 +24,7 @@ export function SettingsPage() {
 
 function SettingsContent({ status, userId }: { status: OkStatus; userId: string }) {
   const { t } = useTranslation('studio')
+  useMarkVisited(status.username, 'mfa')
   const ids = useId()
   const now = useNow()
   const [message, setMessage] = useState('')

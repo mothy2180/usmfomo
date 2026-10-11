@@ -1,0 +1,71 @@
+{
+  "appName": "usmfomo",
+  "tagline": "USM 近期活动",
+  "skipToContent": "跳至主要内容",
+  "nav": {
+    "label": "主导航",
+    "dashboard": "近期活动",
+    "login": "社团与学院登录",
+    "studio": "工作室",
+    "rules": "发布规则",
+    "home": "首页"
+  },
+  "footer": {
+    "label": "页脚",
+    "disclaimer": "usmfomo 是一个独立、非官方的学生项目，与 Universiti Sains Malaysia 无关联，也未获其认可。活动均由各社团和学院自行发布。",
+    "report": "举报有问题的帖子",
+    "rules": "发布规则",
+    "createdBy": "作者"
+  },
+  "lang": {
+    "label": "语言",
+    "en": "English",
+    "ms": "Bahasa Melayu",
+    "zh": "中文"
+  },
+  "actions": {
+    "retry": "重试",
+    "loading": "加载中…",
+    "back": "返回",
+    "showMore": "显示更多",
+    "close": "关闭",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "confirm": "确认",
+    "copyLink": "复制链接",
+    "copied": "已复制",
+    "share": "分享",
+    "signOut": "退出登录"
+  },
+  "campus": {
+    "all": "所有校区",
+    "main": "主校区",
+    "engineering": "工程校区",
+    "health": "医学校区",
+    "other": "其他",
+    "online": "线上"
+  },
+  "orgType": {
+    "club": "社团",
+    "school": "学院",
+    "clubOne": "社团",
+    "schoolOne": "学院"
+  },
+  "time": {
+    "mytNote": "时间均为马来西亚时间（MYT）",
+    "onUntil": "持续至{{day}}",
+    "happeningNow": "正在进行",
+    "updated": "已更新",
+    "cancelled": "已取消"
+  },
+  "notFound": {
+    "title": "找不到页面",
+    "body": "此页面不存在。",
+    "back": "查看近期活动"
+  },
+  "error": {
+    "title": "出了点问题",
+    "loadEvents": "暂时无法加载活动。"
+  }
+}

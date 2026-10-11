@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { AppShell } from '../../components/AppShell.tsx'
 import { DegradedNotice } from '../../features/public/DegradedNotice.tsx'
 import { FiltersBar } from '../../features/public/FiltersBar.tsx'
-import { useDocumentTitle, useMediaQuery, useNow, WIDE_QUERY } from '../../features/public/hooks.ts'
+import { useDocumentTitle, useNow } from '../../features/public/hooks.ts'
 import { NoticeStrip } from '../../features/public/NoticeStrip.tsx'
 import { countOf } from '../../features/public/paging.ts'
 import { PostPanel } from '../../features/public/PostPanel.tsx'
@@ -19,13 +19,12 @@ const ID = 'dash'
 const TITLE_ID = 'page-title'
 const NO_ORGS: readonly OrgSummary[] = []
 
-/** /dashboard — what's on, no login. Clubs | Schools as tabs on phones and
- * side by side from the lg breakpoint; filters live in the URL. */
+/** /dashboard — what's on, no login. Clubs | Schools as tabs on every screen
+ * (one list at a time); filters live in the URL. */
 export function DashboardPage() {
   const { t } = useTranslation('dashboard')
   const search = useSearch({ from: '/dashboard' })
   const navigate = useNavigate({ from: '/dashboard' })
-  const wide = useMediaQuery(WIDE_QUERY)
   const now = useNow()
   useDocumentTitle(t('dashboard.docTitle'))
 
@@ -136,7 +135,7 @@ export function DashboardPage() {
         orgs={orgs}
         orgsLoading={orgsQuery.isLoading}
         onOrgsWanted={wantOrgs}
-        orgType={wide ? undefined : tab}
+        orgType={tab}
       />
       <p className="sr-only" aria-live="polite">
         {summary}
@@ -146,15 +145,15 @@ export function DashboardPage() {
         <DegradedNotice />
       ) : (
         <>
-          {wide ? null : <TypeTabs idPrefix={ID} active={tab} onSelect={selectTab} counts={counts} />}
-          <div className={wide ? 'mt-8 grid grid-cols-2 gap-8' : 'mt-4'}>
+          <TypeTabs idPrefix={ID} active={tab} onSelect={selectTab} counts={counts} />
+          <div className="mt-4">
             {ORG_TYPES.map((type) => (
               <PostPanel
                 key={type}
                 type={type}
                 idPrefix={ID}
-                asTabPanel={!wide}
-                hidden={!wide && tab !== type}
+                asTabPanel
+                hidden={tab !== type}
                 query={queries[type]}
                 now={now}
                 q={search.q}

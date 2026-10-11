@@ -76,8 +76,7 @@
     "rules": "Baca peraturan siaran",
     "mfa": "Tambah 2FA untuk setiap ahli jawatankuasa yang menyiarkan",
     "firstPost": "Buat siaran pertama anda",
-    "done": "(selesai)",
-    "dismiss": "Sembunyikan senarai semak ini"
+    "done": "(selesai)"
   },
   "posts": {
     "upcoming": "Akan datang",
@@ -139,7 +138,11 @@
     "hiddenNote": "Pentadbir usmfomo telah menyembunyikan siaran ini. Menyuntingnya tidak akan memaparkannya semula — hubungi pentadbir melalui saluran rasmi kelab anda.",
     "pausedNoForm": "Anda tidak boleh membuat atau menyunting siaran semasa penyiaran dihentikan sementara.",
     "editsFull": "Anda telah mencapai {{limit}} suntingan dalam 24 jam lalu. Cuba lagi nanti.",
-    "unconfirmed": "Kami tidak dapat memastikan siaran anda telah dipaparkan kerana tiada jawapan diterima. Semak sambungan anda dan tekan Siarkan sekali lagi: siaran tidak akan disiarkan dua kali."
+    "unconfirmed": "Kami tidak dapat memastikan siaran anda telah dipaparkan kerana tiada jawapan diterima. Semak sambungan anda dan tekan Siarkan sekali lagi: siaran tidak akan disiarkan dua kali.",
+    "mycsd": "Dikira untuk MyCSD?",
+    "mycsdHint": "Pilih Ya jika pelajar mendapat mata MyCSD kerana menyertai acara ini.",
+    "yes": "Ya",
+    "no": "Tidak"
   },
   "poster": {
     "label": "Poster (pilihan)",

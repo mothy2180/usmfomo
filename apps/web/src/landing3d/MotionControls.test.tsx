@@ -28,9 +28,13 @@ describe('MotionControls', () => {
     expect(onTogglePaused).toHaveBeenCalledOnce()
     expect(onToggleLite).toHaveBeenCalledOnce()
 
-    rerender(<MotionControls paused lite status={NO_STATUS} onTogglePaused={onTogglePaused} onToggleLite={onToggleLite} />)
+    rerender(<MotionControls paused lite={false} status={NO_STATUS} onTogglePaused={onTogglePaused} onToggleLite={onToggleLite} />)
     // A toggle keeps its name; aria-pressed carries the state.
     expect(screen.getByRole('button', { name: 'Pause motion' }).getAttribute('aria-pressed')).toBe('true')
+
+    // Lite mode: nothing moves, so only the Lite mode toggle is left.
+    rerender(<MotionControls paused lite status={NO_STATUS} onTogglePaused={onTogglePaused} onToggleLite={onToggleLite} />)
+    expect(screen.queryByRole('button', { name: 'Pause motion' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Lite mode' }).getAttribute('aria-pressed')).toBe('true')
   })
 
@@ -48,7 +52,7 @@ describe('MotionControls', () => {
   it('is translated into Bahasa Malaysia', async () => {
     await i18n.changeLanguage('ms')
     const noop = () => {}
-    render(<MotionControls paused={false} lite status={NO_STATUS} onTogglePaused={noop} onToggleLite={noop} />)
+    render(<MotionControls paused={false} lite={false} status={NO_STATUS} onTogglePaused={noop} onToggleLite={noop} />)
     expect(screen.getByRole('button', { name: 'Jeda gerakan' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Mod ringan' })).toBeTruthy()
     await i18n.changeLanguage('en')

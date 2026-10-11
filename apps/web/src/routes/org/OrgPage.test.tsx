@@ -41,6 +41,7 @@ const card: PostCard = {
   thumb_path: null,
   cancelled_at: null,
   details_changed_at: null,
+  mycsd: false,
   total: 1,
 }
 

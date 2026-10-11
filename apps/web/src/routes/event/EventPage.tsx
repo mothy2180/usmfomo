@@ -107,6 +107,15 @@ function EventDetails({ post, now }: { post: EventDetail; now: Date }) {
               <span className="block text-sm text-muted">{t(`common:campus.${post.campus}`)}</span>
             </dd>
           </div>
+          {post.mycsd ? (
+            <div>
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t('event.mycsd')}</dt>
+              <dd className="m-0 mt-1">
+                <span className="text-lg font-semibold">{t('event.mycsdYes')}</span>
+                <span className="block text-sm text-muted">{t('event.mycsdNote')}</span>
+              </dd>
+            </div>
+          ) : null}
           {org ? (
             <div>
               <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t('event.organiser')}</dt>
@@ -154,7 +163,8 @@ function EventDetails({ post, now }: { post: EventDetail; now: Date }) {
           height={1000}
           loading="eager"
           fetchPriority="high"
-          className="aspect-[4/5] w-full rounded-xl border border-line bg-surface-2 object-contain"
+          // Any shape of poster: shown whole at its own aspect ratio, never cropped.
+          className="mx-auto block h-auto max-h-[85vh] w-auto max-w-full rounded-xl border border-line bg-surface-2 object-contain"
           fallback={<EventCover org={coverOrg} large className="aspect-[2/1] w-full rounded-xl lg:aspect-[4/5]" />}
         />
       </div>

@@ -5,6 +5,7 @@ import { renderRoute } from '../../features/studio/renderRoute.tsx'
 import type { PostRow } from '../../features/studio/types.ts'
 import i18n from '../../lib/i18n.ts'
 import { saveLastActivity } from '../../lib/idle.ts'
+import { markRulesSeen, markVisited } from '../../features/studio/onboarding.ts'
 import { StudioHome } from './StudioHome.tsx'
 
 const mock = vi.hoisted(() => ({
@@ -43,6 +44,7 @@ const post = (id: string, title: string, starts: string, ends: string, over: Par
   id,
   org_id: ORG.id,
   campus: 'main',
+  mycsd: false,
   title,
   venue: 'DK A',
   description: null,
@@ -144,15 +146,24 @@ describe('StudioHome', () => {
     expect(order).toEqual([`remove ${POSTER},${THUMB}`, `delete ${UPCOMING.id}`])
   })
 
-  it('has a dismissible first-login checklist', async () => {
+  it('ticks each getting-started step once its page is opened, then goes away by itself', async () => {
     mock.posts = []
     renderRoute('/studio', '/studio', StudioHome)
     expect(await screen.findByRole('heading', { name: 'Getting started' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Read the posting rules' }).getAttribute('href')).toBe('/rules')
     expect(screen.getByRole('link', { name: 'Add 2FA for each committee member who posts' }).getAttribute('href')).toBe('/studio/settings')
     expect(await screen.findByText('No posts yet.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Hide this checklist' }))
-    expect(screen.queryByRole('heading', { name: 'Getting started' })).toBeNull()
+    // It can't be hidden by hand.
+    expect(screen.queryByRole('button', { name: /hide/i })).toBeNull()
+    // Opening the rules page (public, no account) ticks the first step.
+    markRulesSeen()
+    cleanup()
+    renderRoute('/studio', '/studio', StudioHome)
+    expect((await screen.findByRole('link', { name: /Read the posting rules/ })).textContent).toContain('(done)')
+    expect(screen.getByRole('link', { name: /Add 2FA/ }).textContent).not.toContain('(done)')
+    // Opening the other two pages finishes it: the checklist is gone.
+    markVisited('robotik', 'mfa')
+    markVisited('robotik', 'first')
     cleanup()
     renderRoute('/studio', '/studio', StudioHome)
     await screen.findByText('No posts yet.')

@@ -1,4 +1,4 @@
-import { CAMPUSES, type Campus, type OrgType } from '@usmfomo/shared/config'
+import { FILTER_CAMPUSES, type Campus, type OrgType } from '@usmfomo/shared/config'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Field, Input, Select } from '../../components/ui.tsx'
@@ -92,10 +92,10 @@ export function FiltersBar({ search, onQuery, onCampus, onOrg, onClear, orgs, or
               id={id}
               aria-describedby={describedBy}
               value={search.campus ?? ''}
-              onChange={(e) => onCampus((CAMPUSES as readonly string[]).includes(e.target.value) ? (e.target.value as Campus) : undefined)}
+              onChange={(e) => onCampus((FILTER_CAMPUSES as readonly string[]).includes(e.target.value) ? (e.target.value as Campus) : undefined)}
             >
               <option value="">{t('common:campus.all')}</option>
-              {CAMPUSES.map((c) => (
+              {FILTER_CAMPUSES.map((c) => (
                 <option key={c} value={c}>
                   {t(`common:campus.${c}`)}
                 </option>

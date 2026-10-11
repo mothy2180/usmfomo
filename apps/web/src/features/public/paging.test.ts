@@ -6,6 +6,7 @@ const card = (id: string, total: number): PostCard => ({
   id,
   org_id: 'o',
   org_name: 'Org',
+  mycsd: false,
   org_slug: 'org',
   org_type: 'club',
   campus: 'main',

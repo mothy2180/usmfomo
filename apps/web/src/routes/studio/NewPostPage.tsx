@@ -9,6 +9,7 @@ import { StudioFrame } from '../../features/studio/StudioFrame.tsx'
 import { StudioGuard } from '../../features/studio/StudioGuard.tsx'
 import { useLatch } from '../../features/studio/useLatch.ts'
 import { useNow } from '../../features/studio/useNow.ts'
+import { useMarkVisited } from '../../features/studio/onboarding.ts'
 
 /** /studio/new */
 export function NewPostPage() {
@@ -18,6 +19,7 @@ export function NewPostPage() {
 
 function NewPostContent({ status }: { status: OkStatus }) {
   const { t } = useTranslation('studio')
+  useMarkVisited(status.username, 'first')
   const now = useNow()
   const block = newPostBlock(status)
   // Once open, the form stays (and shows "Published") even when the post it

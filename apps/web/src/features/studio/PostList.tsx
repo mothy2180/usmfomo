@@ -41,7 +41,7 @@ function PostItem({ post, now, editBlockedBy, onDelete }: ItemProps) {
             onError={(e) => onImageError(e, post.thumb_path)}
             alt={t('posts.posterAlt', { title: post.title })}
             loading="lazy"
-            className="h-28 w-20 shrink-0 rounded-lg bg-ink object-cover"
+            className="h-28 w-auto max-w-40 min-w-16 shrink-0 rounded-lg bg-ink object-contain"
           />
         ) : (
           <div aria-hidden="true" className="h-28 w-20 shrink-0 rounded-lg border border-line bg-surface-2" />

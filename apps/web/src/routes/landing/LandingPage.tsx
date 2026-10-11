@@ -27,7 +27,7 @@ const LandingScene = lazy(() => optionalImport(() => import('../../landing3d/Lan
 
 /**
  * "/" — static-first landing page. The generated placeholder image is the
- * background (and stays the fallback for no WebGL2, reduced motion, lite mode
+ * background (and stays the fallback for no WebGL2, reduced motion
  * or a paused page); the 3D floating-glass scene fades in over it when allowed.
  */
 export function LandingPage() {
@@ -159,6 +159,7 @@ export function LandingPage() {
       onCta={onCta}
       onLogin={onLogin}
       background={background}
+      lite={lite}
       controls={
         <MotionControls
           paused={paused}

@@ -30,7 +30,8 @@
     "clearOrg": "Tunjuk semua penganjur"
   },
   "card": {
-    "organiser": "Penganjur:"
+    "organiser": "Penganjur:",
+    "mycsd": "Dikira untuk MyCSD"
   },
   "badges": {
     "updatedHint": "(masa atau tempat telah berubah)"
@@ -78,7 +79,10 @@
     "updatedNote": "Penganjur telah menukar masa atau tempat pada {{day}}.",
     "addToCalendar": "Tambah ke kalendar",
     "googleCalendar": "Kalendar Google",
-    "newTab": "(dibuka dalam tab baharu)"
+    "newTab": "(dibuka dalam tab baharu)",
+    "mycsd": "MyCSD",
+    "mycsdNote": "Seperti yang dinyatakan oleh penganjur",
+    "mycsdYes": "Ya"
   },
   "share": {
     "copied": "Pautan disalin.",

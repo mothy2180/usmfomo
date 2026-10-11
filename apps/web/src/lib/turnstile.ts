@@ -5,6 +5,7 @@
 // (script-src + frame-src). We add a <script src> element and nothing inline.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TURNSTILE_SITE_KEY } from '../env.ts'
+import type { Lang } from './i18n.ts'
 
 export const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
 
@@ -83,7 +84,7 @@ export type WidgetEvents = {
  * language, no hidden form field (we pass the token to Supabase ourselves). */
 export function widgetOptions(
   action: string,
-  language: 'en' | 'ms',
+  language: Lang,
   containerWidth: number,
   events: WidgetEvents,
 ): TurnstileRenderOptions {
@@ -91,7 +92,8 @@ export function widgetOptions(
     sitekey: TURNSTILE_SITE_KEY,
     action,
     theme: 'dark',
-    language,
+    // Turnstile's own language codes: Simplified Chinese is zh-cn.
+    language: language === 'zh' ? 'zh-cn' : language,
     size: widgetSize(containerWidth),
     'response-field': false,
     'refresh-expired': 'auto',
@@ -125,7 +127,7 @@ export type TurnstileHandle = {
  * token. Tokens are single-use and expire after 300 s: call `reset()` after
  * each sign-in attempt that keeps the user on the page.
  */
-export function useTurnstile(action: string, language: 'en' | 'ms'): TurnstileHandle {
+export function useTurnstile(action: string, language: Lang): TurnstileHandle {
   // A state-backed callback ref: the widget renders whenever the container
   // element appears, even if it mounts after the first effect run.
   const [container, setContainer] = useState<HTMLDivElement | null>(null)

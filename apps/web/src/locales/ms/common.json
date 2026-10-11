@@ -15,13 +15,13 @@
     "disclaimer": "usmfomo ialah projek pelajar yang bebas dan tidak rasmi, tidak bergabung dengan atau disokong oleh Universiti Sains Malaysia. Acara disiarkan oleh kelab dan pusat pengajian sendiri.",
     "report": "Laporkan masalah pada siaran",
     "rules": "Peraturan siaran",
-    "source": "Kod sumber",
-    "security": "Keselamatan"
+    "createdBy": "Oleh"
   },
   "lang": {
     "label": "Bahasa",
     "en": "English",
-    "ms": "Bahasa Melayu"
+    "ms": "Bahasa Melayu",
+    "zh": "中文"
   },
   "actions": {
     "retry": "Cuba lagi",

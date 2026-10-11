@@ -11,7 +11,7 @@ type Props = {
   counts: Partial<Record<OrgType, number>>
 }
 
-/** Clubs | Schools tabs (mobile). WAI-ARIA APG tabs with automatic
+/** Clubs | Schools tabs (every screen). WAI-ARIA APG tabs with automatic
  * activation: arrows, Home and End move between tabs; one tab stop. */
 export function TypeTabs({ idPrefix, active, onSelect, counts }: Props) {
   const { t } = useTranslation('dashboard')

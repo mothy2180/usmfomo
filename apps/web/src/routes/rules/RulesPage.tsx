@@ -1,10 +1,11 @@
 import { LIMITS, POSTER } from '@usmfomo/shared/config'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppShell } from '../../components/AppShell.tsx'
 import { CONTACT_URL } from '../../env.ts'
 import { contactHref as toContactHref } from '../../features/public/contact.ts'
 import { useDocumentTitle } from '../../features/public/hooks.ts'
+import { markRulesSeen } from '../../features/studio/onboarding.ts'
 
 // Numbers come from the shared config (which mirrors the database), so the
 // page can't drift from what Postgres enforces.
@@ -36,6 +37,8 @@ function ContactLink({ children }: { children?: ReactNode }) {
 export function RulesPage() {
   const { t } = useTranslation('dashboard')
   useDocumentTitle(t('rules.docTitle'))
+  // Ticks "Read the posting rules" in a club's Getting started checklist.
+  useEffect(markRulesSeen, [])
 
   const items = (key: string): string[] => {
     const value: unknown = t(key, { returnObjects: true, ...LIMIT_VALUES })

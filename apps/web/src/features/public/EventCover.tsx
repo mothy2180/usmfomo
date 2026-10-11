@@ -11,7 +11,7 @@ export function EventCover({ org, className, large }: { org: { id: string; name:
       aria-hidden="true"
       className={cx(
         'flex select-none items-center justify-center overflow-hidden bg-linear-to-br font-extrabold text-white',
-        large ? 'text-7xl' : 'text-3xl',
+        large ? 'text-7xl' : 'text-2xl',
         tone,
         className,
       )}

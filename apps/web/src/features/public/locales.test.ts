@@ -6,6 +6,9 @@ import enLanding from '../../locales/en/landing.json'
 import msCommon from '../../locales/ms/common.json'
 import msDashboard from '../../locales/ms/dashboard.json'
 import msLanding from '../../locales/ms/landing.json'
+import zhCommon from '../../locales/zh/common.json'
+import zhDashboard from '../../locales/zh/dashboard.json'
+import zhLanding from '../../locales/zh/landing.json'
 
 /** Every key path, with i18next plural suffixes folded (BM has no _one). */
 function keys(value: unknown, prefix = ''): string[] {
@@ -32,6 +35,13 @@ describe('public locales', () => {
   it.each(Object.entries(namespaces))('%s has the same keys in English and BM', (_ns, [en, ms]) => {
     expect(keySet(ms)).toEqual(keySet(en))
   })
+
+  it.each(Object.entries({ common: [enCommon, zhCommon], dashboard: [enDashboard, zhDashboard], landing: [enLanding, zhLanding] } as const))(
+    '%s has the same keys in English and Chinese',
+    (_ns, [en, zh]) => {
+      expect(keySet(zh)).toEqual(keySet(en))
+    },
+  )
 
   it('call the owner "pentadbir usmfomo" in BM, never "admin usmfomo"', () => {
     const bm = Object.values(namespaces).flatMap(([, ms]) => strings(ms))

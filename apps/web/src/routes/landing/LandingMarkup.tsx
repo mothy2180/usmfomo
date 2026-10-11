@@ -9,6 +9,8 @@ type Props = {
   background?: ReactNode
   /** Rendered above the footer text (motion controls). */
   controls?: ReactNode
+  /** Lite mode: a plain black background, no glass picture (nothing to download). */
+  lite?: boolean
 }
 
 /**
@@ -17,14 +19,16 @@ type Props = {
  * keeps the two copies identical (English, no background/controls). The
  * language buttons only work once the app has loaded.
  */
-export function LandingMarkup({ onCta, onLogin, background, controls }: Props) {
+export function LandingMarkup({ onCta, onLogin, background, controls, lite = false }: Props) {
   const { t } = useTranslation('landing')
   return (
-    <div className="landing" data-page="landing">
-      <picture>
-        <source media="(orientation: portrait)" srcSet="/landing/placeholder-portrait.svg" />
-        <img className="landing-bg" src="/landing/placeholder.svg" alt="" fetchPriority="high" decoding="async" />
-      </picture>
+    <div className={lite ? 'landing landing-lite' : 'landing'} data-page="landing">
+      {lite ? null : (
+        <picture>
+          <source media="(orientation: portrait)" srcSet="/landing/placeholder-portrait.svg" />
+          <img className="landing-bg" src="/landing/placeholder.svg" alt="" fetchPriority="high" decoding="async" />
+        </picture>
+      )}
       {background}
       <header className="landing-top">
         <LanguageSwitch className="landing-lang" />

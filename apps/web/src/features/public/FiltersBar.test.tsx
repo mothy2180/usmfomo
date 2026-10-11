@@ -82,9 +82,9 @@ describe('FiltersBar', () => {
     expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull()
   })
 
-  it('lists every campus with an "All campuses" choice', () => {
+  it('lists the campuses (no "Other") with an "All campuses" choice', () => {
     render(<Harness onQuery={() => {}} />)
     const options = [...(screen.getByRole('combobox', { name: 'Campus' }) as HTMLSelectElement).options].map((o) => o.value)
-    expect(options).toEqual(['', 'main', 'engineering', 'health', 'other', 'online'])
+    expect(options).toEqual(['', 'main', 'engineering', 'health', 'online'])
   })
 })

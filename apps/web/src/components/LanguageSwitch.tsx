@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { cx } from '../lib/cx.ts'
-import { currentLang, setLanguage } from '../lib/i18n.ts'
+import { currentLang, LANGS, setLanguage, type Lang } from '../lib/i18n.ts'
+
+const SHORT: Record<Lang, string> = { en: 'EN', ms: 'BM', zh: '中文' }
 
 /**
- * EN | BM toggle buttons. The group doesn't clip its content: the focus ring
+ * EN | BM | 中文 toggle buttons. The group doesn't clip its content: the focus ring
  * is drawn outside the button, so the outer buttons round their own corners
  * instead, and the focused button sits above its neighbour, ring included.
  */
@@ -15,18 +17,20 @@ export function LanguageSwitch({ className }: { className?: string }) {
     // would need a visible legend.
     // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
     <div role="group" aria-label={t('lang.label')} className={cx('inline-flex rounded-lg border border-line text-xs', className)}>
-      {(['en', 'ms'] as const).map((l) => (
+      {LANGS.map((l) => (
         <button
           key={l}
           type="button"
           aria-pressed={lang === l}
+          lang={l === 'zh' ? 'zh-Hans' : l}
+          title={t(`lang.${l}`)}
           onClick={() => setLanguage(l)}
           className={cx(
             'relative px-2 py-1 first:rounded-l-md last:rounded-r-md focus-visible:z-10',
             lang === l ? 'bg-surface-2 font-semibold text-text' : 'text-muted hover:text-text',
           )}
         >
-          {l === 'en' ? 'EN' : 'BM'}
+          {SHORT[l]}
         </button>
       ))}
     </div>

@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CONTACT_URL } from '../env.ts'
+import { CREATOR_NAME, CREATOR_URL } from '../lib/credit.ts'
 import { LanguageSwitch } from './LanguageSwitch.tsx'
 
 export function SiteFooter() {
@@ -19,13 +20,17 @@ export function SiteFooter() {
           <Link to="/rules" className="underline">
             {t('footer.rules')}
           </Link>
-          <a href="https://github.com/mothy2180/usmfomo" target="_blank" rel="noopener noreferrer" className="underline">
-            {t('footer.source')}
-          </a>
-          <a href="/.well-known/security.txt" className="underline">
-            {t('footer.security')}
-          </a>
         </nav>
+        <p className="m-0">
+          {t('footer.createdBy')}{' '}
+          {CREATOR_URL.startsWith('https://') ? (
+            <a href={CREATOR_URL} target="_blank" rel="noopener noreferrer" className="underline">
+              {CREATOR_NAME}
+            </a>
+          ) : (
+            CREATOR_NAME
+          )}
+        </p>
       </div>
     </footer>
   )

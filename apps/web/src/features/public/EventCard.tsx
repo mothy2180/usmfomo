@@ -8,7 +8,7 @@ import { EventCover } from './EventCover.tsx'
 import { FallbackImage } from './FallbackImage.tsx'
 import type { PostCard } from './types.ts'
 
-const THUMB_PX = 96
+const THUMB_PX = 80
 
 /**
  * One event in a list. The title link is stretched over the whole card (its
@@ -20,7 +20,7 @@ export function EventCard({ post, now }: { post: PostCard; now: Date }) {
   const lang = currentLang()
   const org = { id: post.org_id, name: post.org_name, type: post.org_type }
   return (
-    <article className="relative flex gap-3 rounded-xl border border-line bg-surface p-3 transition-colors hover:border-sky/60 has-[.card-link:focus-visible]:border-sky">
+    <article className="relative flex gap-2.5 rounded-xl border border-line bg-surface p-2.5 transition-colors hover:border-sky/60 has-[.card-link:focus-visible]:border-sky">
       <div className="shrink-0">
         {/* alt="": the title and organiser next to it say the same thing. */}
         <FallbackImage
@@ -28,12 +28,12 @@ export function EventCard({ post, now }: { post: PostCard; now: Date }) {
           alt=""
           width={THUMB_PX}
           height={THUMB_PX}
-          className="size-20 rounded-lg bg-surface-2 object-cover sm:size-24"
-          fallback={<EventCover org={org} className="size-20 rounded-lg sm:size-24" />}
+          className="h-16 w-auto min-w-12 max-w-24 rounded-lg bg-surface-2 object-contain sm:h-20 sm:max-w-30"
+          fallback={<EventCover org={org} className="size-16 rounded-lg sm:size-20" />}
         />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <h4 className="m-0 text-base font-semibold leading-snug wrap-anywhere">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <h4 className="m-0 text-[0.9375rem] font-semibold leading-snug wrap-anywhere">
           <Link
             to="/e/$id"
             params={{ id: post.id }}
@@ -47,6 +47,7 @@ export function EventCard({ post, now }: { post: PostCard; now: Date }) {
           <time dateTime={post.starts_at}>{formatEventRange(post.starts_at, post.ends_at, lang)}</time>
         </p>
         <p className="m-0 text-sm text-muted wrap-anywhere">{post.venue}</p>
+        {post.mycsd ? <p className="m-0 text-sm font-semibold text-ok">{t('card.mycsd')}</p> : null}
         <p className="m-0 text-sm text-muted">
           <span className="sr-only">{t('card.organiser')} </span>
           {/* py-0.5: a 24 px tall target (WCAG 2.5.8), since it sits on the card link. */}
