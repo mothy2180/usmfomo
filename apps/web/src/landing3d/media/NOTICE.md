@@ -14,13 +14,14 @@ them. Do not reuse, modify or redistribute them without their owners'
 permission. Credits and the written permissions are kept privately by the
 project owner (`media/raw/credits.csv`, never committed).
 
-## Synthetic development media
+## What is shipped
 
-Until the real media arrive, the files here are synthetic test patterns made
-by `build-landing-atlas.py --synthetic`: numbered, slowly moving colour fields
-drawn with ffmpeg's lavfi sources. They contain no third-party material.
-`tilemap.json` records which kind is shipped
-(`"synthetic": { "clips": true, "posters": true }` for the test patterns).
+Since 2026-10-12 the clips and posters are real media chosen by the project
+owner (14 clips, 8 photos). Some clips were trimmed, cropped (to keep text
+overlays out of the shards) or turned into back-and-forth loops, and one had
+flashes softened, before the atlas was built. `tilemap.json` records that real
+media are shipped (`"synthetic": { "clips": false, "posters": false }`);
+`build-landing-atlas.py --synthetic` still makes test patterns for development.
 
 ## Safety
 

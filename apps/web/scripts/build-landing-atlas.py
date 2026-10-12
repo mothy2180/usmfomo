@@ -405,7 +405,7 @@ def flash_score(tile: Path, report: Path) -> float:
     return max(values[FRAMES:])
 
 
-def encode_atlas(k: Klass, tiles: list[Path], dest: Path) -> None:
+def encode_atlas(k: Klass, tiles: list[Path], dest: Path, crf: int = 23) -> None:
     inputs: list[str] = []
     for t in tiles:
         inputs += ['-i', container_path(t)]
@@ -414,7 +414,7 @@ def encode_atlas(k: Klass, tiles: list[Path], dest: Path) -> None:
     ffmpeg([
         *inputs, '-filter_complex', graph, '-map', '[v]', '-an', '-sn', '-dn', '-map_metadata', '-1',
         '-c:v', 'libx264', '-preset', 'slow', '-profile:v', 'main', '-level:v', k.level,
-        '-crf', '23', '-maxrate', f'{k.maxrate_k}k', '-bufsize', f'{k.maxrate_k * 2}k',
+        '-crf', str(crf), '-maxrate', f'{k.maxrate_k}k', '-bufsize', f'{k.maxrate_k}k',
         # One keyframe, at the start: 96 frames, GOP 96, no scene-cut keyframes.
         '-g', str(FRAMES), '-keyint_min', str(FRAMES), '-sc_threshold', '0', '-bf', '2',
         '-pix_fmt', 'yuv420p', *BT709_OUT, '-r', str(FPS), '-frames:v', str(FRAMES),
@@ -746,7 +746,7 @@ def build(args: argparse.Namespace) -> int:
     print('encoding atlases, frame-0 and stills ...')
     for k in KLASSES:
         files = outputs_for(k, fmt)
-        encode_atlas(k, tile_paths[k.name], files['video'])
+        encode_atlas(k, tile_paths[k.name], files['video'], args.crf)
     run_parallel([(encode_frame0, outputs_for(k, fmt)['video'], fmt, outputs_for(k, fmt)['frame0']) for k in KLASSES]
                  + [(encode_stills, k, poster_tiles, fmt, outputs_for(k, fmt)['stills']) for k in KLASSES], args.jobs)
     # Remove stills of the other format so only one set ships.
@@ -802,6 +802,8 @@ def main() -> int:
                     help=f'fail when a clip scores at least this (default {MAX_FLASH_DEFAULT})')
     ap.add_argument('--start', action='append', default=[], metavar='NAME=SECONDS',
                     help='start offset for one clip (its 4 s window)')
+    ap.add_argument('--crf', type=int, default=23,
+                    help='x264 quality for the atlases (higher = smaller); raise it when busy footage exceeds the bitrate cap')
     ap.add_argument('--jobs', type=int, default=max(1, min(6, (os.cpu_count() or 2) // 2)),
                     help='parallel ffmpeg containers')
     ap.add_argument('--keep-work', action='store_true', help='keep media/work/tiles for inspection')
