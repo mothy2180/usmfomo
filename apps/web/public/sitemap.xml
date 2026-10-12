@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The public pages a search engine should know about. Events (/e/:id) and
+     organisers (/o/:slug) are linked from the dashboard and short-lived. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://usmfomo.pages.dev/</loc></url>
+  <url><loc>https://usmfomo.pages.dev/dashboard</loc></url>
+  <url><loc>https://usmfomo.pages.dev/rules</loc></url>
+</urlset>

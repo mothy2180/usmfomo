@@ -3,3 +3,5 @@ Allow: /
 Disallow: /studio
 Disallow: /login
 Disallow: /i/
+
+Sitemap: https://usmfomo.pages.dev/sitemap.xml
