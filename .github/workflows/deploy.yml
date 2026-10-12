@@ -292,7 +292,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           SHA: ${{ needs.gate.outputs.sha }}
-        run: wrangler pages deploy dist --project-name=usmfomo --branch=main --commit-hash="$SHA" --commit-dirty=true
+        run: |
+          # Cloudflare's API sometimes fails a deploy on its side (504s, "Unknown
+          # internal error" during an outage). Every deploy is safe to repeat, so
+          # retry twice, 30 s and 60 s apart, before failing the job.
+          for t in 1 2 3; do
+            if wrangler pages deploy dist --project-name=usmfomo --branch=main --commit-hash="$SHA" --commit-dirty=true; then exit 0; fi
+            if [ "$t" -lt 3 ]; then echo "::warning::Cloudflare deploy failed (try $t of 3); retrying in $((t * 30)) s"; sleep $((t * 30)); fi
+          done
+          exit 1
       - name: Deploy the owner console (Pages project usmfomo-admin)
         if: vars.CLOUDFLARE_ACCOUNT_ID != ''
         working-directory: site/admin # no functions/ here: the console has no Functions
@@ -300,7 +308,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           SHA: ${{ needs.gate.outputs.sha }}
-        run: wrangler pages deploy dist --project-name=usmfomo-admin --branch=main --commit-hash="$SHA" --commit-dirty=true
+        run: |
+          # Cloudflare's API sometimes fails a deploy on its side (504s, "Unknown
+          # internal error" during an outage). Every deploy is safe to repeat, so
+          # retry twice, 30 s and 60 s apart, before failing the job.
+          for t in 1 2 3; do
+            if wrangler pages deploy dist --project-name=usmfomo-admin --branch=main --commit-hash="$SHA" --commit-dirty=true; then exit 0; fi
+            if [ "$t" -lt 3 ]; then echo "::warning::Cloudflare deploy failed (try $t of 3); retrying in $((t * 30)) s"; sleep $((t * 30)); fi
+          done
+          exit 1
       - name: Deploy the cron Worker (usmfomo-cron)
         if: vars.CLOUDFLARE_ACCOUNT_ID != ''
         working-directory: workers/cron
@@ -313,9 +329,14 @@ jobs:
           SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          wrangler deploy --config wrangler.jsonc \
-            --var "SUPABASE_URL:$SUPABASE_URL" \
-            --var "SUPABASE_PUBLISHABLE_KEY:$SUPABASE_PUBLISHABLE_KEY"
+          # Cloudflare's API sometimes fails a deploy on its side (504s, "Unknown
+          # internal error" during an outage). Every deploy is safe to repeat, so
+          # retry twice, 30 s and 60 s apart, before failing the job.
+          for t in 1 2 3; do
+            if wrangler deploy --config wrangler.jsonc --var "SUPABASE_URL:$SUPABASE_URL" --var "SUPABASE_PUBLISHABLE_KEY:$SUPABASE_PUBLISHABLE_KEY"; then exit 0; fi
+            if [ "$t" -lt 3 ]; then echo "::warning::Cloudflare deploy failed (try $t of 3); retrying in $((t * 30)) s"; sleep $((t * 30)); fi
+          done
+          exit 1
 
       - name: Summary
         if: always()
