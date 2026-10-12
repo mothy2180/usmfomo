@@ -4,6 +4,9 @@
   apps/web/public/og.jpg                1200x630 JPEG: the placeholder glass with
                                         the wordmark, the tagline and the button
   apps/web/public/apple-touch-icon.png  180x180 PNG: the favicon, full bleed
+  apps/{web,admin}/public/favicon.ico   16/32/48 px: browsers and Google (which
+                                        also asks /favicon.ico directly)
+  apps/web/public/icon-192.png          192x192 PNG: the icon search results use
 
 The SVGs are rasterized by ffmpeg's librsvg decoder in the same pinned Docker
 image as build-landing-atlas.py (no network, no capabilities, read-only). The
@@ -27,6 +30,7 @@ from pathlib import Path
 
 WEB = Path(__file__).resolve().parents[1]
 PUBLIC = WEB / 'public'
+ADMIN_PUBLIC = WEB.parent / 'admin' / 'public'
 IMAGE = 'mwader/static-ffmpeg:9.0.2'  # same as build-landing-atlas.py
 
 OG_W, OG_H = 1200, 630
@@ -116,12 +120,19 @@ def main() -> int:
         (work / 'icon.svg').write_text(full_bleed((PUBLIC / 'favicon.svg').read_text()))
         rasterize(work, 'bg.svg', 'bg.png', 1600, 900)
         rasterize(work, 'icon.svg', 'icon.png', ICON, ICON)
+        (work / 'fav.svg').write_text((PUBLIC / 'favicon.svg').read_text())
+        rasterize(work, 'fav.svg', 'fav.png', 192, 192)
         og_image(work / 'bg.png', PUBLIC / 'og.jpg')
         from PIL import Image
 
         Image.open(work / 'icon.png').convert('RGB').save(PUBLIC / 'apple-touch-icon.png', optimize=True)
-    for name in ('og.jpg', 'apple-touch-icon.png'):
-        print(f'wrote {PUBLIC / name} ({(PUBLIC / name).stat().st_size / 1024:.1f} KB)')
+        fav = Image.open(work / 'fav.png').convert('RGBA')
+        fav.save(PUBLIC / 'icon-192.png', optimize=True)
+        for public in (PUBLIC, ADMIN_PUBLIC):
+            fav.save(public / 'favicon.ico', sizes=[(16, 16), (32, 32), (48, 48)])
+    for path in (PUBLIC / 'og.jpg', PUBLIC / 'apple-touch-icon.png', PUBLIC / 'icon-192.png',
+                 PUBLIC / 'favicon.ico', ADMIN_PUBLIC / 'favicon.ico'):
+        print(f'wrote {path} ({path.stat().st_size / 1024:.1f} KB)')
     return 0
 
 
