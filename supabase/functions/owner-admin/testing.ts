@@ -27,8 +27,6 @@ export function account(overrides: Partial<AccountRow>): AccountRow {
     created_at: '2026-10-05T00:00:00Z',
     last_sign_in_at: null,
     banned_until: null,
-    factor_count: 0,
-    newest_factor_at: null,
     live_posts: 0,
     ...overrides,
   }
@@ -51,19 +49,17 @@ export type Call = { op: string; args: unknown[] }
 
 export function fakePort(overrides: Partial<OwnerAdminPort> = {}) {
   const defaults: OwnerAdminPort = {
-    verifyToken: () => Promise.resolve({ sub: OWNER_ID, role: 'authenticated', aal: 'aal2' }),
+    verifyToken: () => Promise.resolve({ sub: OWNER_ID, role: 'authenticated' }),
     sessionUserId: () => Promise.resolve(OWNER_ID),
     isOwner: (id) => Promise.resolve(id === OWNER_ID),
     status: () => Promise.resolve({ live_posts: 3 }),
     listAccounts: () => Promise.resolve([OWNER_ROW, CLUB_ROW]),
     getAccount: (id) => Promise.resolve([OWNER_ROW, CLUB_ROW].find((a) => a.user_id === id) ?? null),
     authUserExists: () => Promise.resolve(false),
-    listFactorIds: () => Promise.resolve(['f1', 'f2']),
     orgObjects: () => Promise.resolve([`${ORG_ID}/a.webp`, `${ORG_ID}/a-thumb.webp`]),
     createAuthUser: () => Promise.resolve(NEW_USER_ID),
     allowPasswordChange: () => Promise.resolve(),
     updateAuthUser: () => Promise.resolve(),
-    deleteFactor: () => Promise.resolve(),
     deleteAuthUser: () => Promise.resolve(),
     createOrgAccount: () => Promise.resolve(NEW_ORG_ID),
     setAccountActive: () => Promise.resolve(),

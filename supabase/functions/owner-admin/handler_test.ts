@@ -71,13 +71,13 @@ Deno.test('authorisation failures map to 401 / 403', async () => {
   const noToken = await call(post({ action: 'status' }, { token: null }))
   assertEquals([noToken.res.status, noToken.body.error], [401, 'unauthorized'])
 
-  const aal1 = await call(
+  const anon = await call(
     post({ action: 'status' }),
     fakePort({
-      verifyToken: () => Promise.resolve({ sub: OWNER_ID, role: 'authenticated', aal: 'aal1' }),
+      verifyToken: () => Promise.resolve({ sub: OWNER_ID, role: 'anon' }),
     }).port,
   )
-  assertEquals([aal1.res.status, aal1.body.error], [403, 'mfa_required'])
+  assertEquals([anon.res.status, anon.body.error], [401, 'unauthorized'])
 
   const ended = await call(
     post({ action: 'status' }),

@@ -6,7 +6,6 @@ import {
   formatBytes,
   formatMytDateTime,
   isMaintenanceStale,
-  isWithinDays,
   percentOf,
   plural,
 } from './format.ts'
@@ -74,12 +73,6 @@ describe('dates', () => {
     expect(formatMytDateTime('2026-10-04T16:30:00Z')).toBe('Mon 5 Oct 2026, 12:30 AM')
     expect(formatMytDateTime(null)).toBe('—')
     expect(formatMytDateTime('nope')).toBe('—')
-  })
-
-  it('tells whether a date falls within the last N days', () => {
-    expect(isWithinDays(ago(6 * 24 * HOUR), 7, now)).toBe(true)
-    expect(isWithinDays(ago(7 * 24 * HOUR + 1), 7, now)).toBe(false)
-    expect(isWithinDays(null, 7, now)).toBe(false)
   })
 
   it('pluralises counts', () => {

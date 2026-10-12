@@ -4,25 +4,16 @@ import { useTranslation } from 'react-i18next'
 import { cx } from '../../lib/cx.ts'
 import { markVisited, readVisited, type OnboardingStep } from './onboarding.ts'
 
-/** First-login checklist: rules, 2FA per committee member, first post. Each
- * step ticks once its page has been opened (or the thing is done); the
- * checklist goes away by itself when all three are ticked. */
-export function FirstLoginChecklist({
-  username,
-  hasFactors,
-  hasPosts,
-}: {
-  username: string
-  hasFactors: boolean
-  hasPosts: boolean
-}) {
+/** First-login checklist: rules, first post. Each step ticks once its page
+ * has been opened (or the thing is done); the checklist goes away by itself
+ * when both are ticked. */
+export function FirstLoginChecklist({ username, hasPosts }: { username: string; hasPosts: boolean }) {
   const { t } = useTranslation('studio')
   const titleId = useId()
   const [visited, setVisited] = useState(() => readVisited(username))
 
-  const items: { key: OnboardingStep; done: boolean; to: '/rules' | '/studio/settings' | '/studio/new'; label: string }[] = [
+  const items: { key: OnboardingStep; done: boolean; to: '/rules' | '/studio/new'; label: string }[] = [
     { key: 'rules', done: visited.has('rules'), to: '/rules', label: t('checklist.rules') },
-    { key: 'mfa', done: visited.has('mfa') || hasFactors, to: '/studio/settings', label: t('checklist.mfa') },
     { key: 'first', done: visited.has('first') || hasPosts, to: '/studio/new', label: t('checklist.firstPost') },
   ]
   if (items.every((i) => i.done)) return null

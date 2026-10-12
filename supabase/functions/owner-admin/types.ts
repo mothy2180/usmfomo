@@ -7,7 +7,10 @@ import type { OrgCampus, OrgType } from '../_shared/validate.ts'
 import type { RemoveResult } from '../_shared/storage.ts'
 import type { CreateAccountInput, UpdateOrgInput } from './request.ts'
 
-/** A row of admin_list_accounts(), or the object admin_get_account() returns (0051). */
+/**
+ * A row of admin_list_accounts(), or the object admin_get_account() returns (0051).
+ * Their factor_count/newest_factor_at columns are left over from 2FA (removed in 0055) and unused.
+ */
 export type AccountRow = {
   user_id: string
   username: string
@@ -22,14 +25,12 @@ export type AccountRow = {
   created_at: string
   last_sign_in_at: string | null
   banned_until: string | null
-  factor_count: number
-  newest_factor_at: string | null
   live_posts: number
 }
 
 export type PosterPaths = { poster_path: string | null; thumb_path: string | null }
 
-export type TokenClaims = { sub: unknown; role: unknown; aal: unknown }
+export type TokenClaims = { sub: unknown; role: unknown }
 
 export type AuthUserUpdate = { password: string } | { ban_duration: string }
 
@@ -46,15 +47,12 @@ export interface OwnerAdminPort {
   /** admin_get_account: the account with this user id, or null when there is no account row. */
   getAccount(userId: string): Promise<AccountRow | null>
   authUserExists(userId: string): Promise<boolean>
-  listFactorIds(userId: string): Promise<string[]>
   orgObjects(orgId: string): Promise<string[]>
 
   createAuthUser(email: string, password: string): Promise<string>
   /** admin_allow_password_change: the database takes this user's next new password (0052). */
   allowPasswordChange(userId: string): Promise<void>
   updateAuthUser(userId: string, update: AuthUserUpdate): Promise<void>
-  /** Throws HttpError('not_found') when the factor is already gone. */
-  deleteFactor(userId: string, factorId: string): Promise<void>
   deleteAuthUser(userId: string): Promise<void>
   createOrgAccount(userId: string, input: CreateAccountInput): Promise<string>
   setAccountActive(userId: string, active: boolean): Promise<void>

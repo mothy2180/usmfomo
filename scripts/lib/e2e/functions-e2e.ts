@@ -4,14 +4,14 @@
 //   node scripts/lib/e2e/functions-e2e.ts
 //
 // It creates throwaway accounts named zz-e2e-<run>-* (the owner through the
-// CLI), signs in with the CAPTCHA test token, enrols TOTP with codes computed
-// here (RFC 6238), runs every owner-admin action, checks that a club cannot
+// CLI), signs in with the CAPTCHA test token (there is no 2FA: a password
+// session is all the owner needs), runs every owner-admin action, checks that a club cannot
 // change its own password and that lists, lookups and deletes still work past
 // PostgREST's 100-row cap (101 more accounts, an org with 105 files), and
 // removes everything it created, also when a check fails. Output is one line
 // per check; passwords, tokens and keys are never printed.
 import { execFileSync } from 'node:child_process'
-import { createHmac, randomBytes, randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { usernameToEmail } from '../../../packages/shared/src/supabase.ts'
@@ -138,74 +138,8 @@ async function session(username: string, password: string): Promise<string> {
   return res.json.access_token as string
 }
 
-function claims(token: string): { aal?: string; session_id?: string } {
-  return JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'))
-}
-
 const postingState = async (token: string) =>
   (await http('POST', '/rest/v1/rpc/my_posting_status', { token, body: {} })).json?.state as string | undefined
-
-// ---------------------------------------------------------------------------
-// TOTP (RFC 6238: HMAC-SHA1, 30 s steps, 6 digits)
-// ---------------------------------------------------------------------------
-function base32(secret: string): Buffer {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-  let bits = 0
-  let value = 0
-  const out: number[] = []
-  for (const c of secret.replace(/=+$/, '').toUpperCase()) {
-    const i = alphabet.indexOf(c)
-    if (i < 0) throw new Error('bad base32')
-    value = (value << 5) | i
-    bits += 5
-    if (bits >= 8) {
-      out.push((value >>> (bits - 8)) & 0xff)
-      bits -= 8
-    }
-  }
-  return Buffer.from(out)
-}
-
-export function totp(secret: string, step: number): string {
-  const counter = Buffer.alloc(8)
-  counter.writeBigUInt64BE(BigInt(step))
-  const h = createHmac('sha1', base32(secret)).update(counter).digest()
-  const o = (h[h.length - 1] ?? 0) & 0xf
-  const code = (((h[o] ?? 0) & 0x7f) << 24) | ((h[o + 1] ?? 0) << 16) | ((h[o + 2] ?? 0) << 8) | (h[o + 3] ?? 0)
-  return String(code % 1_000_000).padStart(6, '0')
-}
-
-const usedStep = new Map<string, number>()
-/** A code from a time step not used before for this secret (waits for the next step if needed). */
-async function freshCode(secret: string): Promise<string> {
-  for (;;) {
-    const step = Math.floor(Date.now() / 30_000)
-    if (usedStep.get(secret) !== step) {
-      usedStep.set(secret, step)
-      return totp(secret, step)
-    }
-    await new Promise((r) => setTimeout(r, 30_000 - (Date.now() % 30_000) + 250))
-  }
-}
-
-async function verifyFactor(token: string, factorId: string, secret: string): Promise<string> {
-  const challenge = await http('POST', `/auth/v1/factors/${factorId}/challenge`, { token, body: {} })
-  if (challenge.status !== 200) throw new Error(`challenge answered ${challenge.status}`)
-  const verified = await http('POST', `/auth/v1/factors/${factorId}/verify`, {
-    token,
-    body: { challenge_id: challenge.json.id, code: await freshCode(secret) },
-  })
-  if (verified.status !== 200) throw new Error(`verify answered ${verified.status}`)
-  return verified.json.access_token as string
-}
-
-async function enrolTotp(token: string, name: string): Promise<{ factorId: string; secret: string; token: string }> {
-  const enrol = await http('POST', '/auth/v1/factors', { token, body: { factor_type: 'totp', friendly_name: name } })
-  if (enrol.status !== 200) throw new Error(`enrol answered ${enrol.status}`)
-  const factorId = enrol.json.id as string
-  const secret = enrol.json.totp.secret as string
-  return { factorId, secret, token: await verifyFactor(token, factorId, secret) }
-}
 
 // ---------------------------------------------------------------------------
 // Storage and posts as a club
@@ -276,12 +210,12 @@ async function maintenanceChecks(): Promise<void> {
   check('heartbeat moved', after !== null && (before === null || Date.parse(after) > Date.parse(before)))
 }
 
-async function corsAndAuthChecks(ownerAal1: string, ownerAal2: string): Promise<void> {
+async function corsAndAuthChecks(owner: string): Promise<void> {
   // Through the gateway: the function itself refuses other origins.
   for (const origin of ['https://evil.example', 'https://usmfomo.pages.dev', null]) {
-    const res = await ownerAdmin(ownerAal2, { action: 'status' }, origin)
+    const res = await ownerAdmin(owner, { action: 'status' }, origin)
     check(
-      `aal2 owner from ${origin ?? 'no Origin'} -> 403 forbidden`,
+      `owner from ${origin ?? 'no Origin'} -> 403 forbidden`,
       res.status === 403 && res.json?.error === 'forbidden',
       String(res.status),
     )
@@ -348,11 +282,9 @@ async function corsAndAuthChecks(ownerAal1: string, ownerAal2: string): Promise<
     const res = await ownerAdmin(token, { action: 'status' })
     check(`${label} -> 401`, res.status === 401 && res.json?.error === 'unauthorized', String(res.status))
   }
-  const aal1 = await ownerAdmin(ownerAal1, { action: 'status' })
-  check(
-    `owner at ${claims(ownerAal1).aal} -> 403 mfa_required`,
-    aal1.status === 403 && aal1.json?.error === 'mfa_required',
-  )
+  // No 2FA (0055): a plain password session of the owner is enough.
+  const plain = await ownerAdmin(owner, { action: 'status' })
+  check('owner password session -> 200', plain.status === 200 && plain.json?.ok === true, String(plain.status))
 }
 
 /** Runs the owner CLI in-process; stdout comes back, stderr is dropped. */
@@ -452,11 +384,13 @@ async function run(): Promise<void> {
   })
   const ownerPassword = /password: (\S+)/.exec(out.join('\n'))?.[1] ?? ''
   check('CLI create-owner', code === 0 && ownerPassword.length === PASSWORD_LENGTH)
-  const ownerAal1 = await session(names.owner, ownerPassword)
-  const ownerFactor = await enrolTotp(ownerAal1, 'e2e phone')
-  const owner = ownerFactor.token
-  check('owner enrolled TOTP -> aal2 token', claims(owner).aal === 'aal2')
-  await corsAndAuthChecks(ownerAal1, owner)
+  const owner = await session(names.owner, ownerPassword)
+  const enrol = await http('POST', '/auth/v1/factors', {
+    token: owner,
+    body: { factor_type: 'totp', friendly_name: 'e2e' },
+  })
+  check('Auth refuses 2FA enrolment (TOTP off)', enrol.status >= 400, String(enrol.status))
+  await corsAndAuthChecks(owner)
 
   const ok = async (body: Record<string, unknown>) => {
     const res = await ownerAdmin(owner, body)
@@ -548,7 +482,6 @@ async function run(): Promise<void> {
   type Row = {
     user_id: string
     username: string
-    factor_count: number
     account_active: boolean
     org_name: string | null
     banned_until: string | null
@@ -560,26 +493,19 @@ async function run(): Promise<void> {
   )
   const ownerId = accounts.find((a) => a.username === names.owner)?.user_id ?? ''
 
-  // A club account is refused: mfa_required at aal1, forbidden at aal2.
-  const clubAal1 = await session(names.club, club.password)
-  const clubAt1 = await ownerAdmin(clubAal1, { action: 'status' })
-  check('club account at aal1 -> 403 mfa_required', clubAt1.status === 403 && clubAt1.json?.error === 'mfa_required')
+  // A club account is refused by owner-admin.
+  const clubToken = await session(names.club, club.password)
+  const clubAt = await ownerAdmin(clubToken, { action: 'status' })
+  check('club account -> 403 forbidden', clubAt.status === 403 && clubAt.json?.error === 'forbidden')
 
   // A club cannot change its own password: the database refuses it (0052).
-  const selfAal1 = await selfChange(clubAal1)
-  check('club changes its own password (no 2FA) -> refused by the database', selfAal1.refused, selfAal1.detail)
+  const self = await selfChange(clubToken)
+  check('club changes its own password -> refused by the database', self.refused, self.detail)
   check(
     'after the refused change the owner-issued password still works, the attempted one does not',
     (await signIn(names.club, club.password)).status === 200 &&
-      (await signIn(names.club, selfAal1.attempted)).status === 400,
+      (await signIn(names.club, self.attempted)).status === 400,
   )
-
-  const clubFactor = await enrolTotp(clubAal1, 'club phone')
-  const clubToken = clubFactor.token
-  const clubAt2 = await ownerAdmin(clubToken, { action: 'status' })
-  check('club account at aal2 -> 403 forbidden', clubAt2.status === 403 && clubAt2.json?.error === 'forbidden')
-  const selfAal2 = await selfChange(clubToken)
-  check('club changes its own password at aal2 -> refused by the database', selfAal2.refused, selfAal2.detail)
 
   // Posters: remove_post_image and delete_post remove the files at once.
   const p1 = await postWithPoster(clubToken, club.orgId)
@@ -610,9 +536,7 @@ async function run(): Promise<void> {
   const orphan = `${club.orgId}/${randomUUID()}.webp`
   check('club uploaded a file without a post', (await upload(clubToken, orphan)) === 200)
 
-  // remove_factors, then handover (ends sessions, new password).
-  const removed = await ok({ action: 'remove_factors', userId: club.userId })
-  check('remove_factors', removed.removed === 1, JSON.stringify(removed))
+  // handover (ends sessions, new password).
   const handed = await ok({ action: 'handover', userId: club.userId })
   check('handover: old session ended', (await postingState(clubToken)) === 'session_ended')
   const clubAfter = await signIn(names.club, handed.password)
@@ -620,8 +544,8 @@ async function run(): Promise<void> {
   check('handover: new password works, old one does not', clubAfter.status === 200 && clubOld.status === 400)
   const clubRow = ((await ok({ action: 'list_accounts' })) as Row[]).find((a) => a.username === names.club)
   check(
-    'handover: active, no factors, not banned',
-    clubRow?.account_active === true && clubRow.factor_count === 0 && clubRow.banned_until === null,
+    'handover: active, not banned',
+    clubRow?.account_active === true && clubRow.banned_until === null,
   )
 
   // reset_password ends sessions at once (database writes too).
@@ -700,7 +624,7 @@ async function run(): Promise<void> {
   )
 
   // Owner account is refused by every account action; bad input is 400; unknown ids 404.
-  for (const action of ['reset_password', 'handover', 'remove_factors', 'delete_account']) {
+  for (const action of ['reset_password', 'handover', 'delete_account']) {
     await expectError(`${action} of the owner`, { action, userId: ownerId }, 403, 'forbidden')
   }
   await expectError(
@@ -716,6 +640,12 @@ async function run(): Promise<void> {
     'not_found',
   )
   await expectError('an unknown action', { action: 'drop_everything' }, 400, 'bad_request')
+  await expectError(
+    'the removed remove_factors action',
+    { action: 'remove_factors', userId: ownerId },
+    400,
+    'bad_request',
+  )
   await expectError('a non-uuid userId', { action: 'handover', userId: 'csoc' }, 400, 'bad_request')
   const bigBody = await http('POST', '/functions/v1/owner-admin', {
     token: owner,
@@ -746,10 +676,9 @@ async function run(): Promise<void> {
 
   // An ended owner session is refused even while its access token is unexpired.
   const second = await session(names.owner, ownerPassword)
-  const secondAal2 = await verifyFactor(second, ownerFactor.factorId, ownerFactor.secret)
-  check('owner second session at aal2 works', (await ownerAdmin(secondAal2, { action: 'status' })).status === 200)
-  const logout = await http('POST', '/auth/v1/logout?scope=local', { token: secondAal2 })
-  const ended = await ownerAdmin(secondAal2, { action: 'status' })
+  check('owner second session works', (await ownerAdmin(second, { action: 'status' })).status === 200)
+  const logout = await http('POST', '/auth/v1/logout?scope=local', { token: second })
+  const ended = await ownerAdmin(second, { action: 'status' })
   check(
     'owner session ended by sign-out -> 401',
     logout.status === 204 && ended.status === 401 && ended.json?.error === 'unauthorized',

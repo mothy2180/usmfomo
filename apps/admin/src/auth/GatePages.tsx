@@ -57,7 +57,7 @@ export function StatusErrorPage({ error, ownerHint }: { error: unknown; ownerHin
             the database checks that you are the owner on every change. Account management, deleting posts and the
             status figures need owner-admin. Signing out then ends only this session.
           </p>
-          <Button onClick={() => void session.continueLimited()} className="self-start">
+          <Button onClick={session.continueLimited} className="self-start">
             Continue in limited mode
           </Button>
         </Callout>

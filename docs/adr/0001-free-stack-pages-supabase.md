@@ -21,7 +21,7 @@ Verified 2026-10-05:
 - Only Pages accepts a custom subdomain by CNAME from DNS we don't control
   (a possible `usmfomo.cs.usm.my` later). `.cs` is not a real TLD.
 - Supabase Free (Singapore): 500 MB database, 1 GB storage, 5 + 5 GB egress,
-  TOTP and CAPTCHA included; pauses after ~7 days of low API activity; no
+  CAPTCHA included; pauses after ~7 days of low API activity; no
   backups; SQL deletes on storage objects are blocked; new tables get no
   automatic GRANTs. Firebase Spark lost Cloud Storage in Feb 2026; Appwrite Free
   pauses on console inactivity; R2 and Cloudflare Access need a payment method.

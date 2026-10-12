@@ -46,10 +46,10 @@ describe('Button', () => {
     const onClick = vi.fn()
     render(
       <Button disabled onClick={onClick}>
-        Remove devices
+        Delete account
       </Button>,
     )
-    const button = screen.getByRole('button', { name: 'Remove devices' }) as HTMLButtonElement
+    const button = screen.getByRole('button', { name: 'Delete account' }) as HTMLButtonElement
     expect(button.disabled).toBe(true)
     expect(button.getAttribute('aria-disabled')).toBeNull()
   })

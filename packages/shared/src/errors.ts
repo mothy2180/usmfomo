@@ -34,13 +34,10 @@ const AUTH_KEYS: Record<string, string> = {
   invalid_credentials: 'auth_invalid',
   captcha_failed: 'auth_captcha',
   user_banned: 'auth_paused',
-  mfa_verification_failed: 'auth_bad_code',
-  mfa_challenge_expired: 'auth_bad_code',
   over_request_rate_limit: 'auth_rate_limited',
   over_email_send_rate_limit: 'auth_rate_limited',
   session_not_found: 'session_ended',
   refresh_token_not_found: 'session_ended',
-  insufficient_aal: 'mfa_required',
   weak_password: 'weak_password',
 }
 

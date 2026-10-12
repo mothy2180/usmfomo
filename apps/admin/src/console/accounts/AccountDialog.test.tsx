@@ -1,12 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AccountRow } from '../../lib/api.ts'
 import { AccountDialog } from './AccountDialog.tsx'
 import { CreateAccountDialog } from './CreateAccountDialog.tsx'
 
-vi.mock('../../lib/db.ts', () => ({ ownerDb: {}, adminApi: {} }))
+const api = vi.hoisted(() => ({ handover: vi.fn() }))
+
+vi.mock('../../lib/db.ts', () => ({ ownerDb: {}, adminApi: { handover: api.handover } }))
 vi.mock('../../env.ts', () => ({ PUBLIC_SITE_URL: 'https://usmfomo.pages.dev' }))
 
 afterEach(cleanup)
@@ -25,8 +27,6 @@ const ACCOUNT: AccountRow = {
   created_at: '2026-10-01T00:00:00Z',
   last_sign_in_at: null,
   banned_until: null,
-  factor_count: 2,
-  newest_factor_at: '2026-09-01T00:00:00Z',
   live_posts: 3,
 }
 
@@ -42,15 +42,28 @@ function stateOnFocus(el: HTMLElement): Array<string | null> {
   return seen
 }
 
-describe('Remove 2FA devices', () => {
-  it('points to Hand over, or to resetting the password first', () => {
+describe('account actions', () => {
+  it('offers reset, hand over, pause and delete, and nothing else', () => {
     renderUi(<AccountDialog account={ACCOUNT} accounts={[ACCOUNT]} onClose={() => {}} />)
-    expect(screen.getByText(/For a lost phone, use Hand over, or reset the password first/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Remove 2FA devices' }))
-    expect(screen.getByRole('heading', { name: 'Remove all 2FA devices of robotics-club?' })).toBeTruthy()
-    expect(screen.getByText(/The password stays and no session ends/)).toBeTruthy()
-    expect(screen.getByText(/use Hand over instead: it changes the password \(ending every session\) before removing/)).toBeTruthy()
-    expect(screen.getByText(/Or reset the password first, then remove the devices/)).toBeTruthy()
+    for (const name of ['Edit organisation', 'Reset password', 'Hand over to a new committee', 'Pause account', 'Delete account']) {
+      expect(screen.getByRole('button', { name })).toBeTruthy()
+    }
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).not.toContain('Resume account')
+  })
+
+  it('hands over: a new password that ends every session, shown once', async () => {
+    api.handover.mockResolvedValue({ password: 'n'.repeat(24) })
+    renderUi(<AccountDialog account={ACCOUNT} accounts={[ACCOUNT]} onClose={() => {}} />)
+    expect(screen.getByText('New password, every session ended. Posts stay.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hand over to a new committee' }))
+    expect(screen.getByRole('heading', { name: 'Hand over robotics-club to a new committee?' })).toBeTruthy()
+    expect(screen.getByText(/gets a new random password \(which ends every session\), and is then\s+active again/)).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Hand over' }))
+    })
+    expect(api.handover).toHaveBeenCalledWith(ACCOUNT.user_id)
+    expect(screen.getByText('Handover done: new password, every session of robotics-club ended.')).toBeTruthy()
+    expect((screen.getByLabelText('Password for robotics-club') as HTMLInputElement).value).toBe('n'.repeat(24))
   })
 })
 

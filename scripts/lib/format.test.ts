@@ -19,14 +19,14 @@ describe('formatAccounts', () => {
     const lines = text.split('\n')
     assert.match(
       lines[0] ?? '',
-      /^USERNAME\s+KIND\s+ORGANISATION\s+SLUG\s+CAMPUS\s+STATUS\s+2FA\s+LIVE\s+LAST SIGN-IN \(MYT\)$/,
+      /^USERNAME\s+KIND\s+ORGANISATION\s+SLUG\s+CAMPUS\s+STATUS\s+LIVE\s+LAST SIGN-IN \(MYT\)$/,
     )
     // 04:30 UTC is 12:30 in Malaysia.
     assert.match(
       lines[2] ?? '',
-      /^csoc\s+club\s+Computer Science Society\s+csoc\s+main\s+active\s+1\s+3\s+2026-10-05 12:30$/,
+      /^csoc\s+club\s+Computer Science Society\s+csoc\s+main\s+active\s+3\s+2026-10-05 12:30$/,
     )
-    assert.match(lines[1] ?? '', /^owner\s+owner\s+-\s+-\s+-\s+active\s+2\s+-\s+2026-10-05 12:30$/)
+    assert.match(lines[1] ?? '', /^owner\s+owner\s+-\s+-\s+-\s+active\s+-\s+2026-10-05 12:30$/)
     assert.match(lines[3] ?? '', /never$/)
     assert.equal(lines.at(-1), '3 account(s): 1 owner, 1 club, 1 school')
     // Columns line up: every row starts its KIND column at the same offset.

@@ -44,14 +44,15 @@ describe('RulesPage', () => {
     ])
   })
 
-  it('covers who may post, what is not allowed, posters, 2FA, moderation and the disclaimer', async () => {
+  it('covers who may post, what is not allowed, posters, account safety, moderation and the disclaimer', async () => {
     await i18n.changeLanguage('en')
     renderRules()
     await screen.findByRole('heading', { level: 1, name: 'Posting rules' })
     expect(items('Who can post').join(' ')).toMatch(/Desasiswa committees.*\(MPP\)/)
     expect(items("What's not allowed")).toHaveLength(5)
     expect(items('Poster tips').join(' ')).toMatch(/centre/)
-    expect(items('Keep your account safe').join(' ')).toMatch(/Each committee member adds their own phone/)
+    expect(items('Keep your account safe').join(' ')).toMatch(/Never share the password outside your committee/)
+    expect(document.body.textContent).not.toMatch(/2FA|two-step|authenticator/i)
     expect(screen.getByRole('region', { name: 'Moderation' }).textContent).toMatch(/may hide or remove any post/)
     expect(screen.getByRole('region', { name: 'An unofficial project' }).textContent).toMatch(/not affiliated with/)
   })

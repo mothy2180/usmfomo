@@ -1,5 +1,5 @@
 // owner-admin authorisation chain (docs/api.md), after the CORS check:
-//   bearer token → getClaims (signature + expiry) → role authenticated + aal2
+//   bearer token → getClaims (signature + expiry) → role authenticated
 //   → getUser (live session, not banned) → admin_is_owner.
 // Any failure stops the request.
 import { HttpError } from '../_shared/http.ts'
@@ -26,7 +26,6 @@ export async function authorise(
   const claims = await port.verifyToken(token)
   const sub = uuid(claims.sub)
   if (claims.role !== 'authenticated' || !sub) throw new HttpError('unauthorized')
-  if (claims.aal !== 'aal2') throw new HttpError('mfa_required')
 
   const userId = await port.sessionUserId(token)
   if (userId !== sub) throw new HttpError('unauthorized')

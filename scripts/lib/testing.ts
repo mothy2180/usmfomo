@@ -24,8 +24,6 @@ export function accountRow(overrides: Partial<AccountRow> = {}): AccountRow {
     created_at: '2026-10-01T00:00:00Z',
     last_sign_in_at: '2026-10-05T04:30:00Z',
     banned_until: null,
-    factor_count: 1,
-    newest_factor_at: '2026-10-02T00:00:00Z',
     live_posts: 3,
     ...overrides,
   }
@@ -41,7 +39,6 @@ export const OWNER = accountRow({
   org_type: null,
   org_campus: null,
   org_active: null,
-  factor_count: 2,
   live_posts: 0,
 })
 export const CLUB = accountRow()
@@ -66,12 +63,10 @@ export function fakePort(initial: AccountRow[] = [OWNER, CLUB], overrides: Parti
     getAccount: (id) => Promise.resolve(copy(accounts.find((a) => a.user_id === id))),
     getAccountByUsername: (name) => Promise.resolve(copy(accounts.find((a) => a.username === name))),
     authUserExists: () => Promise.resolve(false),
-    listFactorIds: () => Promise.resolve(['f1', 'f2']),
     orgObjects: (orgId) => Promise.resolve([`${orgId}/a.webp`, `${orgId}/a-thumb.webp`]),
     createAuthUser: () => Promise.resolve(`00000000-0000-4000-8000-1000000000${String(++created).padStart(2, '0')}`),
     allowPasswordChange: () => Promise.resolve(),
     updateAuthUser: () => Promise.resolve(),
-    deleteFactor: () => Promise.resolve(),
     deleteAuthUser: () => Promise.resolve(),
     createOrgAccount: (userId, input) => {
       const orgId = `00000000-0000-4000-8000-2000000000${String(created).padStart(2, '0')}`
@@ -100,7 +95,7 @@ export function fakePort(initial: AccountRow[] = [OWNER, CLUB], overrides: Parti
     removePostImage: () => Promise.resolve([]),
     removeFiles: (paths) => Promise.resolve({ removed: paths.filter((p) => p).length, failed: 0 }),
     linkOwner: (userId, username) => {
-      accounts.push({ ...OWNER, user_id: userId, username, factor_count: 0 })
+      accounts.push({ ...OWNER, user_id: userId, username })
       return Promise.resolve()
     },
   }

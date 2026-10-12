@@ -3,9 +3,11 @@
 // blocked the checklist simply keeps showing.
 import { useEffect } from 'react'
 
-export type OnboardingStep = 'rules' | 'mfa' | 'first'
+export type OnboardingStep = 'rules' | 'first'
 
-export const ONBOARDING_STEPS: readonly OnboardingStep[] = ['rules', 'mfa', 'first']
+// Older browsers may still store 'mfa' (a removed step): readVisited ignores
+// anything not listed here.
+export const ONBOARDING_STEPS: readonly OnboardingStep[] = ['rules', 'first']
 
 const stepsKey = (username: string) => `usmfomo.studio.onboarding.${username}`
 // The rules page is public and knows no account, so it marks the browser.

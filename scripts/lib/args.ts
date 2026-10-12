@@ -7,17 +7,15 @@ import type { CreateAccountInput } from '../../supabase/functions/owner-admin/re
 export const USAGE = `usage: pnpm account <command> [args]
 
 commands:
-  list                         every account: status, 2FA factors, live posts, last sign-in
-  create-owner <username>      the owner account (enrol two TOTP devices right after)
+  list                         every account: status, live posts, last sign-in
+  create-owner <username>      the owner account
   create <username> --org "<name>" --type club|school [--campus main] [--slug <slug>]
                                a club or school account; the slug defaults to one made from --org
-  reset-password <username>    new password; ends every session of that account
-  handover <username>          new committee: new password, 2FA removed, every session ended
+  reset-password <username>    new password; ends every session of that account (works on the owner too)
+  handover <username>          new committee: new password, every session ended
   deactivate <username>        stop sign-in and posting
   activate <username>          undo deactivate
-  remove-factors <username>    delete every 2FA factor of a club or school account
   delete <username> --yes      delete a club or school account, its organisation, posts and posters
-  owner-reset-mfa <username>   break-glass: new owner password and every owner 2FA factor removed
   seed-local                   local stack only: an owner and two demo accounts
 
 environment:
@@ -38,8 +36,6 @@ export type AccountCommand =
   | 'handover'
   | 'deactivate'
   | 'activate'
-  | 'remove-factors'
-  | 'owner-reset-mfa'
 
 export type Command =
   | { name: 'help' }
@@ -66,8 +62,6 @@ const SPECS: ReadonlyMap<string, Spec> = new Map<string, Spec>([
   ['handover', USER],
   ['deactivate', USER],
   ['activate', USER],
-  ['remove-factors', USER],
-  ['owner-reset-mfa', USER],
   ['delete', { args: ['<username>'], options: ['yes'] }],
 ])
 
@@ -175,8 +169,6 @@ export function parseCommand(argv: readonly string[]): Command {
     case 'handover':
     case 'deactivate':
     case 'activate':
-    case 'remove-factors':
-    case 'owner-reset-mfa':
       return { name, username: username(first) }
     default:
       throw new UsageError(`unknown command "${name}"`)

@@ -87,8 +87,9 @@ keuntungan: tiada iklan dan tiada bayaran.
 
 5. **Kawalan dan moderasi.**
    a) Hanya akaun kelab dan pusat pengajian yang disahkan boleh menerbitkan.
-      Log masuk dilindungi CAPTCHA dan boleh menggunakan pengesahan dua faktor;
-      had bilangan hantaran dan saiz fail dikuatkuasakan oleh pangkalan data.
+      Log masuk dilindungi CAPTCHA dan kata laluan rawak yang panjang daripada
+      pentadbir; had bilangan hantaran dan saiz fail dikuatkuasakan oleh
+      pangkalan data.
    b) Selaku pentadbir, saya boleh menyembunyikan atau memadam mana-mana
       hantaran serta-merta, menggantung akaun, dan menghentikan semua penerbitan
       dengan satu suis.
@@ -188,8 +189,8 @@ advertising and no fees.
 
 5. **Controls and moderation.**
    a) Only verified club and school accounts can publish. Logins are protected
-      by a CAPTCHA and can use two-factor authentication; limits on the number
-      of posts and on file sizes are enforced by the database.
+      by a CAPTCHA and long random passwords issued by the administrator; limits
+      on the number of posts and on file sizes are enforced by the database.
    b) As administrator I can hide or delete any post immediately, suspend
       accounts, and stop all publishing with a single switch.
    c) Every page links to a way of reporting a problem to the administrator, and

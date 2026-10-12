@@ -1,4 +1,4 @@
-# Forgot password or lost 2FA device (club or school accounts)
+# Forgot password (club or school accounts)
 
 usmfomo sends no email, so there is no "forgot password" link: the owner resets
 it. A reset is exactly what an attacker would ask for, so **identity comes first**.
@@ -14,7 +14,7 @@ it. A reset is exactly what an attacker would ask for, so **identity comes first
 - If the committee has changed, this is a handover, not a reset:
   [handover.md](handover.md).
 
-## 2a. Forgotten password
+## 2. Reset the password
 
 Owner console → Accounts → the organisation → **Reset password**, or:
 
@@ -24,34 +24,17 @@ SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account reset
 ```
 
 The new password (shown once) replaces the old one and **signs out every
-session** of that account. Enrolled 2FA devices keep working.
+session** of that account, including one left open on a lost phone or a shared
+PC.
 
-## 2b. Lost 2FA device
-
-After the identity check, **reset the password first, then remove the
-factors**. An account with no 2FA factor counts as fully verified, so a session
-that is still signed in (on the lost phone, or of anyone who knows the
-password) could post, or enrol a factor of its own that locks the committee
-out. The reset ends every session before the factors go.
-
-1. Owner console → Accounts → the organisation → **Hand over to a new
-   committee** (or `pnpm account handover <username>`). It does exactly this,
-   in the safe order: deactivate → new password (ends every session) → remove
-   every factor → reactivate. The new password is shown once.
-2. If you do it by hand instead: **Reset password** first (2a), and only then
-   **Remove 2FA devices** (`pnpm account remove-factors <username>`). Never
-   remove the devices on their own.
-3. The committee enrols every member's device again in one sitting (step 3).
-
-For a lost **owner** device, see [owner-lockout.md](owner-lockout.md).
+For the **owner** account, see [owner-lockout.md](owner-lockout.md).
 
 ## 3. Hand over 1:1, never in group chats
 
 - Give the new password only to the verified person: in person, or a direct
   message to the verified official account. Never in a group chat, a shared
   email thread, a document or a screenshot.
-- They save it in a password manager and, after a factor reset, enrol 2FA again
-  in the same session (one device per member, at least two).
+- They save it in a password manager straight away.
 - Delete your copy of the message once they confirm.
 
 ## 4. Record it

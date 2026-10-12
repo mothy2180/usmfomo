@@ -11,7 +11,7 @@ const KEY = 'sb_secret_FakeForTests00000000000000000'
 const BASE = 'http://kong.test'
 const KID = 'test-kid'
 const USER_ID = '00000000-0000-4000-8000-000000000001'
-const FACTOR_ID = '00000000-0000-4000-8000-0000000000f1'
+const MISSING_ID = '00000000-0000-4000-8000-0000000000f1'
 
 type Handler = (url: URL, req: Request) => Response | Promise<Response>
 
@@ -38,7 +38,7 @@ async function signJwt(payload: Record<string, unknown>, header: Record<string, 
 const claims = (overrides: Record<string, unknown> = {}) => ({
   sub: USER_ID,
   role: 'authenticated',
-  aal: 'aal2',
+  aal: 'aal1',
   session_id: '00000000-0000-4000-8000-0000000000aa',
   exp: Math.floor(Date.now() / 1000) + 600,
   ...overrides,
@@ -80,7 +80,7 @@ async function failsWith(promise: Promise<unknown>, code: string) {
 Deno.test('verifyToken: a valid ES256 token is verified against the JWKS', async () => {
   await withPort(jwks, async (port, requests) => {
     const token = await signJwt(claims())
-    assertEquals(await port.verifyToken(token), { sub: USER_ID, role: 'authenticated', aal: 'aal2' })
+    assertEquals(await port.verifyToken(token), { sub: USER_ID, role: 'authenticated' })
     assertEquals(requests.map((r) => new URL(r.url).pathname), ['/auth/v1/.well-known/jwks.json'])
     // The secret key travels in apikey only, never as a bearer token.
     assertEquals(requests[0].headers.get('apikey'), KEY)
@@ -90,9 +90,9 @@ Deno.test('verifyToken: a valid ES256 token is verified against the JWKS', async
 
 Deno.test('verifyToken: tampered, expired, garbage or unsupported tokens are 401', async () => {
   await withPort(jwks, async (port) => {
-    const valid = await signJwt(claims({ aal: 'aal1' }))
+    const valid = await signJwt(claims({ role: 'anon' }))
     const [h, , s] = valid.split('.')
-    const tampered = `${h}.${b64urlJson(claims({ aal: 'aal2' }))}.${s}`
+    const tampered = `${h}.${b64urlJson(claims())}.${s}`
     const expired = await signJwt(claims({ exp: Math.floor(Date.now() / 1000) - 5 }))
     const noExp = await signJwt(claims({ exp: undefined }))
     const unsupportedAlg = `${b64urlJson({ alg: 'PS256', kid: KID })}.${b64urlJson(claims())}.${s}`
@@ -161,10 +161,8 @@ Deno.test('admin calls: paths, bodies and error mapping', async () => {
     assertEquals(req.headers.get('Authorization'), null)
     const route = `${req.method} ${url.pathname}`
     switch (route) {
-      case `GET /auth/v1/admin/users/${USER_ID}/factors`:
-        return json([{ id: FACTOR_ID, factor_type: 'totp', status: 'verified' }])
-      case `DELETE /auth/v1/admin/users/${USER_ID}/factors/${FACTOR_ID}`:
-        return json({ code: 404, error_code: 'mfa_factor_not_found', msg: 'Factor not found' }, 404)
+      case `GET /auth/v1/admin/users/${MISSING_ID}`:
+        return json({ code: 404, error_code: 'user_not_found', msg: 'User not found' }, 404)
       case `PUT /auth/v1/admin/users/${USER_ID}`:
         assertEquals(await req.json(), { ban_duration: '876000h' })
         return json({ id: USER_ID })
@@ -181,8 +179,7 @@ Deno.test('admin calls: paths, bodies and error mapping', async () => {
     }
   }
   await withPort(handler, async (port) => {
-    assertEquals(await port.listFactorIds(USER_ID), [FACTOR_ID])
-    await failsWith(port.deleteFactor(USER_ID, FACTOR_ID), 'not_found')
+    assertEquals(await port.authUserExists(MISSING_ID), false)
     await port.updateAuthUser(USER_ID, { ban_duration: '876000h' })
     await failsWith(port.createAuthUser('csoc@usmfomo.pages.dev', 'x'), 'conflict')
     assertEquals(await port.isOwner(USER_ID), true)

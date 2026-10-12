@@ -7,7 +7,6 @@ import { onSessionProblem, reportSessionProblem, sessionProblem } from './sessio
 describe('sessionProblem', () => {
   it('maps owner-admin codes', () => {
     expect(sessionProblem(new AdminApiError('status', 'unauthorized', 401))).toBe('ended')
-    expect(sessionProblem(new AdminApiError('status', 'mfa_required', 403))).toBe('mfa')
     expect(sessionProblem(new AdminApiError('reset_password', 'forbidden', 403))).toBe('check')
     expect(sessionProblem(new AdminApiError('status', 'internal', 500))).toBeNull()
     expect(sessionProblem(new AdminApiError('status', 'network'))).toBeNull()
@@ -16,7 +15,6 @@ describe('sessionProblem', () => {
   it('maps PostgREST and Auth errors', () => {
     expect(sessionProblem({ code: 'PGRST303', message: 'JWT expired' })).toBe('ended')
     expect(sessionProblem({ code: 'session_not_found' })).toBe('ended')
-    expect(sessionProblem({ code: 'insufficient_aal' })).toBe('mfa')
     // RLS refused an owner write: is the session still the owner's?
     expect(sessionProblem({ code: '42501' })).toBe('check')
     expect(sessionProblem(new NoRowsError())).toBe('check')

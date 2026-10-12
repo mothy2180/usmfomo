@@ -1,8 +1,10 @@
 # Owner lockout (break-glass)
 
-You cannot get into the owner console: both TOTP devices are lost or reset, or
-the owner password is gone. The owner CLI fixes this from your laptop with the
-named secret key `owner_cli` (created in [deploy.md](deploy.md), step 2).
+You cannot get into the owner console: the owner password is lost, or you
+suspect someone else knows it. The owner CLI fixes this from your laptop with
+the named secret key `owner_cli` (created in [deploy.md](deploy.md), step 2).
+The owner account has no 2FA (removed for everyone, see the decision log in
+[PROJECT.md](../PROJECT.md)), so a new password is all it takes.
 
 ## Before you start
 
@@ -11,57 +13,42 @@ named secret key `owner_cli` (created in [deploy.md](deploy.md), step 2).
   never exported, never saved to a file or shell history.
 - Do this on your own Mac, on a network you trust.
 
-## 1. Lost both TOTP devices
-
-```zsh
-read -rs 'k?owner_cli key: '; echo
-SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account owner-reset-mfa <username>; unset k
-```
-
-`owner-reset-mfa` first sets a **new owner password** (which ends every owner
-session, so nobody holding the old password or an old session can enrol a
-factor of their own), then removes every owner 2FA factor. The new password is
-printed once: save it in your password manager. Then, straight away:
-
-1. Sign in at <https://usmfomo-admin.pages.dev> with the new password; the
-   console asks you to enrol 2FA before anything else.
-2. Enrol **two** devices again (for example the replacement phone and a second
-   device), in one sitting.
-3. Check the account list: your owner account shows exactly the factors you just
-   enrolled.
-
-## 2. Lost the owner password
+## 1. Lost the owner password
 
 ```zsh
 read -rs 'k?owner_cli key: '; echo
 SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account reset-password <username>; unset k
 ```
 
-The new password is printed once: save it in your password manager. This also
-signs out every owner session.
+`reset-password` works on the owner account too: it sets a **new owner
+password**, which ends every owner session, so nobody holding the old password
+or an old session can carry on. The new password is printed once: save it in
+your password manager. Then sign in at <https://usmfomo-admin.pages.dev> with
+it.
 
-## 3. Lost the `owner_cli` key too
+## 2. Lost the `owner_cli` key too
 
 1. Sign in to the Supabase dashboard (your Supabase account has its own MFA and
    recovery codes).
 2. Project Settings → API Keys → **delete the old `owner_cli` key**, then
    **create a new secret key** with the same name. Leave the key named
    `default` alone: the Edge Functions use it.
-3. Continue with section 1 or 2.
+3. Continue with section 1.
 
 If you cannot reach the Supabase dashboard either, use Supabase's account
 recovery (your recovery codes); nothing in usmfomo can bypass that.
 
-## 4. If the lockout was not an accident
+## 3. If the lockout was not an accident
 
-A device stolen, or a factor you do not recognise: assume someone else may have
-owner access and follow [account-takeover.md](account-takeover.md) for the owner
-account (new password, new factors, and rotate the `owner_cli` key).
+A laptop or password manager compromised, or sign-ins you did not make: assume
+someone else may have owner access and follow
+[account-takeover.md](account-takeover.md) for the owner account (new password,
+and rotate the `owner_cli` key).
 
 ## Prevention
 
-- Two enrolled TOTP devices at all times; replace a lost one the same day.
-- The owner password and the `owner_cli` key live in your password manager,
-  which has its own recovery set up.
+- The owner password is a long random one (the CLI generates it) and lives only
+  in your password manager, which has its own recovery set up. Never reuse it.
+- The `owner_cli` key lives there too.
 - Recovery codes for GitHub, Supabase, Cloudflare and the contact-channel Google
   account are saved there too.

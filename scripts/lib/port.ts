@@ -2,7 +2,6 @@
 // in supabase/functions/owner-admin/actions.ts and run unchanged on top of
 // this port, so the CLI and the owner console behave the same way.
 import type { Database } from '../../packages/shared/src/database.types.ts'
-import { HttpError } from '../../supabase/functions/_shared/http.ts'
 import { readAllPages } from '../../supabase/functions/_shared/paging.ts'
 import { POSTERS_BUCKET, removeInBatches } from '../../supabase/functions/_shared/storage.ts'
 import type { CreateAccountInput, UpdateOrgInput } from '../../supabase/functions/owner-admin/request.ts'
@@ -55,10 +54,6 @@ export function createCliPort(client: RestClient): CliPort {
         throw err
       }
     },
-    async listFactorIds(userId) {
-      const factors = (await client.request('auth', 'GET', `${user(userId)}/factors`)) as Array<{ id: string }> | null
-      return (factors ?? []).map((f) => f.id)
-    },
     orgObjects: async (orgId) => ((await rpc('admin_org_objects', { p_org: orgId })) ?? []) as string[],
 
     async createAuthUser(email, password) {
@@ -75,15 +70,6 @@ export function createCliPort(client: RestClient): CliPort {
     },
     async updateAuthUser(userId, update) {
       await client.request('auth', 'PUT', user(userId), update)
-    },
-    async deleteFactor(userId, factorId) {
-      try {
-        await client.request('auth', 'DELETE', `${user(userId)}/factors/${encodeURIComponent(factorId)}`)
-      } catch (err) {
-        // Same contract as the Edge Function's port: an already-deleted factor is not_found.
-        if (isNotFound(err)) throw new HttpError('not_found')
-        throw err
-      }
     },
     async deleteAuthUser(userId) {
       await client.request('auth', 'DELETE', user(userId))

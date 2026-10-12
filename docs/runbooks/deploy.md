@@ -46,8 +46,6 @@ storage) change only by hand, after `config diff`: see step 6 and
 - MFA on every account you use below: GitHub, Supabase, Cloudflare, and the
   Google account of the usmfomo contact channel. Save the recovery codes in your
   password manager.
-- Two authenticator devices for the owner console (for example your phone and a
-  tablet, or a hardware-backed desktop authenticator).
 
 ## Keep local values out of production
 
@@ -212,7 +210,8 @@ pnpm supabase config diff                     # expect no differences now
 On a new project the first diff shows the baseline replacing the defaults, for
 example: `max_rows` 100, `jwt_expiry` 1800, `enable_signup` false,
 `minimum_password_length` 12 with lower/upper/digits, the https `site_url`, TOTP
-on, CAPTCHA on (Turnstile), the email notifications off, storage file size 2 MiB.
+enrol and verify off (there is no 2FA), CAPTCHA on (Turnstile), the email
+notifications off, storage file size 2 MiB.
 
 Secrets are the exception: the API masks them, so `config diff` only lists them
 as "not compared" and can never show a wrong CAPTCHA secret. Rely on
@@ -376,8 +375,11 @@ SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account creat
 ```
 
 The password is printed once: put it in your password manager. Sign in at
-<https://usmfomo-admin.pages.dev> and **enrol two TOTP devices straight away**;
-the console allows nothing else until you have.
+<https://usmfomo-admin.pages.dev> with it; there is no 2FA step (the decision
+log in [PROJECT.md](../PROJECT.md) says why). If any account still has 2FA
+factors from before migration 0055 (Authentication → Users), ignore them:
+nothing checks or asks for them any more. A lost owner password is fixed with `reset-password`
+([owner-lockout.md](owner-lockout.md)).
 
 ## 14. Production smoke tests
 

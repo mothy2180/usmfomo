@@ -158,8 +158,6 @@
     "security": {
       "title": "Keep your account safe",
       "items": [
-        "Turn on two-step verification (2FA) in Studio settings. It's optional, but strongly recommended.",
-        "Each committee member adds their own phone, so the account isn't lost when one person leaves.",
         "Never share the password outside your committee. When the committee changes, ask the usmfomo admin for a handover."
       ]
     },
@@ -169,7 +167,7 @@
     },
     "account": {
       "title": "Getting an account or a new password",
-      "body": "There is no sign-up: accounts are created by the usmfomo admin. To ask for an account, a new password or a 2FA reset, <contact>message the usmfomo admin</contact> from your club's or school's official account, so we can check that it's really you."
+      "body": "There is no sign-up: accounts are created by the usmfomo admin. To ask for an account or a new password, <contact>message the usmfomo admin</contact> from your club's or school's official account, so we can check that it's really you."
     },
     "disclaimer": {
       "title": "An unofficial project",

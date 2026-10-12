@@ -5,7 +5,6 @@ import {
   INITIAL_SLUG,
   accountSummary,
   describeOrgChanges,
-  hasRecentFactor,
   orgEditValues,
   slugAfterNameChange,
   slugAfterSlugChange,
@@ -29,8 +28,6 @@ const row = (over: Partial<AccountRow> = {}): AccountRow => ({
   created_at: '2026-10-01T00:00:00Z',
   last_sign_in_at: null,
   banned_until: null,
-  factor_count: 0,
-  newest_factor_at: null,
   live_posts: 0,
   ...over,
 })
@@ -141,27 +138,15 @@ describe('organisation edit', () => {
 })
 
 describe('account rows', () => {
-  const now = new Date('2026-10-05T06:00:00Z')
-
-  it('flags 2FA devices added in the last 7 days', () => {
-    expect(hasRecentFactor(row({ factor_count: 1, newest_factor_at: '2026-09-29T07:00:00Z' }), now)).toBe(true)
-    expect(hasRecentFactor(row({ factor_count: 1, newest_factor_at: '2026-09-28T05:00:00Z' }), now)).toBe(false)
-    expect(hasRecentFactor(row({ factor_count: 0, newest_factor_at: null }), now)).toBe(false)
-  })
-
-  it('summarises paused accounts, inactive orgs and recent devices (owner excluded from counts)', () => {
-    const s = accountSummary(
-      [
-        { ...OWNER, factor_count: 2, newest_factor_at: '2026-10-04T00:00:00Z' },
-        row({ account_active: false }),
-        row({ user_id: 'c0000000-0000-4000-8000-000000000003', username: 'x-club', org_active: false }),
-      ],
-      now,
-    )
+  it('summarises paused accounts and inactive orgs (owner excluded from counts)', () => {
+    const s = accountSummary([
+      { ...OWNER, account_active: false },
+      row({ account_active: false }),
+      row({ user_id: 'c0000000-0000-4000-8000-000000000003', username: 'x-club', org_active: false }),
+    ])
     expect(s.total).toBe(2)
     expect(s.paused).toBe(1)
     expect(s.inactiveOrgs).toBe(1)
-    expect(s.recentFactor.map((r) => r.username)).toEqual(['owner'])
   })
 })
 

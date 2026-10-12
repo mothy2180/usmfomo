@@ -1,6 +1,6 @@
 // One place that turns any studio failure into an i18n key (with namespace).
 // Database/Auth errors go through errorKey() from the shared package; Storage
-// and a few Auth MFA codes it does not know are mapped here.
+// errors it does not know are mapped here.
 import { errorKey } from '@usmfomo/shared/errors'
 import { PosterError } from '../../lib/poster.ts'
 import { isRefusal, UnconfirmedCreate } from './submitPost.ts'
@@ -21,21 +21,14 @@ function storageKey(e: Loose): string | null {
   return null
 }
 
-const MFA_KEYS: Record<string, string> = {
-  mfa_factor_name_conflict: 'studio:settings.nameTaken',
-  too_many_enrolled_mfa_factors: 'studio:settings.tooMany',
-}
-
 export function studioErrorKey(err: unknown): string {
   if (err instanceof PosterError) return `errors:${err.key}`
   // A new post's answer was lost. A refusal while looking for it (the session
   // ended, say) says more than "couldn't confirm".
   if (err instanceof UnconfirmedCreate) return isRefusal(err.cause) ? studioErrorKey(err.cause) : 'studio:form.unconfirmed'
   if (typeof err === 'object' && err !== null) {
-    const e = err as Loose
-    const storage = storageKey(e)
+    const storage = storageKey(err as Loose)
     if (storage) return storage
-    if (typeof e.code === 'string' && MFA_KEYS[e.code]) return MFA_KEYS[e.code]!
   }
   return `errors:${errorKey(err)}`
 }

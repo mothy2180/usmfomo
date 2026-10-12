@@ -4,7 +4,7 @@ import { createAdminApi } from './api.ts'
 
 /** The owner session lives in memory only (persistSession: false): it is never
  * written to localStorage or sessionStorage, so a reload or a closed tab means
- * signing in again. This origin holds an aal2 owner token, so nothing about it
+ * signing in again. This origin holds the owner's token, so nothing about it
  * may outlive the page. */
 export const ownerDb = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { persistSession: false })
 

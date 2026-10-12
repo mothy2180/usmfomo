@@ -10,8 +10,8 @@ type Result = { data: unknown; error: unknown }
 const b64url = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
 
 /** A session whose access token carries the claims session.ts reads. */
-export function fakeSession(aal: 'aal1' | 'aal2' = 'aal1', userId = 'user-1'): FakeSession {
-  return { access_token: `${b64url({ alg: 'none' })}.${b64url({ aal, session_id: 'sess-1', sub: userId })}.sig`, user: { id: userId } }
+export function fakeSession(userId = 'user-1'): FakeSession {
+  return { access_token: `${b64url({ alg: 'none' })}.${b64url({ session_id: 'sess-1', sub: userId })}.sig`, user: { id: userId } }
 }
 
 export const ORG = { id: '11111111-1111-4111-8111-111111111111', name: 'Kelab Robotik', slug: 'robotik', type: 'club', campus: 'engineering' } as const
@@ -30,12 +30,9 @@ export function okStatusJson(over: Record<string, unknown> = {}) {
     next_slot_at: null,
     edits_24h: 0,
     edits_limit: 30,
-    factors: 0,
     ...over,
   }
 }
-
-const aal = (currentLevel: string, nextLevel: string): Result => ({ data: { currentLevel, nextLevel, currentAuthenticationMethods: [] }, error: null })
 
 export function createFakeStudioDb() {
   let session: FakeSession | null = null
@@ -55,14 +52,6 @@ export function createFakeStudioDb() {
       emit('SIGNED_OUT')
       return { error: null }
     }),
-    refreshSession: vi.fn(async (): Promise<Result> => ({ data: {}, error: null })),
-    mfa: {
-      getAuthenticatorAssuranceLevel: vi.fn(async (): Promise<Result> => aal('aal1', 'aal1')),
-      listFactors: vi.fn(async (): Promise<Result> => ({ data: { all: [], totp: [] }, error: null })),
-      enroll: vi.fn(async (_params: unknown): Promise<Result> => ({ data: null, error: { code: 'unexpected' } })),
-      challengeAndVerify: vi.fn(async (_params: unknown): Promise<Result> => ({ data: {}, error: null })),
-      unenroll: vi.fn(async (_params: unknown): Promise<Result> => ({ data: {}, error: null })),
-    },
   }
   const rpc = vi.fn(async (_fn: string): Promise<Result> => ({ data: { state: 'anonymous' }, error: null }))
   return {
@@ -72,7 +61,6 @@ export function createFakeStudioDb() {
       session = next
       emit(event)
     },
-    aal,
   }
 }
 

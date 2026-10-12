@@ -6,7 +6,6 @@
 import { type Campus, type OrgType } from '@usmfomo/shared/config'
 import { createAccountSchema, slugify, type CreateAccountInput } from '@usmfomo/shared/schemas'
 import type { AccountRow } from '../../lib/api.ts'
-import { isWithinDays } from '../../lib/format.ts'
 import { fieldErrors, type Validated } from '../../lib/forms.ts'
 import { CAMPUS_LABELS, TYPE_LABELS } from '../../lib/labels.ts'
 import { z } from '../../lib/zod.ts'
@@ -149,19 +148,11 @@ export function describeOrgChanges(before: OrgEditValues, after: OrgEditOutput):
 // Row display.
 // ---------------------------------------------------------------------------
 
-/** 2FA devices added recently deserve a look: was it the club, or someone with a stolen password? */
-export const RECENT_FACTOR_DAYS = 7
-
-export function hasRecentFactor(row: Pick<AccountRow, 'factor_count' | 'newest_factor_at'>, now: Date): boolean {
-  return row.factor_count > 0 && isWithinDays(row.newest_factor_at, RECENT_FACTOR_DAYS, now)
-}
-
-export function accountSummary(rows: readonly AccountRow[], now: Date) {
+export function accountSummary(rows: readonly AccountRow[]) {
   const orgAccounts = rows.filter((r) => !r.is_owner)
   return {
     total: orgAccounts.length,
     paused: orgAccounts.filter((r) => !r.account_active).length,
     inactiveOrgs: orgAccounts.filter((r) => r.org_active === false).length,
-    recentFactor: rows.filter((r) => hasRecentFactor(r, now)),
   }
 }

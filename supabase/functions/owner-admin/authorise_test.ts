@@ -2,6 +2,7 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { HttpError } from '../_shared/http.ts'
 import { authorise, bearerToken } from './authorise.ts'
 import { CLUB_ID, fakePort, OWNER_ID, TOKEN } from './testing.ts'
+import type { TokenClaims } from './types.ts'
 
 function request(authorization?: string): Request {
   const headers = new Headers()
@@ -36,7 +37,7 @@ Deno.test('bearerToken: only a JWT-shaped bearer token', () => {
   }
 })
 
-Deno.test('authorise: an aal2 owner passes, checks run in order', async () => {
+Deno.test('authorise: a live owner session passes, checks run in order', async () => {
   const { port, ops } = fakePort()
   assertEquals(await authorise(request(`Bearer ${TOKEN}`), port), { userId: OWNER_ID })
   assertEquals(ops(), ['verifyToken', 'sessionUserId', 'isOwner'])
@@ -57,10 +58,10 @@ Deno.test('authorise: invalid signature or expired token is 401', async () => {
 Deno.test('authorise: only role authenticated with a uuid subject', async () => {
   for (
     const claims of [
-      { sub: OWNER_ID, role: 'anon', aal: 'aal2' },
-      { sub: OWNER_ID, role: 'service_role', aal: 'aal2' },
-      { sub: 'not-a-uuid', role: 'authenticated', aal: 'aal2' },
-      { sub: undefined, role: 'authenticated', aal: 'aal2' },
+      { sub: OWNER_ID, role: 'anon' },
+      { sub: OWNER_ID, role: 'service_role' },
+      { sub: 'not-a-uuid', role: 'authenticated' },
+      { sub: undefined, role: 'authenticated' },
     ]
   ) {
     const { port } = fakePort({ verifyToken: () => Promise.resolve(claims) })
@@ -68,13 +69,12 @@ Deno.test('authorise: only role authenticated with a uuid subject', async () => 
   }
 })
 
-Deno.test('authorise: aal1 is 403 mfa_required before the session lookup', async () => {
-  for (const aal of ['aal1', undefined, 'AAL2']) {
-    const { port, ops } = fakePort({
-      verifyToken: () => Promise.resolve({ sub: OWNER_ID, role: 'authenticated', aal }),
+Deno.test('authorise: the assurance level plays no part (no 2FA)', async () => {
+  for (const aal of ['aal1', undefined, 'aal2']) {
+    const { port } = fakePort({
+      verifyToken: () => Promise.resolve({ sub: OWNER_ID, role: 'authenticated', aal } as TokenClaims),
     })
-    await failsWith(authorise(request(`Bearer ${TOKEN}`), port), 'mfa_required')
-    assertEquals(ops(), ['verifyToken'])
+    assertEquals(await authorise(request(`Bearer ${TOKEN}`), port), { userId: OWNER_ID })
   }
 })
 
@@ -89,9 +89,9 @@ Deno.test('authorise: getUser must agree with the token subject', async () => {
   await failsWith(authorise(request(`Bearer ${TOKEN}`), port), 'unauthorized')
 })
 
-Deno.test('authorise: an aal2 club account is 403 forbidden', async () => {
+Deno.test('authorise: a club account is 403 forbidden', async () => {
   const { port } = fakePort({
-    verifyToken: () => Promise.resolve({ sub: CLUB_ID, role: 'authenticated', aal: 'aal2' }),
+    verifyToken: () => Promise.resolve({ sub: CLUB_ID, role: 'authenticated' }),
     sessionUserId: () => Promise.resolve(CLUB_ID),
   })
   await failsWith(authorise(request(`Bearer ${TOKEN}`), port), 'forbidden')

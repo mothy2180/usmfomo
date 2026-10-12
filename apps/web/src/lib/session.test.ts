@@ -3,12 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 // session.ts imports the real client; tests only need the pure functions.
 vi.mock('./db.ts', () => ({ studioDb: {} }))
 
-const { accessKey, decideStudioAccess, keepSameUser, needsSecondFactor, parsePostingStatus, tokenClaims } = await import('./session.ts')
+const { accessKey, decideStudioAccess, parsePostingStatus, POSTING_STATES, tokenSessionId } = await import('./session.ts')
 
 const SESSION = { access_token: 'x' }
-const AAL1_ONLY = { currentLevel: 'aal1', nextLevel: 'aal1' }
-const AAL1_NEEDS_2 = { currentLevel: 'aal1', nextLevel: 'aal2' }
-const AAL2 = { currentLevel: 'aal2', nextLevel: 'aal2' }
 
 const okJson = {
   state: 'ok',
@@ -22,92 +19,50 @@ const okJson = {
   next_slot_at: null,
   edits_24h: 4,
   edits_limit: 30,
-  factors: 2,
 }
 
 describe('decideStudioAccess', () => {
   it('sends visitors without a session to the login page', () => {
-    expect(decideStudioAccess(null, null, null)).toBe('login')
-    expect(decideStudioAccess(null, AAL2, { state: 'ok' })).toBe('login')
+    expect(decideStudioAccess(null, null)).toBe('login')
+    expect(decideStudioAccess(null, { state: 'ok' })).toBe('login')
   })
 
   it('lets a club in when the database says ok', () => {
-    expect(decideStudioAccess(SESSION, AAL1_ONLY, { state: 'ok' })).toBe('ok')
-    expect(decideStudioAccess(SESSION, AAL2, { state: 'ok' })).toBe('ok')
+    expect(decideStudioAccess(SESSION, { state: 'ok' })).toBe('ok')
   })
 
-  it('lets the database decide over a cached AAL that still counts removed devices', () => {
-    // The admin (or another member) removed every device after this session
-    // signed in: 'ok' means MFA is satisfied, so no loop back to /login/mfa.
-    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'ok' })).toBe('ok')
-  })
-
-  it('asks for the code when the database says a factor exists and the session is aal1', () => {
-    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'mfa_required' })).toBe('mfa')
-    // A committee member added a factor elsewhere: this session's cached user
-    // still says aal1/aal1, but the database knows better.
-    expect(decideStudioAccess(SESSION, AAL1_ONLY, { state: 'mfa_required' })).toBe('mfa')
-  })
-
-  it('keeps the owner out of the studio, even before the code', () => {
-    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'owner' })).toBe('owner')
-    expect(decideStudioAccess(SESSION, AAL2, { state: 'owner' })).toBe('owner')
+  it('keeps the owner out of the studio', () => {
+    expect(decideStudioAccess(SESSION, { state: 'owner' })).toBe('owner')
   })
 
   it('reports paused or deleted accounts as inactive', () => {
-    expect(decideStudioAccess(SESSION, AAL2, { state: 'inactive' })).toBe('inactive')
-    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'inactive' })).toBe('inactive')
-    expect(decideStudioAccess(SESSION, AAL2, { state: 'no_account' })).toBe('inactive')
+    expect(decideStudioAccess(SESSION, { state: 'inactive' })).toBe('inactive')
+    expect(decideStudioAccess(SESSION, { state: 'no_account' })).toBe('inactive')
   })
 
-  it('reports a revoked session (password reset) as ended, before asking for a code', () => {
-    expect(decideStudioAccess(SESSION, AAL2, { state: 'session_ended' })).toBe('ended')
-    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, { state: 'session_ended' })).toBe('ended')
+  it('reports a revoked session (password reset) as ended', () => {
+    expect(decideStudioAccess(SESSION, { state: 'session_ended' })).toBe('ended')
   })
 
   it('treats an anonymous database view of a session as logged out', () => {
-    expect(decideStudioAccess(SESSION, AAL2, { state: 'anonymous' })).toBe('login')
+    expect(decideStudioAccess(SESSION, { state: 'anonymous' })).toBe('login')
   })
 
-  it('never says ok without a status, and then falls back to the cached AAL', () => {
-    expect(decideStudioAccess(SESSION, AAL2, null)).toBe('ended')
-    expect(decideStudioAccess(SESSION, AAL1_NEEDS_2, null)).toBe('mfa')
-  })
-})
-
-describe('needsSecondFactor', () => {
-  it('follows the database when it answered, and supabase-js only without an answer', () => {
-    expect(needsSecondFactor(AAL1_ONLY, { state: 'mfa_required' })).toBe(true)
-    expect(needsSecondFactor(null, { state: 'mfa_required' })).toBe(true)
-    // Stale cached user: the devices were removed since this session signed in.
-    expect(needsSecondFactor(AAL1_NEEDS_2, { state: 'ok' })).toBe(false)
-    expect(needsSecondFactor(AAL1_ONLY, { state: 'ok' })).toBe(false)
-    expect(needsSecondFactor(AAL2, { state: 'ok' })).toBe(false)
-    expect(needsSecondFactor(AAL1_NEEDS_2, null)).toBe(true)
-    expect(needsSecondFactor(AAL1_ONLY, null)).toBe(false)
-    expect(needsSecondFactor(null, null)).toBe(false)
+  it('never says ok without a status', () => {
+    expect(decideStudioAccess(SESSION, null)).toBe('ended')
   })
 })
 
 describe('access query key', () => {
   const b64url = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url')
-  const session = (user: string, sid: string, aal: string) =>
-    ({ access_token: `${b64url({})}.${b64url({ aal, session_id: sid })}.sig`, user: { id: user } }) as unknown as Parameters<typeof accessKey>[0]
+  const session = (user: string, sid: string) =>
+    ({ access_token: `${b64url({})}.${b64url({ session_id: sid })}.sig`, user: { id: user } }) as unknown as Parameters<typeof accessKey>[0]
 
-  it('changes with the user, the session and the AAL', () => {
-    expect(accessKey(session('u1', 's1', 'aal1'))).toEqual(['studio', 'access', 'u1', 's1', 'aal1'])
-    expect(accessKey(null)).toEqual(['studio', 'access', '', '', ''])
-  })
-
-  it('keeps the previous answer only for the same user while refetching', () => {
-    const before = accessKey(session('u1', 's1', 'aal1'))
-    const data = { state: 'ok' }
-    // A device was just added: same user, now aal2 — keep the page mounted.
-    expect(keepSameUser(data, before, accessKey(session('u1', 's1', 'aal2')))).toBe(data)
-    // Someone else signed in on this tab: never show the previous account.
-    expect(keepSameUser(data, before, accessKey(session('u2', 's2', 'aal1')))).toBeUndefined()
-    expect(keepSameUser(data, undefined, before)).toBeUndefined()
-    expect(keepSameUser(data, accessKey(null), accessKey(null))).toBeUndefined()
+  it('changes with the user and the session', () => {
+    expect(accessKey(session('u1', 's1'))).toEqual(['studio', 'access', 'u1', 's1'])
+    expect(accessKey(session('u1', 's2'))).not.toEqual(accessKey(session('u1', 's1')))
+    expect(accessKey(session('u2', 's1'))).not.toEqual(accessKey(session('u1', 's1')))
+    expect(accessKey(null)).toEqual(['studio', 'access', '', ''])
   })
 })
 
@@ -128,24 +83,31 @@ describe('parsePostingStatus', () => {
     expect(s.state === 'ok' && [s.live_limit, s.new_limit, s.edits_limit]).toEqual([15, 5, 30])
   })
 
+  it('ignores a factors field from an older database', () => {
+    const s = parsePostingStatus({ ...okJson, factors: 2 })
+    expect(s).toEqual({ ...okJson, state: 'ok' })
+  })
+
   it('rejects unknown states and malformed orgs', () => {
+    expect(POSTING_STATES).not.toContain('mfa_required')
     expect(() => parsePostingStatus(null)).toThrow()
     expect(() => parsePostingStatus({ state: 'admin' })).toThrow()
+    expect(() => parsePostingStatus({ state: 'mfa_required' })).toThrow()
     expect(() => parsePostingStatus({ ...okJson, org: { ...okJson.org, campus: 'mars' } })).toThrow()
     expect(() => parsePostingStatus({ ...okJson, org: null })).toThrow()
   })
 })
 
-describe('tokenClaims', () => {
+describe('tokenSessionId', () => {
   const b64url = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url')
 
-  it('reads aal and session_id from a JWT payload', () => {
-    const token = `${b64url({ alg: 'ES256' })}.${b64url({ aal: 'aal2', session_id: 's-1', email: 'ünï@x' })}.sig`
-    expect(tokenClaims(token)).toEqual({ aal: 'aal2', sessionId: 's-1' })
+  it('reads session_id from a JWT payload', () => {
+    const token = `${b64url({ alg: 'ES256' })}.${b64url({ session_id: 's-1', email: 'ünï@x' })}.sig`
+    expect(tokenSessionId(token)).toBe('s-1')
   })
 
   it('never throws on garbage', () => {
-    expect(tokenClaims('not-a-jwt')).toEqual({ aal: null, sessionId: null })
-    expect(tokenClaims('a.%%%.c')).toEqual({ aal: null, sessionId: null })
+    expect(tokenSessionId('not-a-jwt')).toBeNull()
+    expect(tokenSessionId('a.%%%.c')).toBeNull()
   })
 })

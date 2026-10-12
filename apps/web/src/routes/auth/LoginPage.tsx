@@ -13,7 +13,6 @@ import { currentLang } from '../../lib/i18n.ts'
 import { saveLastActivity } from '../../lib/idle.ts'
 import {
   clearIdleSignOut,
-  needsSecondFactor,
   parsePostingStatus,
   signOutStudio,
   useIdleSignOutNotice,
@@ -119,9 +118,8 @@ export function LoginPage() {
         return
       }
 
-      const { data: aal } = await studioDb.auth.mfa.getAuthenticatorAssuranceLevel()
       leaving = true
-      void navigate({ to: needsSecondFactor(aal, status) ? '/login/mfa' : '/studio' })
+      void navigate({ to: '/studio' })
     } catch (err) {
       setFormError(t(`errors:${errorKey(err)}`))
     } finally {

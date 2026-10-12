@@ -86,7 +86,7 @@ begin
 end
 $$;
 
--- A verified TOTP factor (enough for private.mfa_satisfied to demand aal2).
+-- A verified TOTP factor, as enrolled before 0055: tests check it is ignored.
 create or replace function tests.add_verified_factor(p_user uuid, p_name text default 'phone')
 returns void
 language sql security definer set search_path = ''

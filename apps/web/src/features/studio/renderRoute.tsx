@@ -5,7 +5,7 @@ import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet
 import { render } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
-const PATHS = ['/', '/login', '/login/mfa', '/studio', '/studio/new', '/studio/settings', '/studio/$id/edit', '/e/$id', '/rules', '/dashboard']
+const PATHS = ['/', '/login', '/studio', '/studio/new', '/studio/settings', '/studio/$id/edit', '/e/$id', '/rules', '/dashboard']
 
 export function renderRoute(url: string, routePath: string, Page: () => ReactNode) {
   const root = createRootRoute({ component: Outlet })

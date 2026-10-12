@@ -1,6 +1,6 @@
 -- Read RPCs (search, status) and the service-only maintenance/admin RPCs.
 begin;
-select plan(21);
+select plan(22);
 
 delete from public.posts;
 insert into tests.fx (k, v) select 'ua', tests.create_user('club-a');
@@ -64,7 +64,8 @@ select is((select count(*)::int from public.search_posts('club') where title in 
 select is((public.my_posting_status() ->> 'state'), 'ok', 'status: an active club is ok');
 select is((public.my_posting_status() ->> 'live')::int, 4, 'status: live count includes hidden but not expired posts');
 select tests.authenticate_as(tests.fx('um'), tests.fx('sm1'), 'aal1');
-select is((public.my_posting_status() ->> 'state'), 'mfa_required', 'status: a factor without aal2 asks for the code');
+select is((public.my_posting_status() ->> 'state'), 'ok', 'status: no 2FA (0055), a leftover factor is ignored');
+select ok(not (public.my_posting_status() ? 'factors'), 'status: no factor count any more');
 select tests.authenticate_as(tests.fx('uo'), tests.fx('so2'), 'aal2');
 select is((public.my_posting_status() ->> 'state'), 'owner', 'status: owner is told to use the owner console');
 select tests.become_anon();

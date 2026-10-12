@@ -12,7 +12,7 @@ export class NoRowsError extends Error {
   }
 }
 
-/** The aal1 pre-check couldn't tell whether this is the owner account, so the
+/** The sign-in pre-check couldn't tell whether this is the owner account, so the
  * sign-in failed closed (signed out with scope local). */
 export class AccountCheckError extends Error {
   constructor() {
@@ -25,7 +25,6 @@ const ADMIN: Record<AdminErrorCode, string> = {
   bad_request: 'The server rejected the request. Check the details and try again.',
   unauthorized: 'Your session has ended. Sign in again.',
   forbidden: 'This account is not allowed to do that.',
-  mfa_required: 'This needs a two-factor (aal2) session. Sign in again with your authenticator code.',
   not_found: 'Not found. It may already have been deleted; refresh the list.',
   conflict: 'That conflicts with existing data.',
   internal: 'The owner-admin function hit an error. Try again; if it repeats, check the function logs.',
@@ -65,7 +64,6 @@ const BY_ACTION: Partial<Record<AdminAction, Partial<Record<AdminErrorCode, stri
 const DB: Record<string, string> = {
   not_allowed: 'Not allowed. Your owner session may have ended; sign in again.',
   session_ended: 'Your session has ended. Sign in again.',
-  mfa_required: 'This needs a two-factor (aal2) session. Sign in again with your authenticator code.',
   network: "Couldn't reach the server. Check your connection and try again.",
   service_restricted: 'Supabase is restricting this project (a quota was exceeded). Check the Supabase dashboard.',
   duplicate: 'That already exists.',
@@ -92,20 +90,9 @@ const DB: Record<string, string> = {
   auth_invalid: 'Wrong username or password.',
   auth_captcha: 'The security check failed or expired. Complete it again.',
   auth_paused: 'This account is paused.',
-  auth_bad_code: "That code didn't work. Codes change every 30 seconds; check the device and try again.",
   auth_rate_limited: 'Too many attempts. Wait a few minutes and try again.',
   weak_password: 'That password is too weak.',
   unknown: 'Something went wrong. Try again.',
-}
-
-/** Auth codes that errorKey() does not know but the TOTP screens can hit. */
-const MFA: Record<string, string> = {
-  mfa_factor_name_conflict: 'You already have a device with that name. Choose another name.',
-  too_many_enrolled_mfa_factors: 'Too many devices are enrolled on this account.',
-  mfa_factor_not_found: 'That device is no longer enrolled. Start again.',
-  mfa_totp_enroll_not_enabled: 'TOTP enrolment is turned off in Supabase Auth.',
-  mfa_totp_verify_not_enabled: 'TOTP verification is turned off in Supabase Auth.',
-  mfa_ip_address_mismatch: 'Your network address changed during setup. Start again.',
 }
 
 export function errorMessage(err: unknown): string {
@@ -119,7 +106,5 @@ export function errorMessage(err: unknown): string {
   if (err instanceof AccountCheckError) {
     return "Couldn't check this account, so it was signed out again. Check your connection and try again."
   }
-  const code = typeof err === 'object' && err !== null ? (err as { code?: unknown }).code : undefined
-  if (typeof code === 'string' && MFA[code]) return MFA[code]
   return DB[errorKey(err)] ?? DB.unknown!
 }

@@ -1,11 +1,11 @@
 // Any failed request can reveal that the owner session is over. Queries,
 // mutations and direct calls report errors here; the session provider listens
-// and signs out, re-asks for a code, or re-checks owner access.
+// and signs out or re-checks owner access.
 import { AdminApiError } from './api.ts'
 import { NoRowsError } from './messages.ts'
 
-/** ended: sign in again · mfa: needs an aal2 code · check: ask owner-admin whether the session is still the owner's */
-export type SessionProblem = 'ended' | 'mfa' | 'check'
+/** ended: sign in again · check: ask owner-admin whether the session is still the owner's */
+export type SessionProblem = 'ended' | 'check'
 
 const ENDED_CODES = new Set([
   'PGRST301', // JWT invalid
@@ -20,7 +20,6 @@ const ENDED_CODES = new Set([
 export function sessionProblem(err: unknown): SessionProblem | null {
   if (err instanceof AdminApiError) {
     if (err.code === 'unauthorized') return 'ended'
-    if (err.code === 'mfa_required') return 'mfa'
     // The caller may no longer be the owner (deactivated with the CLI), or the
     // action was refused for the owner's own row: a status re-check tells which.
     if (err.code === 'forbidden') return 'check'
@@ -32,7 +31,6 @@ export function sessionProblem(err: unknown): SessionProblem | null {
   const code = typeof err === 'object' && err !== null ? (err as { code?: unknown }).code : undefined
   if (typeof code !== 'string') return null
   if (ENDED_CODES.has(code)) return 'ended'
-  if (code === 'insufficient_aal') return 'mfa'
   if (code === '42501') return 'check'
   return null
 }

@@ -13,7 +13,6 @@ export const SERVER_ERROR_CODES = [
   'bad_request',
   'unauthorized',
   'forbidden',
-  'mfa_required',
   'not_found',
   'conflict',
   'internal',
@@ -38,7 +37,6 @@ export type AdminAction =
   | 'handover'
   | 'set_account_active'
   | 'update_org'
-  | 'remove_factors'
   | 'delete_account'
   | 'delete_post'
   | 'remove_post_image'
@@ -90,7 +88,8 @@ export const statusSchema = z.object({
 })
 export type AdminStatus = z.output<typeof statusSchema>
 
-/** One row of admin_list_accounts(). The owner row has no org. */
+/** One row of admin_list_accounts(). The owner row has no org. Extra fields
+ * the function may still send are dropped by the (non-strict) object schema. */
 export const accountRowSchema = z.object({
   user_id: z.string(),
   username: z.string(),
@@ -105,8 +104,6 @@ export const accountRowSchema = z.object({
   created_at: z.string(),
   last_sign_in_at: z.string().nullable(),
   banned_until: z.string().nullable(),
-  factor_count: count,
-  newest_factor_at: z.string().nullable(),
   live_posts: count,
 })
 export type AccountRow = z.output<typeof accountRowSchema>
@@ -127,7 +124,7 @@ function numberAt(value: unknown, key: string): number | null {
   return typeof n === 'number' ? n : null
 }
 
-/** Optional counters (`{ removed }`, `{ removedFiles }`): the action already
+/** Optional counters (`{ removedFiles }`): the action already
  * happened, so a missing counter is reported as null instead of an error. */
 const counter = (key: string) => z.unknown().transform((value): number | null => numberAt(value, key))
 
@@ -291,7 +288,6 @@ export function createAdminApi(invoke: Invoke) {
         { orgId: org.orgId, name: org.name, slug: org.slug, type: org.type, campus: org.campus, active: org.active },
         done,
       ),
-    removeFactors: (userId: string) => call('remove_factors', { userId }, counter('removed')),
     deleteAccount: (userId: string) => call('delete_account', { userId }, counter('removedFiles')),
     deletePost: (postId: string) => call('delete_post', { postId }, fileRemoval),
     removePostImage: (postId: string) => call('remove_post_image', { postId }, fileRemoval),

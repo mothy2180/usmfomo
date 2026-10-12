@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminApiError } from '../lib/api.ts'
 import { AccountCheckError } from '../lib/messages.ts'
 import { NOTICES, useSession, type Session } from '../lib/sessionContext.ts'
+import { reportSessionProblem } from '../lib/sessionEvents.ts'
 import { IdleGuard } from './IdleGuard.tsx'
 import { SessionProvider } from './SessionProvider.tsx'
 
@@ -14,8 +15,6 @@ const db = vi.hoisted(() => {
   return {
     listeners,
     rpc: vi.fn(),
-    aal: vi.fn(),
-    listFactors: vi.fn(),
     status: vi.fn(),
     // Like supabase-js: dropping the session emits SIGNED_OUT.
     signOut: vi.fn(async (_options: { scope: 'global' | 'local' }) => {
@@ -35,7 +34,6 @@ vi.mock('../lib/db.ts', () => ({
         db.listeners.add(listener)
         return { data: { subscription: { unsubscribe: () => db.listeners.delete(listener) } } }
       },
-      mfa: { getAuthenticatorAssuranceLevel: db.aal, listFactors: db.listFactors },
     },
   },
   adminApi: { status: db.status },
@@ -45,21 +43,6 @@ const MIN = 60_000
 const OWNER = { data: { state: 'owner', username: 'owner' }, error: null }
 const CLUB = { data: { state: 'ok', username: 'robotics-club' }, error: null }
 const RPC_DOWN = { data: null, error: { message: 'TypeError: Failed to fetch', code: '' } }
-
-function setAal(level: 'aal1' | 'aal2') {
-  db.aal.mockResolvedValue({ data: { currentLevel: level, nextLevel: 'aal2' }, error: null })
-}
-
-function setFactors(count: number) {
-  const rows = Array.from({ length: count }, (_, i) => ({
-    id: `factor-${i + 1}`,
-    friendly_name: `Device ${i + 1}`,
-    created_at: `2026-10-0${i + 1}T00:00:00Z`,
-    factor_type: 'totp',
-    status: 'verified',
-  }))
-  db.listFactors.mockResolvedValue({ data: { totp: rows, all: rows }, error: null })
-}
 
 let session: Session
 
@@ -94,13 +77,19 @@ async function signIn(): Promise<unknown> {
   return failure
 }
 
-/** Owner at aal2 whose status check succeeds: owner-admin confirmed the owner. */
-async function signInConfirmedOwner(devices: number) {
+/** Owner whose status check succeeds: owner-admin confirmed the owner. */
+async function signInConfirmedOwner() {
   db.rpc.mockResolvedValue(OWNER)
-  setAal('aal2')
-  setFactors(devices)
   db.status.mockResolvedValue({})
   expect(await signIn()).toBeNull()
+}
+
+/** Owner whose status check fails (owner-admin down): not confirmed. */
+async function signInUnconfirmedOwner() {
+  db.rpc.mockResolvedValue(OWNER)
+  db.status.mockRejectedValue(new AdminApiError('status', 'unavailable', 503))
+  expect(await signIn()).toBeNull()
+  expect(session.phase).toMatchObject({ kind: 'status_error', ownerHint: true })
 }
 
 const scopes = () => db.signOut.mock.calls.map(([options]) => options.scope)
@@ -122,8 +111,8 @@ describe('sign-in pre-check (my_posting_status)', () => {
     expect(db.rpc).toHaveBeenCalledTimes(2)
     expect(scopes()).toEqual(['local'])
     expect(session.phase.kind).toBe('signed_out')
-    // Never routed to the owner's code or enrolment step.
-    expect(db.aal).not.toHaveBeenCalled()
+    // Never reached the owner check.
+    expect(db.status).not.toHaveBeenCalled()
   })
 
   it('treats an unexpected answer as unknown, without a retry', async () => {
@@ -132,16 +121,15 @@ describe('sign-in pre-check (my_posting_status)', () => {
     expect(await signIn()).toBeInstanceOf(AccountCheckError)
     expect(db.rpc).toHaveBeenCalledTimes(1)
     expect(scopes()).toEqual(['local'])
-    expect(db.aal).not.toHaveBeenCalled()
+    expect(db.status).not.toHaveBeenCalled()
   })
 
   it('continues for the owner when the retry succeeds', async () => {
     db.rpc.mockResolvedValueOnce(RPC_DOWN).mockResolvedValue(OWNER)
-    setAal('aal1')
-    setFactors(2)
+    db.status.mockResolvedValue({})
     renderProvider()
     expect(await signIn()).toBeNull()
-    expect(session.phase.kind).toBe('challenge')
+    expect(session.phase.kind).toBe('ready')
     expect(db.signOut).not.toHaveBeenCalled()
   })
 
@@ -151,18 +139,61 @@ describe('sign-in pre-check (my_posting_status)', () => {
     expect(await signIn()).toBeNull()
     expect(session.phase.kind).toBe('not_owner')
     expect(scopes()).toEqual(['local'])
-    expect(db.aal).not.toHaveBeenCalled()
+    expect(db.status).not.toHaveBeenCalled()
+  })
+})
+
+describe('sign-in to the console', () => {
+  it('opens the console straight after the password once owner-admin confirms the owner', async () => {
+    renderProvider()
+    await signInConfirmedOwner()
+    expect(db.status).toHaveBeenCalledTimes(1)
+    expect(session.phase.kind).toBe('ready')
+    expect(session.username).toBe('owner')
+    expect(db.signOut).not.toHaveBeenCalled()
+  })
+
+  it('signs out locally as "not the owner" when owner-admin refuses', async () => {
+    db.rpc.mockResolvedValue(OWNER)
+    db.status.mockRejectedValue(new AdminApiError('status', 'forbidden', 403))
+    renderProvider()
+    expect(await signIn()).toBeNull()
+    expect(session.phase.kind).toBe('not_owner')
+    expect(scopes()).toEqual(['local'])
+  })
+
+  it('signs out locally when owner-admin says the session has ended', async () => {
+    db.rpc.mockResolvedValue(OWNER)
+    db.status.mockRejectedValue(new AdminApiError('status', 'unauthorized', 401))
+    renderProvider()
+    expect(await signIn()).toBeNull()
+    expect(session.phase).toEqual({ kind: 'signed_out', notice: NOTICES.ended })
+    expect(scopes()).toEqual(['local'])
+  })
+
+  it('retries the owner check from the error page', async () => {
+    renderProvider()
+    await signInUnconfirmedOwner()
+    db.status.mockResolvedValue({})
+    await act(() => session.retryStatus())
+    expect(session.phase.kind).toBe('ready')
+  })
+
+  it('ends the session when a request reports it ended', async () => {
+    renderProvider()
+    await signInConfirmedOwner()
+    await act(async () => {
+      reportSessionProblem({ code: 'PGRST303', message: 'JWT expired' })
+    })
+    expect(session.phase).toEqual({ kind: 'signed_out', notice: NOTICES.ended })
+    expect(scopes()).toEqual(['local'])
   })
 })
 
 describe('sign-out scope', () => {
   it('is local before owner-admin has confirmed the owner', async () => {
-    db.rpc.mockResolvedValue(OWNER)
-    setAal('aal1')
-    setFactors(1)
     renderProvider()
-    await signIn()
-    expect(session.phase.kind).toBe('challenge')
+    await signInUnconfirmedOwner()
     await act(() => session.signOut())
     expect(scopes()).toEqual(['local'])
     expect(session.phase).toEqual({ kind: 'signed_out', notice: NOTICES.signedOut })
@@ -170,28 +201,21 @@ describe('sign-out scope', () => {
 
   it('is global once owner-admin has confirmed the owner, and local again after that session', async () => {
     renderProvider()
-    await signInConfirmedOwner(2)
+    await signInConfirmedOwner()
     expect(session.phase.kind).toBe('ready')
     await act(() => session.signOut())
     expect(scopes()).toEqual(['global'])
 
-    // A new sign-in that only reaches the code step starts unconfirmed again.
-    setAal('aal1')
-    await signIn()
-    expect(session.phase.kind).toBe('challenge')
+    // A new sign-in that owner-admin can't confirm starts unconfirmed again.
+    await signInUnconfirmedOwner()
     await act(() => session.signOut())
     expect(scopes()).toEqual(['global', 'local'])
   })
 
   it('stays local in limited mode (owner-admin could not confirm the owner)', async () => {
-    db.rpc.mockResolvedValue(OWNER)
-    setAal('aal2')
-    setFactors(2)
-    db.status.mockRejectedValue(new AdminApiError('status', 'unavailable', 503))
     renderProvider()
-    await signIn()
-    expect(session.phase.kind).toBe('status_error')
-    await act(() => session.continueLimited())
+    await signInUnconfirmedOwner()
+    act(() => session.continueLimited())
     expect(session.phase.kind).toBe('ready')
     await act(() => session.signOut())
     expect(scopes()).toEqual(['local'])
@@ -199,12 +223,8 @@ describe('sign-out scope', () => {
 
   it('makes the idle guard sign out locally before confirmation', async () => {
     vi.useFakeTimers()
-    db.rpc.mockResolvedValue(OWNER)
-    setAal('aal1')
-    setFactors(1)
     renderProvider(<IdleGuard />)
-    await signIn()
-    expect(session.phase.kind).toBe('challenge')
+    await signInUnconfirmedOwner()
     await act(async () => {
       vi.advanceTimersByTime(30 * MIN + 1000)
     })
@@ -215,46 +235,12 @@ describe('sign-out scope', () => {
   it('makes the idle guard sign out globally for a confirmed owner', async () => {
     vi.useFakeTimers()
     renderProvider(<IdleGuard />)
-    await signInConfirmedOwner(2)
+    await signInConfirmedOwner()
     expect(session.phase.kind).toBe('ready')
     await act(async () => {
       vi.advanceTimersByTime(30 * MIN + 1000)
     })
     expect(scopes()).toEqual(['global'])
     expect(session.phase).toEqual({ kind: 'signed_out', notice: NOTICES.idle })
-  })
-})
-
-describe('two TOTP devices before the console', () => {
-  it('stays on the second-device step until Auth lists two verified devices', async () => {
-    renderProvider()
-    await signInConfirmedOwner(1)
-    expect(session.phase.kind).toBe('second_device')
-    // There is no skip: continuing with one device keeps the step.
-    await act(() => session.continueToConsole())
-    expect(session.phase.kind).toBe('second_device')
-    setFactors(2)
-    await act(() => session.continueToConsole())
-    expect(session.phase.kind).toBe('ready')
-  })
-
-  it('does not assume two devices when Auth cannot list them', async () => {
-    renderProvider()
-    await signInConfirmedOwner(2)
-    await act(() => session.signOut())
-    db.listFactors.mockResolvedValue({ data: null, error: { message: 'Auth unavailable', status: 503 } })
-    await signIn()
-    expect(session.phase.kind).toBe('second_device')
-  })
-
-  it('requires two devices in limited mode too', async () => {
-    db.rpc.mockResolvedValue(OWNER)
-    setAal('aal2')
-    setFactors(1)
-    db.status.mockRejectedValue(new AdminApiError('status', 'unavailable', 503))
-    renderProvider()
-    await signIn()
-    await act(() => session.continueLimited())
-    expect(session.phase.kind).toBe('second_device')
   })
 })

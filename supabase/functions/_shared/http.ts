@@ -10,7 +10,6 @@ export type ErrorCode =
   | 'bad_request'
   | 'unauthorized'
   | 'forbidden'
-  | 'mfa_required'
   | 'not_found'
   | 'conflict'
   | 'internal'
@@ -19,7 +18,6 @@ export const ERROR_STATUS: Readonly<Record<ErrorCode, number>> = {
   bad_request: 400,
   unauthorized: 401,
   forbidden: 403,
-  mfa_required: 403,
   not_found: 404,
   conflict: 409,
   internal: 500,

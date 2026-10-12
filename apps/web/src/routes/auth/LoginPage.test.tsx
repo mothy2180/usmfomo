@@ -45,7 +45,6 @@ describe('LoginPage', () => {
     clearIdleSignOut()
     fake().setSession(null, 'INITIAL_SESSION')
     fake().db.rpc.mockResolvedValue({ data: { state: 'ok', username: 'robotik' }, error: null })
-    fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal1'))
   })
   afterEach(cleanup)
 
@@ -99,14 +98,13 @@ describe('LoginPage', () => {
     })
   })
 
-  it('goes to the code step when the account has 2FA', async () => {
-    fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal2'))
-    fake().db.rpc.mockResolvedValue({ data: { state: 'mfa_required', username: 'robotik' }, error: null })
+  it('goes straight to the studio: there is no code step', async () => {
     renderRoute('/login', '/login', LoginPage)
     await screen.findByLabelText('Username')
     fill('robotik', 'correct horse')
     submit()
-    expect(await screen.findByText('route:/login/mfa')).toBeTruthy()
+    expect(await screen.findByText('route:/studio')).toBeTruthy()
+    expect(screen.queryByText(/2FA|authenticator/i)).toBeNull()
   })
 
   it('turns the owner account away and signs it out of this browser only', async () => {

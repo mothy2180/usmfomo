@@ -1,5 +1,5 @@
 // What each owner-admin action does (docs/api.md table). Runs only after
-// authorise() accepted an aal2 owner session.
+// authorise() accepted a live owner session.
 //
 // Account actions manage club/school accounts. The owner account itself is
 // refused (403 forbidden) so the console cannot lock its own owner out; the
@@ -49,9 +49,6 @@ export async function runAction(req: ActionRequest, deps: ActionDeps): Promise<u
     case 'update_org':
       await port.updateOrg(req)
       return {}
-    case 'remove_factors':
-      await clubAccount(port, req.userId)
-      return { removed: await removeAllFactors(port, req.userId) }
     case 'delete_account':
       return await deleteAccount(port, req.userId)
     case 'delete_post':
@@ -110,29 +107,13 @@ export async function setActive(port: OwnerAdminPort, userId: string, active: bo
   await port.updateAuthUser(userId, { ban_duration: active ? 'none' : BAN_DURATION })
 }
 
-export async function removeAllFactors(port: OwnerAdminPort, userId: string): Promise<number> {
-  const ids = await port.listFactorIds(userId)
-  let removed = 0
-  for (const id of ids) {
-    try {
-      await port.deleteFactor(userId, id)
-      removed++
-    } catch (err) {
-      // Already gone (removed concurrently): the goal "no factors" still holds.
-      if (!(err instanceof HttpError && err.code === 'not_found')) throw err
-    }
-  }
-  return removed
-}
-
-/** New committee: deactivate → new password (ends sessions) → delete every factor → reactivate. */
+/** New committee: deactivate → new password (ends sessions) → reactivate. */
 export async function handover(deps: ActionDeps, userId: string): Promise<NewPassword> {
   const { port } = deps
   await clubAccount(port, userId)
   await setActive(port, userId, false)
   const password = deps.generatePassword()
   await setPassword(port, userId, password)
-  await removeAllFactors(port, userId)
   await setActive(port, userId, true)
   return { password }
 }

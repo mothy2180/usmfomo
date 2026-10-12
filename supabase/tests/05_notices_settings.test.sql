@@ -32,15 +32,15 @@ select results_eq(
   $$ values (0) $$, 'a club cannot flip the kill switches');
 
 select tests.authenticate_as(tests.fx('uo'), tests.fx('so1'), 'aal1');
-select throws_ok(
+select lives_ok(
   $$ insert into public.notices (title, body, ends_at) values ('aal1 notice', 'x', now() + interval '1 day') $$,
-  '42501', null, 'the owner at aal1 cannot post a notice');
+  'no 2FA (0055): the owner at aal1 can post a notice');
 
 select tests.authenticate_as(tests.fx('uo'), tests.fx('so2'), 'aal2');
 select lives_ok(
   $$ insert into public.notices (title, body, ends_at) values ('Owner notice', 'Hello', now() + interval '1 day') $$,
   'the owner at aal2 can post a notice');
-select is((select count(*)::int from public.notices), 4, 'the owner sees every notice, including future and old ones');
+select is((select count(*)::int from public.notices), 5, 'the owner sees every notice, including future and old ones');
 select results_eq(
   $$ with u as (update public.notices set body = 'Edited' where title = 'Owner notice' returning 1) select count(*)::int from u $$,
   $$ values (1) $$, 'the owner can edit a notice');

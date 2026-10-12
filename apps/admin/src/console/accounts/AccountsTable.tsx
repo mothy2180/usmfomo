@@ -1,9 +1,8 @@
 import { useId } from 'react'
 import { Badge, Button } from '../../components/ui.tsx'
 import type { AccountRow } from '../../lib/api.ts'
-import { formatAge, formatMytDateTime, plural } from '../../lib/format.ts'
+import { formatAge, formatMytDateTime } from '../../lib/format.ts'
 import { CAMPUS_LABELS, TYPE_LABELS } from '../../lib/labels.ts'
-import { hasRecentFactor } from './accountForms.ts'
 
 const cell = 'px-3 py-2 align-top'
 
@@ -44,9 +43,6 @@ export function AccountsTable({ rows, now, onManage }: { rows: AccountRow[]; now
               Status
             </th>
             <th scope="col" className={cell}>
-              2FA devices
-            </th>
-            <th scope="col" className={cell}>
               Last sign-in
             </th>
             <th scope="col" className={`${cell} text-right`}>
@@ -68,7 +64,6 @@ export function AccountsTable({ rows, now, onManage }: { rows: AccountRow[]; now
 }
 
 function Row({ row, now, onManage }: { row: AccountRow; now: Date; onManage: (row: AccountRow) => void }) {
-  const recent = hasRecentFactor(row, now)
   return (
     <tr className="border-t border-line">
       <th scope="row" className={`${cell} font-normal`}>
@@ -96,23 +91,6 @@ function Row({ row, now, onManage }: { row: AccountRow; now: Date; onManage: (ro
           {row.account_active ? <Badge tone="ok">Active</Badge> : <Badge tone="danger">Paused</Badge>}
           {row.org_active === false ? <Badge tone="danger">Org inactive</Badge> : null}
         </span>
-      </td>
-      <td className={cell}>
-        {row.factor_count > 0 ? (
-          <>
-            <span className="block">{plural(row.factor_count, 'device')}</span>
-            <span className={recent ? 'block text-xs font-semibold text-accent' : 'block text-xs text-muted'}>
-              newest {formatMytDateTime(row.newest_factor_at)}
-            </span>
-            {recent ? (
-              <span className="mt-1 block">
-                <Badge tone="accent">Added in the last 7 days</Badge>
-              </span>
-            ) : null}
-          </>
-        ) : (
-          <span className="text-muted">None</span>
-        )}
       </td>
       <td className={cell}>
         {row.last_sign_in_at ? (

@@ -31,7 +31,6 @@ export type ActionRequest =
   | { action: 'handover'; userId: string }
   | { action: 'set_account_active'; userId: string; active: boolean }
   | ({ action: 'update_org' } & UpdateOrgInput)
-  | { action: 'remove_factors'; userId: string }
   | { action: 'delete_account'; userId: string }
   | { action: 'delete_post'; postId: string }
   | { action: 'remove_post_image'; postId: string }
@@ -79,8 +78,6 @@ export function parseActionRequest(body: unknown): ActionRequest {
         campus: required(v.orgCampus(b.campus)),
         active: required(v.bool(b.active)),
       }
-    case 'remove_factors':
-      return { action: 'remove_factors', userId: required(v.uuid(b.userId)) }
     case 'delete_account':
       return { action: 'delete_account', userId: required(v.uuid(b.userId)) }
     case 'delete_post':

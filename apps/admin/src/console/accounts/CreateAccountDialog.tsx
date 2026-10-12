@@ -89,7 +89,7 @@ export function CreateAccountDialog({ accounts, onClose }: { accounts: readonly 
         <ShowOncePassword
           username={created.username}
           password={created.password}
-          lead={`${created.orgName} can now sign in at ${PUBLIC_SITE_URL.replace(/^https?:\/\//, '')}/login with this username and password. 2FA is optional for clubs and schools; they can add it in Studio settings.`}
+          lead={`${created.orgName} can now sign in at ${PUBLIC_SITE_URL.replace(/^https?:\/\//, '')}/login with this username and password.`}
           onDone={done}
         />
       </Dialog>

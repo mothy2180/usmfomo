@@ -65,7 +65,7 @@ export function SignInPage({ notice }: { notice: string | null }) {
         <a href={publicLoginUrl(PUBLIC_SITE_URL)} className="text-sky underline">
           {publicLoginUrl(PUBLIC_SITE_URL).replace(/^https?:\/\//, '')}
         </a>
-        . This console is for the usmfomo owner, with a password and an authenticator app.
+        . This console is for the usmfomo owner only.
       </p>
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         <Field label="Username" error={fieldErrors.username}>

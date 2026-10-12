@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { HttpError } from '../../supabase/functions/_shared/http.ts'
 import { createCliPort } from './port.ts'
 import { ApiError, type RestClient, type Service } from './rest.ts'
 import { accountRow, CLUB, CLUB_ID, ORG_ID } from './testing.ts'
@@ -127,17 +126,14 @@ describe('createCliPort', () => {
     ])
   })
 
-  it('uses the Auth Admin API for users and factors', async () => {
+  it('uses the Auth Admin API for users', async () => {
     const { client, requests } = fakeClient((req) => {
       if (req.method === 'POST') return { id: CLUB_ID }
-      if (req.path.endsWith('/factors')) return [{ id: 'f1' }, { id: 'f2' }]
       return {}
     })
     const port = createCliPort(client)
     assert.equal(await port.createAuthUser('csoc@usmfomo.pages.dev', 'pw'), CLUB_ID)
-    assert.deepEqual(await port.listFactorIds(CLUB_ID), ['f1', 'f2'])
     await port.updateAuthUser(CLUB_ID, { ban_duration: '876000h' })
-    await port.deleteFactor(CLUB_ID, 'f1')
     await port.deleteAuthUser(CLUB_ID)
     assert.deepEqual(requests, [
       {
@@ -146,24 +142,18 @@ describe('createCliPort', () => {
         path: '/admin/users',
         body: { email: 'csoc@usmfomo.pages.dev', password: 'pw', email_confirm: true },
       },
-      { service: 'auth', method: 'GET', path: `/admin/users/${CLUB_ID}/factors`, body: undefined },
       { service: 'auth', method: 'PUT', path: `/admin/users/${CLUB_ID}`, body: { ban_duration: '876000h' } },
-      { service: 'auth', method: 'DELETE', path: `/admin/users/${CLUB_ID}/factors/f1`, body: undefined },
       { service: 'auth', method: 'DELETE', path: `/admin/users/${CLUB_ID}`, body: undefined },
     ])
   })
 
-  it('404s: a missing user does not exist, a missing factor is not_found', async () => {
+  it('404s: a missing user does not exist', async () => {
     const port = createCliPort(
       fakeClient(() => {
         throw notFound('auth')
       }).client,
     )
     assert.equal(await port.authUserExists(CLUB_ID), false)
-    await assert.rejects(
-      port.deleteFactor(CLUB_ID, 'f1'),
-      (err: unknown) => err instanceof HttpError && err.code === 'not_found',
-    )
     await assert.rejects(port.deleteAuthUser(CLUB_ID), ApiError)
     const exists = createCliPort(fakeClient(() => ({ id: CLUB_ID })).client)
     assert.equal(await exists.authUserExists(CLUB_ID), true)

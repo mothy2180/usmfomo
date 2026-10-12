@@ -66,7 +66,7 @@ Deno.test('create_account: every field is required and checked', () => {
 })
 
 Deno.test('userId actions', () => {
-  for (const action of ['reset_password', 'handover', 'remove_factors', 'delete_account']) {
+  for (const action of ['reset_password', 'handover', 'delete_account']) {
     assertEquals<unknown>(parseActionRequest({ action, userId: U.toUpperCase() }), { action, userId: U })
     rejects({ action })
     rejects({ action, userId: 'not-a-uuid' })

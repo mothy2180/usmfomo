@@ -57,11 +57,7 @@ function StudioHomeContent({ status }: { status: OkStatus }) {
           </p>
         ) : null}
 
-        <FirstLoginChecklist
-          username={status.username}
-          hasFactors={status.factors > 0}
-          hasPosts={(posts.data?.length ?? 0) > 0}
-        />
+        <FirstLoginChecklist username={status.username} hasPosts={(posts.data?.length ?? 0) > 0} />
 
         <div className="flex flex-wrap items-center gap-3">
           {blockText ? (

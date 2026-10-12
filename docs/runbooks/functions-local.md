@@ -40,16 +40,15 @@ The script does the following:
 1. Maintenance: no secret, a wrong secret or GET give 401. The right secret
    gives 200, and the heartbeat moves.
 2. It creates a throwaway owner (`zz-e2e-<run>-owner`) with the CLI and signs
-   in with the CAPTCHA test token.
-3. It checks that aal1 gets 403 `mfa_required`, then enrols TOTP (it computes
-   RFC 6238 codes itself) to get an aal2 token.
-4. It runs every owner-admin action, including the conflict, validation and
+   in with the CAPTCHA test token. That password session is all the owner
+   needs (there is no 2FA); it also checks that Auth refuses 2FA enrolment.
+3. It runs every owner-admin action, including the conflict, validation and
    unknown-id cases.
-5. It checks that a club account is refused: `mfa_required` at aal1,
-   `forbidden` at aal2. Other origins and a missing Origin are refused.
-6. It checks that an owner session ended by sign-out gets 401 while its
+4. It checks that a club account gets 403 `forbidden`. Other origins and a
+   missing Origin are refused.
+5. It checks that an owner session ended by sign-out gets 401 while its
    access token is still unexpired.
-7. It deletes everything it created, also when a check fails.
+6. It deletes everything it created, also when a check fails.
 
 It prints no passwords, tokens or keys. Audit rows for the throwaway accounts
 stay in `audit.events`, which is append-only by design.

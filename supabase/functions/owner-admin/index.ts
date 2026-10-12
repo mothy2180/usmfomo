@@ -1,6 +1,6 @@
 // owner-admin — account and moderation actions for the owner console.
-// POST /functions/v1/owner-admin with `{ "action": ..., ...params }` from an
-// aal2 owner session (docs/api.md). verify_jwt = false (config.toml): the
+// POST /functions/v1/owner-admin with `{ "action": ..., ...params }` from a
+// live owner session (docs/api.md). verify_jwt = false (config.toml): the
 // session is verified in code (authorise.ts), CORS only allows ADMIN_ORIGINS.
 import { createAdminClient } from '../_shared/client.ts'
 import { parseAllowedOrigins } from '../_shared/cors.ts'

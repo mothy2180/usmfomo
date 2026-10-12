@@ -1,10 +1,9 @@
-// Small pure helpers: idle timeout, TOTP input, public site links, form errors.
+// Small pure helpers: idle timeout, public site links, form errors.
 import { describe, expect, it } from 'vitest'
 import { sectionFromHash } from '../console/sections.ts'
 import { fieldErrors, firstInvalid } from './forms.ts'
 import { IDLE_LIMIT_MS, IDLE_WARNING_MS, formatCountdown, idlePhase } from './idle.ts'
 import { DEFAULT_PUBLIC_SITE_URL, publicEventUrl, publicLoginUrl, publicOrgUrl, publicSiteUrl } from './siteUrl.ts'
-import { groupSecret, isOtpauthUri, isSixDigitCode, isSvgDataUri, normaliseCode, validateDeviceName } from './totp.ts'
 
 describe('idle timeout', () => {
   it('signs out after 30 minutes and warns 2 minutes before', () => {
@@ -21,32 +20,6 @@ describe('idle timeout', () => {
     expect(formatCountdown(65_000)).toBe('1:05')
     expect(formatCountdown(400)).toBe('0:01')
     expect(formatCountdown(-5)).toBe('0:00')
-  })
-})
-
-describe('TOTP helpers', () => {
-  it('normalises typed codes', () => {
-    expect(normaliseCode(' 123 456 ')).toBe('123456')
-    expect(normaliseCode('123-456')).toBe('123456')
-    expect(isSixDigitCode('123456')).toBe(true)
-    expect(isSixDigitCode('12345')).toBe(false)
-    expect(isSixDigitCode('12345a')).toBe(false)
-  })
-
-  it('only links otpauth://totp URIs and only shows SVG data URIs', () => {
-    expect(isOtpauthUri('otpauth://totp/usmfomo:owner?secret=ABC&issuer=usmfomo')).toBe(true)
-    expect(isOtpauthUri('javascript:alert(1)')).toBe(false)
-    expect(isOtpauthUri('https://evil.example/otpauth://totp/x')).toBe(false)
-    expect(isSvgDataUri('data:image/svg+xml;utf-8,<svg/>')).toBe(true)
-    expect(isSvgDataUri('https://evil.example/qr.svg')).toBe(false)
-  })
-
-  it('groups the setup key and validates device names', () => {
-    expect(groupSecret('JBSWY3DPEHPK3PXP')).toBe('JBSW Y3DP EHPK 3PXP')
-    expect(validateDeviceName('  ', [])).toMatch(/Give the device a name/)
-    expect(validateDeviceName('Phone', ['phone'])).toMatch(/already have a device/)
-    expect(validateDeviceName('x'.repeat(41), [])).toMatch(/at most 40/)
-    expect(validateDeviceName('Backup phone', ['Phone'])).toBeNull()
   })
 })
 

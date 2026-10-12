@@ -17,7 +17,7 @@ export const STUDIO_QUERY_KEY = ['studio'] as const
 // my_posting_status()
 // ---------------------------------------------------------------------------
 
-export const POSTING_STATES = ['ok', 'mfa_required', 'inactive', 'session_ended', 'no_account', 'owner', 'anonymous'] as const
+export const POSTING_STATES = ['ok', 'inactive', 'session_ended', 'no_account', 'owner', 'anonymous'] as const
 export type PostingState = (typeof POSTING_STATES)[number]
 
 export type StudioOrg = { id: string; name: string; slug: string; type: OrgType; campus: Campus }
@@ -35,8 +35,6 @@ export type OkStatus = {
   next_slot_at: string | null
   edits_24h: number
   edits_limit: number
-  /** Verified TOTP factors on the account. */
-  factors: number
 }
 
 export type OtherStatus = { state: Exclude<PostingState, 'ok'>; username: string | null }
@@ -77,7 +75,6 @@ export function parsePostingStatus(json: unknown): PostingStatus {
     next_slot_at: str(json.next_slot_at),
     edits_24h: num(json.edits_24h, 0),
     edits_limit: num(json.edits_limit, LIMITS.editsPer24h),
-    factors: num(json.factors, 0),
   }
 }
 
@@ -85,19 +82,7 @@ export function parsePostingStatus(json: unknown): PostingStatus {
 // The decision (pure)
 // ---------------------------------------------------------------------------
 
-export type StudioDecision = 'ok' | 'login' | 'mfa' | 'inactive' | 'owner' | 'ended'
-export type AalInfo = { currentLevel: string | null; nextLevel: string | null }
-
-/**
- * Does this session still need a TOTP code? The database decides whenever it
- * answered: it sees devices other committee members (or the admin) added or
- * removed after this session signed in, which the cached user object behind
- * supabase-js's AAL does not. The cached AAL is only the fallback.
- */
-export function needsSecondFactor(aal: AalInfo | null, status: { state: PostingState } | null): boolean {
-  if (status) return status.state === 'mfa_required'
-  return aal?.currentLevel === 'aal1' && aal.nextLevel === 'aal2'
-}
+export type StudioDecision = 'ok' | 'login' | 'inactive' | 'owner' | 'ended'
 
 /**
  * Where a studio page should go:
@@ -105,49 +90,37 @@ export function needsSecondFactor(aal: AalInfo | null, status: { state: PostingS
  *   owner    — the owner account: it uses the owner console, never the studio
  *   inactive — paused account/org, or the account no longer exists
  *   ended    — the session was revoked (password reset / handover)
- *   mfa      — a verified factor exists but this session is still aal1
  *   ok       — may use the studio
- * my_posting_status says 'ok' only when MFA is satisfied, so 'ok' wins over a
- * cached AAL that still counts removed devices (no /studio <-> /login/mfa loop).
  */
-export function decideStudioAccess(
-  session: object | null,
-  aal: AalInfo | null,
-  status: { state: PostingState } | null,
-): StudioDecision {
+export function decideStudioAccess(session: object | null, status: { state: PostingState } | null): StudioDecision {
   if (!session) return 'login'
   switch (status?.state) {
     case 'ok':
       return 'ok'
-    case 'mfa_required':
-      return 'mfa'
     case 'owner':
       return 'owner'
     case 'inactive':
     case 'no_account':
       return 'inactive'
-    case 'session_ended':
-      return 'ended'
     case 'anonymous':
       return 'login'
     default:
-      // No answer: never 'ok'.
-      return needsSecondFactor(aal, null) ? 'mfa' : 'ended'
+      // 'session_ended', or no answer: never 'ok'.
+      return 'ended'
   }
 }
 
-/** Claims we key caches on. Reading our own token is not a security check:
- * the database verifies every request. */
-export function tokenClaims(accessToken: string): { aal: string | null; sessionId: string | null } {
+/** The session id claim we key caches on. Reading our own token is not a
+ * security check: the database verifies every request. */
+export function tokenSessionId(accessToken: string): string | null {
   try {
     const part = accessToken.split('.')[1] ?? ''
     const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
     const payload: unknown = JSON.parse(new TextDecoder().decode(bytes))
-    if (!isRecord(payload)) return { aal: null, sessionId: null }
-    return { aal: str(payload.aal), sessionId: str(payload.session_id) }
+    return isRecord(payload) ? str(payload.session_id) : null
   } catch {
-    return { aal: null, sessionId: null }
+    return null
   }
 }
 
@@ -237,61 +210,35 @@ export type StudioAccess =
   | { phase: 'ready'; decision: 'ok'; status: OkStatus; session: Session }
   | { phase: 'ready'; decision: Exclude<StudioDecision, 'ok'>; status: PostingStatus | null }
 
-type AccessData = { aal: AalInfo; status: PostingStatus }
-
-async function loadAccess(): Promise<AccessData> {
-  const [aalRes, statusRes] = await Promise.all([
-    studioDb.auth.mfa.getAuthenticatorAssuranceLevel(),
-    studioDb.rpc('my_posting_status'),
-  ])
-  if (aalRes.error) throw aalRes.error
-  const aal = { currentLevel: aalRes.data.currentLevel, nextLevel: aalRes.data.nextLevel }
-  if (statusRes.error) {
+async function loadAccess(): Promise<PostingStatus> {
+  const { data, error } = await studioDb.rpc('my_posting_status')
+  if (error) {
     // An expired or revoked JWT: treat like a revoked session.
-    if (errorKey(statusRes.error) === 'session_ended') return { aal, status: { state: 'session_ended', username: null } }
-    throw statusRes.error
+    if (errorKey(error) === 'session_ended') return { state: 'session_ended', username: null }
+    throw error
   }
-  const status = parsePostingStatus(statusRes.data)
-  // The cached session still lists 2FA devices that were removed since it
-  // signed in (by another member or the admin): refresh it, so supabase-js
-  // stops saying a code is needed. The decision already follows the database.
-  if (status.state === 'ok' && status.factors === 0 && aal.nextLevel === 'aal2') await refreshStudioSession()
-  return { aal, status }
+  return parsePostingStatus(data)
 }
 
-/** Query key for the access check: a new user, session or AAL refetches. */
+/** Query key for the access check: a new user or session refetches. */
 export function accessKey(session: Session | null) {
-  const claims = session ? tokenClaims(session.access_token) : null
-  return [...STUDIO_QUERY_KEY, 'access', session?.user.id ?? '', claims?.sessionId ?? '', claims?.aal ?? ''] as const
+  return [...STUDIO_QUERY_KEY, 'access', session?.user.id ?? '', session ? (tokenSessionId(session.access_token) ?? '') : ''] as const
 }
 
-/**
- * While the access check refetches for a new key, keep showing the previous
- * answer only if it belongs to the same user. Adding or removing a 2FA device
- * changes the session's AAL; without this the page would unmount into a
- * spinner mid-flow. Never carried over to a different account.
- */
-export function keepSameUser<T>(previous: T | undefined, previousKey: readonly unknown[] | undefined, key: readonly unknown[]): T | undefined {
-  const user = key[2]
-  return previousKey && typeof user === 'string' && user !== '' && previousKey[2] === user ? previous : undefined
-}
-
-/** Session + AAL + my_posting_status() -> a decision for studio pages. */
+/** Session + my_posting_status() -> a decision for studio pages. */
 export function useStudioAccess(): StudioAccess {
   const { ready, session } = useStudioSession()
-  const queryKey = accessKey(session)
   const query = useQuery({
-    queryKey,
+    queryKey: accessKey(session),
     queryFn: loadAccess,
     enabled: Boolean(session),
-    placeholderData: (previous, previousQuery) => keepSameUser(previous, previousQuery?.queryKey, queryKey),
   })
 
   if (!ready) return { phase: 'loading' }
   if (!session) return { phase: 'ready', decision: 'login', status: null }
   if (query.data) {
-    const { aal, status } = query.data
-    const decision = decideStudioAccess(session, aal, status)
+    const status = query.data
+    const decision = decideStudioAccess(session, status)
     if (decision === 'ok' && status.state === 'ok') return { phase: 'ready', decision, status, session }
     return { phase: 'ready', decision: decision === 'ok' ? 'ended' : decision, status }
   }
@@ -312,10 +259,4 @@ export async function signOutStudio(queryClient?: QueryClient): Promise<{ error:
   const { error } = await studioDb.auth.signOut({ scope: 'local' })
   queryClient?.removeQueries({ queryKey: STUDIO_QUERY_KEY })
   return { error: error ?? null }
-}
-
-/** Gets a new token and the account's current user (and 2FA devices) from
- * Auth. Best effort: a failure is harmless, the token refreshes on its own. */
-export async function refreshStudioSession(): Promise<void> {
-  await studioDb.auth.refreshSession().catch(() => undefined)
 }

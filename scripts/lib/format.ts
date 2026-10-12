@@ -35,7 +35,7 @@ export function accountStatus(row: AccountRow, now: Date): string {
 
 export function formatAccounts(rows: readonly AccountRow[], now: Date = new Date()): string {
   if (rows.length === 0) return 'No accounts yet. Create the owner with: pnpm account create-owner <username>'
-  const header = ['USERNAME', 'KIND', 'ORGANISATION', 'SLUG', 'CAMPUS', 'STATUS', '2FA', 'LIVE', 'LAST SIGN-IN (MYT)']
+  const header = ['USERNAME', 'KIND', 'ORGANISATION', 'SLUG', 'CAMPUS', 'STATUS', 'LIVE', 'LAST SIGN-IN (MYT)']
   const lines = rows.map((r) => [
     r.username,
     r.is_owner ? 'owner' : (r.org_type ?? '-'),
@@ -43,7 +43,6 @@ export function formatAccounts(rows: readonly AccountRow[], now: Date = new Date
     r.org_slug ?? '-',
     r.org_campus ?? '-',
     accountStatus(r, now),
-    String(r.factor_count),
     r.is_owner ? '-' : String(r.live_posts),
     mytTime(r.last_sign_in_at),
   ])

@@ -64,12 +64,6 @@ const loginRoute = createRoute({
   component: lazyRouteComponent(() => import('./routes/auth/LoginPage.tsx'), 'LoginPage'),
 })
 
-const mfaRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/login/mfa',
-  component: lazyRouteComponent(() => import('./routes/auth/MfaPage.tsx'), 'MfaPage'),
-})
-
 const studioRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/studio',
@@ -102,7 +96,6 @@ const routeTree = rootRoute.addChildren([
   orgRoute,
   rulesRoute,
   loginRoute,
-  mfaRoute,
   studioRoute,
   newPostRoute,
   editPostRoute,

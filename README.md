@@ -28,7 +28,7 @@ first deploy (`docs/runbooks/deploy.md`).
 React + TypeScript + Vite single-page app and a plain three.js landing page on
 **Cloudflare Pages** (`usmfomo.pages.dev`; owner console on
 `usmfomo-admin.pages.dev`) · **Supabase Free** in Singapore (Postgres with RLS,
-Auth with optional TOTP, Storage, two Edge Functions) · an hourly **Cloudflare
+Auth with CAPTCHA, Storage, two Edge Functions) · an hourly **Cloudflare
 Worker** cron for cleanup and keep-alive · GitHub Actions · pnpm. Everything is
 on free plans; nothing needs a card.
 

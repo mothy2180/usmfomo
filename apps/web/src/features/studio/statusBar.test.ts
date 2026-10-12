@@ -15,7 +15,6 @@ const status = (over: Partial<OkStatus> = {}): OkStatus => ({
   next_slot_at: null,
   edits_24h: 4,
   edits_limit: 30,
-  factors: 2,
   ...over,
 })
 

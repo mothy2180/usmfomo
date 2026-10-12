@@ -86,7 +86,7 @@ select is(
 select set_eq(
   $$ select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'private' and has_function_privilege('authenticated', p.oid, 'execute') $$,
-  array['my_org_id', 'is_owner', 'mfa_satisfied', 'can_upload_poster'],
+  array['my_org_id', 'is_owner', 'can_upload_poster'],
   'authenticated can execute only the policy helpers in private');
 
 select is(

@@ -13,10 +13,9 @@ import { errorMessage } from '../../lib/messages.ts'
 import { qk } from '../../lib/queries.ts'
 import { reportSessionProblem } from '../../lib/sessionEvents.ts'
 import { useNow } from '../../lib/useNow.ts'
-import { hasRecentFactor } from './accountForms.ts'
 import { EditOrgForm } from './EditOrgForm.tsx'
 
-type ActionKind = 'reset' | 'handover' | 'pause' | 'resume' | 'factors' | 'delete'
+type ActionKind = 'reset' | 'handover' | 'pause' | 'resume' | 'delete'
 
 type Step =
   | { kind: 'menu' }
@@ -40,12 +39,12 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
     case 'reset':
       return {
         label: 'Reset password',
-        summary: 'New random password; signs them out everywhere. Their 2FA devices stay.',
+        summary: 'New random password; signs them out everywhere.',
         title: `Reset the password of ${a.username}?`,
         effect: (
           <>
             <p className="m-0">A new random password is generated and shown to you once.</p>
-            <p className="m-0">Every session of {a.username} ends at once, on every device. Their 2FA devices stay enrolled.</p>
+            <p className="m-0">Every session of {a.username} ends at once, on every device.</p>
           </>
         ),
         confirmLabel: 'Reset password',
@@ -54,17 +53,16 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
     case 'handover':
       return {
         label: 'Hand over to a new committee',
-        summary: 'New password, all 2FA devices removed, every session ended. Posts stay.',
+        summary: 'New password, every session ended. Posts stay.',
         title: `Hand over ${a.username} to a new committee?`,
         effect: (
           <>
             <p className="m-0">
-              In one step: the account is paused, gets a new random password (which ends every session), loses all of its
-              2FA devices, and is then active again.
+              In one step: the account is paused, gets a new random password (which ends every session), and is then
+              active again.
             </p>
             <p className="m-0">
-              Give the new password only to the new committee, through {org}’s official channel. They can enrol their own
-              2FA devices. Posts stay up.
+              Give the new password only to the new committee, through {org}’s official channel. Posts stay up.
             </p>
           </>
         ),
@@ -95,33 +93,9 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
         label: 'Resume account',
         summary: 'They can sign in and post again with their current password.',
         title: `Resume ${a.username}?`,
-        effect: <p className="m-0">They can sign in and post again with their current password and 2FA devices.</p>,
+        effect: <p className="m-0">They can sign in and post again with their current password.</p>,
         confirmLabel: 'Resume account',
         tone: 'primary',
-      }
-    case 'factors':
-      return {
-        label: 'Remove 2FA devices',
-        summary: 'Only the devices: the password stays. For a lost phone, use Hand over, or reset the password first.',
-        title: `Remove all 2FA devices of ${a.username}?`,
-        effect: (
-          <>
-            <p className="m-0">
-              {plural(a.factor_count, 'device')} will be removed. They can then sign in with the password alone and enrol
-              new devices in Studio settings.
-            </p>
-            <p className="m-0">
-              The password stays and no session ends. Anyone already signed in with the password alone, or who knows it,
-              gets full access without a code and could enrol a device of their own.
-            </p>
-            <p className="m-0">
-              For a lost phone, use Hand over instead: it changes the password (ending every session) before removing the
-              devices. Or reset the password first, then remove the devices.
-            </p>
-          </>
-        ),
-        confirmLabel: 'Remove devices',
-        tone: 'danger',
       }
     case 'delete':
       return {
@@ -147,7 +121,7 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
 }
 
 function menuActions(a: AccountRow): ActionKind[] {
-  return ['reset', 'handover', a.account_active ? 'pause' : 'resume', 'factors', 'delete']
+  return ['reset', 'handover', a.account_active ? 'pause' : 'resume', 'delete']
 }
 
 /** Manage one club/school account. Every action explains itself and asks for
@@ -202,7 +176,7 @@ export function AccountDialog({
           setStepState({
             kind: 'password',
             password,
-            lead: `Handover done: new password, all 2FA devices removed, every session of ${account.username} ended.`,
+            lead: `Handover done: new password, every session of ${account.username} ended.`,
           })
           break
         }
@@ -212,16 +186,6 @@ export function AccountDialog({
           refresh()
           finish(action === 'resume' ? `${account.username} resumed.` : `${account.username} paused.`)
           break
-        case 'factors': {
-          const removed = await adminApi.removeFactors(id)
-          refresh()
-          finish(
-            removed === null
-              ? `2FA devices of ${account.username} removed.`
-              : `Removed ${plural(removed, '2FA device')} from ${account.username}.`,
-          )
-          break
-        }
         case 'delete': {
           const files = await adminApi.deleteAccount(id)
           refresh(true)
@@ -304,7 +268,6 @@ export function AccountDialog({
 function Menu({ account: a, onPick, onClose }: { account: AccountRow; onPick: (step: Step) => void; onClose: () => void }) {
   const now = useNow(60_000)
   const baseId = useId()
-  const recent = hasRecentFactor(a, now)
   return (
     <div className="flex flex-col gap-4">
       <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
@@ -320,16 +283,6 @@ function Menu({ account: a, onPick, onClose }: { account: AccountRow; onPick: (s
         <dd className="m-0 flex flex-wrap gap-1">
           {a.account_active ? <Badge tone="ok">Active</Badge> : <Badge tone="danger">Paused</Badge>}
           {a.org_active === false ? <Badge tone="danger">Org inactive</Badge> : null}
-        </dd>
-        <dt className="text-muted">2FA devices</dt>
-        <dd className="m-0">
-          {a.factor_count ? `${plural(a.factor_count, 'device')}, newest ${formatMytDateTime(a.newest_factor_at)}` : 'None'}
-          {recent ? (
-            <>
-              {' '}
-              <Badge tone="accent">Added in the last 7 days</Badge>
-            </>
-          ) : null}
         </dd>
         <dt className="text-muted">Last sign-in</dt>
         <dd className="m-0">{a.last_sign_in_at ? `${formatAge(a.last_sign_in_at, now)} (${formatMytDateTime(a.last_sign_in_at)})` : 'Never'}</dd>
@@ -347,21 +300,19 @@ function Menu({ account: a, onPick, onClose }: { account: AccountRow; onPick: (s
         </li>
         {menuActions(a).map((action) => {
           const copy = actionCopy(action, a)
-          const noDevices = action === 'factors' && a.factor_count === 0
           const descId = `${baseId}-${action}`
           return (
             <li key={action} className="flex flex-col gap-1">
               <Button
                 variant={action === 'delete' ? 'danger' : 'secondary'}
                 onClick={() => onPick({ kind: 'confirm', action })}
-                disabled={noDevices}
                 aria-describedby={descId}
                 className="self-start"
               >
                 {copy.label}
               </Button>
               <p id={descId} className="m-0 text-xs text-muted">
-                {noDevices ? 'No 2FA devices are enrolled.' : copy.summary}
+                {copy.summary}
               </p>
             </li>
           )

@@ -21,7 +21,7 @@ done for both.
 | 5–7 | P2 | TypeScript basics, types, generics, async | <https://www.typescriptlang.org/docs/handbook/intro.html> | 3 evenings | yes |
 | 8–9 | P2 | React fundamentals: components, props, state, effects | <https://react.dev/learn> | 2 evenings | yes |
 | 10 | P2 | Supabase quickstart (React) | <https://supabase.com/docs/guides/getting-started/quickstarts/reactjs> | 1 evening | yes |
-| 11 | P3 | Supabase Auth MFA: TOTP enrol/challenge, `aal2` in RLS | <https://supabase.com/docs/guides/auth/auth-mfa> | 1 evening | yes: studio 2FA, owner console |
+| 11 | P3 | Supabase Auth MFA: TOTP enrol/challenge, `aal2` in RLS | <https://supabase.com/docs/guides/auth/auth-mfa> | 1 evening | optional: usmfomo has no 2FA (removed in 0055) |
 | 12 | — | PL/pgSQL deferred constraint triggers | <https://www.postgresql.org/docs/17/sql-createtrigger.html> | 1 evening | optional: usmfomo has none |
 | 13 | P4 | Deno + Edge Functions incl. background tasks | <https://supabase.com/docs/guides/functions/background-tasks> | 1 evening | yes: `maintenance`, `owner-admin` |
 | 14 | — | Curlec payments | (FirstApp only) | 1 evening | no |

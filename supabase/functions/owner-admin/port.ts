@@ -44,7 +44,7 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
       const { data, error } = result
       if (error) throw httpErrorFromToken(error)
       if (!data) throw new HttpError('unauthorized')
-      return { sub: data.claims.sub, role: data.claims.role, aal: data.claims.aal }
+      return { sub: data.claims.sub, role: data.claims.role }
     },
     async sessionUserId(token) {
       const { data, error } = await client.auth.getUser(token)
@@ -70,11 +70,6 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
       }
       return data.user !== null
     },
-    async listFactorIds(userId) {
-      const { data, error } = await admin.mfa.listFactors({ userId })
-      if (error) throw httpErrorFromAuth(error)
-      return data.factors.map((f) => f.id)
-    },
     async orgObjects(orgId) {
       return (await rpc<string[] | null>(client, 'admin_org_objects', { p_org: orgId })) ?? []
     },
@@ -90,10 +85,6 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
     },
     async updateAuthUser(userId, update) {
       const { error } = await admin.updateUserById(userId, update)
-      if (error) throw httpErrorFromAuth(error)
-    },
-    async deleteFactor(userId, factorId) {
-      const { error } = await admin.mfa.deleteFactor({ userId, id: factorId })
       if (error) throw httpErrorFromAuth(error)
     },
     async deleteAuthUser(userId) {

@@ -69,7 +69,7 @@ select ok(tests.live_moved(), 'switching public reads moves changed_at');
 select tests.authenticate_as(tests.fx('uo'), tests.fx('so2'), 'aal2');
 select results_eq(
   $$ with u as (update public.live_state set poll_seconds = 120 returning 1) select count(*)::int from u $$,
-  $$ values (1) $$, 'the owner at aal2 can change the poll interval');
+  $$ values (1) $$, 'the owner can change the poll interval');
 select throws_ok($$ update public.live_state set poll_seconds = 5 $$, '23514', null, 'only the offered intervals are allowed');
 
 select tests.become_postgres();

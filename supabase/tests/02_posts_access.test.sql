@@ -113,8 +113,8 @@ select tests.authenticate_as(tests.fx('uo'), tests.fx('so1'), 'aal1');
 select results_eq(
   $$ with u as (update public.posts set hidden_at = null where id = tests.fx('pb') returning 1)
      select count(*)::int from u $$,
-  $$ values (0) $$,
-  'the owner at aal1 cannot moderate');
+  $$ values (1) $$,
+  'the owner can moderate without 2FA (aal1)');
 
 -- Revocation ------------------------------------------------------------------
 select tests.become_postgres();
@@ -139,18 +139,18 @@ select results_eq(
   $$ values (0) $$,
   'a deactivated account cannot edit');
 
--- MFA gate --------------------------------------------------------------------
+-- No 2FA (0055): a factor left from before is ignored ------------------------
 select tests.authenticate_as(tests.fx('um'), tests.fx('sm1'), 'aal1');
-select throws_ok(
+select lives_ok(
   $$ insert into public.posts (title, venue, starts_at, ends_at)
-     values ('MFA post', 'Room', now() + interval '1 day', now() + interval '1 day 1 hour') $$,
-  '42501', null, 'with a verified factor, an aal1 session cannot post');
+     values ('Old factor post', 'Room', now() + interval '1 day', now() + interval '1 day 1 hour') $$,
+  'an account with a leftover verified factor posts at aal1');
 
 select tests.authenticate_as(tests.fx('um'), tests.fx('sm2'), 'aal2');
 select lives_ok(
   $$ insert into public.posts (title, venue, starts_at, ends_at)
-     values ('MFA post', 'Room', now() + interval '1 day', now() + interval '1 day 1 hour') $$,
-  'with a verified factor, an aal2 session can post');
+     values ('Old aal2 post', 'Room', now() + interval '2 days', now() + interval '2 days 1 hour') $$,
+  'an old aal2 session still posts');
 
 select * from finish();
 rollback;

@@ -22,7 +22,7 @@ describe('parseCommand', () => {
   })
 
   it('username commands normalise the username like the console', () => {
-    for (const name of ['reset-password', 'handover', 'deactivate', 'activate', 'remove-factors', 'owner-reset-mfa']) {
+    for (const name of ['reset-password', 'handover', 'deactivate', 'activate']) {
       assert.deepEqual(parseCommand([name, ' CSoc ']), { name, username: 'csoc' })
     }
     assert.deepEqual(parseCommand(['create-owner', 'Tim']), { name: 'create-owner', username: 'tim' })
@@ -83,6 +83,8 @@ describe('parseCommand', () => {
     fails([], /missing command/)
     fails(['frobnicate'], /unknown command "frobnicate"/)
     fails(['toString'], /unknown command/)
+    fails(['remove-factors', 'csoc'], /unknown command "remove-factors"/)
+    fails(['owner-reset-mfa', 'owner'], /unknown command "owner-reset-mfa"/)
     fails(['__proto__'], /unknown command/)
     fails(['constructor', 'x'], /unknown command/)
     fails(['list', 'extra'], /usage: pnpm account list$/)

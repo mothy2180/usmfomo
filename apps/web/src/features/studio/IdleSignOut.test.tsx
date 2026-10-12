@@ -51,7 +51,7 @@ describe('IdleSignOut', () => {
     window.sessionStorage.clear()
     saveLastActivity()
     clearIdleSignOut()
-    fake().setSession(fakeSession('aal1'), 'INITIAL_SESSION')
+    fake().setSession(fakeSession(), 'INITIAL_SESSION')
   })
   afterEach(() => {
     cleanup()

@@ -1,7 +1,7 @@
 # Account takeover
 
 Someone who is not the club (or not you) is using an account: posts the club
-did not make, a 2FA factor nobody recognises, a club saying "that wasn't us", or
+did not make, a club saying "that wasn't us", or
 logins at strange hours in the audit log. Contain first, investigate second.
 
 ## 1. Contain (minutes)
@@ -13,18 +13,16 @@ Owner console (or the owner CLI with the `owner_cli` key):
 2. **Reset the password**: this ends every session of the account
    (`pnpm account reset-password <username>`). Keep the new password to yourself
    for now.
-3. **Remove all 2FA factors**: the attacker may have enrolled one
-   (`pnpm account remove-factors <username>`).
-4. **Moderation** → hide every bad post (or **Delete** / **Remove image**, which
+3. **Moderation** → hide every bad post (or **Delete** / **Remove image**, which
    also deletes the files at once). Copies already cached can stay visible for
    up to 6 hours at the edge and 1 hour in browsers; there is no purge on the
    free plan.
-5. Many accounts at once, or you are unsure how far it goes: **Overview** →
+4. Many accounts at once, or you are unsure how far it goes: **Overview** →
    **Kill switches** → **Pause posting** for everyone; public reading keeps
    working.
 
-The order matters: banning and removing factors do not end live sessions; the
-password reset does ([handover.md](handover.md)).
+The order matters: banning does not end live sessions; the password reset
+does ([handover.md](handover.md)).
 
 ## 2. Investigate
 
@@ -44,14 +42,14 @@ limit 200;
 - Look for the first change the club does not recognise; note the session id
   and time.
 - Authentication → Users → the account (`<username>@usmfomo.pages.dev`): last
-  sign-in, enrolled factors and their creation dates.
+  sign-in and creation date.
 - Ask the club through its **official channel** how the password could have
   leaked (shared in a group chat, a shared lab PC still signed in, a phone).
 
 ## 3. Recover
 
 - When the legitimate committee is confirmed through the official channel, hand
-  the account back with a fresh password and new factors: [handover.md](handover.md)
+  the account back with a fresh password: [handover.md](handover.md)
   (reactivate as its last step).
 - Turn posting back on if you switched it off.
 - Clean up: the club edits or deletes what remains; you delete what it cannot.
@@ -60,8 +58,9 @@ limit 200;
 
 Treat everything the owner can reach as exposed and rotate it all, from your laptop:
 
-1. `pnpm account owner-reset-mfa <username>` (new owner password, every owner
-   factor removed, every session ended), then enrol two new TOTP devices.
+1. `pnpm account reset-password <owner-username>` with the `owner_cli` key, as
+   in [owner-lockout.md](owner-lockout.md) (new owner password, every owner
+   session ended).
 2. Replace the `owner_cli` secret key, and the `default` one too if any secret
    key could have leaked, in the order of [quota-attack.md](quota-attack.md),
    section 4: the new Edge Functions key must be named exactly `default`, then
@@ -71,7 +70,8 @@ Treat everything the owner can reach as exposed and rotate it all, from your lap
 4. Renew the CI tokens (Supabase access token, Cloudflare API token) and update
    the GitHub environment secrets; review GitHub, Supabase and Cloudflare
    security logs for sessions you do not recognise.
-5. Check every account's factor list for factors added recently.
+5. Check every account's last sign-in in the account list for sign-ins nobody
+   expected.
 
 ## 5. Personal data and reporting
 
@@ -84,5 +84,5 @@ Write down what happened, when, and what you did, as you go.
 ## 6. Afterwards
 
 Add an entry to the journal in `docs/PROJECT.md` (what happened, the cause, what
-changed), and fix the cause: for example tell clubs to sign out on shared PCs,
-and push for 2FA with two devices.
+changed), and fix the cause: for example tell clubs to sign out on shared PCs
+and to keep the password in a password manager, never in a group chat.

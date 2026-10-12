@@ -22,9 +22,9 @@ component contracts: [`../api.md`](../api.md).
 |---|---|
 | [onboard-club.md](onboard-club.md) | a club or school asks for an account |
 | [handover.md](handover.md) | a committee changes (new office bearers) |
-| [forgot-password.md](forgot-password.md) | a club forgot its password or lost its 2FA device |
-| [owner-lockout.md](owner-lockout.md) | you (the owner) lost both TOTP devices, the password, or the `owner_cli` key |
-| [account-takeover.md](account-takeover.md) | an account posts things its club did not, or a factor nobody recognises appears |
+| [forgot-password.md](forgot-password.md) | a club forgot its password, or a phone signed in to it was lost |
+| [owner-lockout.md](owner-lockout.md) | you (the owner) lost the password or the `owner_cli` key |
+| [account-takeover.md](account-takeover.md) | an account posts things its club did not, or signs in when nobody expected it |
 | [quota-attack.md](quota-attack.md) | Supabase usage jumps or someone floods the public API |
 
 ## Rules that apply to every runbook
@@ -33,8 +33,8 @@ component contracts: [`../api.md`](../api.md).
   before any account change.
 - **Passwords go 1:1**: in person or a direct message to the verified contact,
   never in group chats, shared threads or screenshots.
-- **Recovery order**: deactivate → reset password (ends every session) → remove
-  factors → reactivate → the new committee enrols in one sitting.
+- **Recovery order**: deactivate → reset password (ends every session) →
+  reactivate → the new committee signs in.
 - **Secrets stay out of files**: read them with `read -rs`, use them for one
   command, `unset` them. Only the publishable key ever reaches a browser.
 - **`supabase config push` is by hand only**, after `config diff`; never from CI.

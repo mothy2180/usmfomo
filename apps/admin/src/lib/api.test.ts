@@ -27,8 +27,6 @@ const ACCOUNT = {
   created_at: '2026-10-01T00:00:00Z',
   last_sign_in_at: null,
   banned_until: null,
-  factor_count: 2,
-  newest_factor_at: '2026-10-04T00:00:00Z',
   live_posts: 3,
 }
 
@@ -59,7 +57,6 @@ describe('request shaping', () => {
       ['reset_password', (api) => api.resetPassword(userId), { action: 'reset_password', userId }, { password: 'x'.repeat(24) }],
       ['handover', (api) => api.handover(userId), { action: 'handover', userId }, { password: 'y'.repeat(24) }],
       ['set_account_active', (api) => api.setAccountActive(userId, false), { action: 'set_account_active', userId, active: false }, {}],
-      ['remove_factors', (api) => api.removeFactors(userId), { action: 'remove_factors', userId }, { removed: 2 }],
       ['delete_account', (api) => api.deleteAccount(userId), { action: 'delete_account', userId }, { removedFiles: 4 }],
       ['delete_post', (api) => api.deletePost(postId), { action: 'delete_post', postId }, { removedFiles: 2 }],
       ['remove_post_image', (api) => api.removePostImage(postId), { action: 'remove_post_image', postId }, { removedFiles: 2 }],
@@ -104,13 +101,19 @@ describe('responses', () => {
     const { api } = fakeInvoke(ok([owner, ACCOUNT]))
     const rows = await api.listAccounts()
     expect(rows.map((r) => r.username)).toEqual(['owner', 'robotics-club'])
-    expect(rows[1]?.factor_count).toBe(2)
+    expect(rows[1]?.live_posts).toBe(3)
+  })
+
+  it('accepts and drops extra fields an older or newer function still sends', async () => {
+    const { api } = fakeInvoke(ok([{ ...ACCOUNT, extra_count: 2, extra_at: '2026-10-04T00:00:00Z' }]))
+    const [row] = await api.listAccounts()
+    expect(row?.username).toBe('robotics-club')
+    expect(row && 'extra_count' in row).toBe(false)
   })
 
   it('reports optional counters as null when missing, without failing the action', async () => {
     expect(await fakeInvoke(ok({ removedFiles: 3 })).api.deleteAccount('u')).toBe(3)
     expect(await fakeInvoke(ok({})).api.deleteAccount('u')).toBeNull()
-    expect(await fakeInvoke(ok({ removed: 1 })).api.removeFactors('u')).toBe(1)
   })
 
   it('reads the files Storage refused to delete for delete_post and remove_post_image', async () => {
@@ -186,7 +189,6 @@ describe('with supabase-js functions.invoke', () => {
 
   it.each([
     [403, { ok: false, error: 'forbidden' }, 'forbidden'],
-    [403, { ok: false, error: 'mfa_required' }, 'mfa_required'],
     [401, { ok: false, error: 'unauthorized' }, 'unauthorized'],
     [400, { ok: false, error: 'bad_request' }, 'bad_request'],
     [404, { ok: false, error: 'not_found' }, 'not_found'],

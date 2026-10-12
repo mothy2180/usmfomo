@@ -56,7 +56,7 @@ Public (anon, `publicDb` in `apps/web/src/lib/db.ts`):
   comes back empty, to say "events are hidden for a while" in degraded mode.
 
 Club studio (`studioDb`, session in sessionStorage):
-- `rpc('my_posting_status')` → `{ state: 'ok'|'mfa_required'|'inactive'|'session_ended'|'no_account'|'owner'|'anonymous', username, org{id,name,slug,type,campus}, posting_enabled, live, live_limit, new_24h, new_limit, next_slot_at, edits_24h, edits_limit, factors }`
+- `rpc('my_posting_status')` → `{ state: 'ok'|'inactive'|'session_ended'|'no_account'|'owner'|'anonymous', username, org{id,name,slug,type,campus}, posting_enabled, live, live_limit, new_24h, new_limit, next_slot_at, edits_24h, edits_limit }`
 - `from('posts')` insert/update/delete with the column grants in 0020
   (`campus,title,venue,description,link_url,starts_at,ends_at,poster_path,thumb_path,cancelled_at`).
   Own posts (including hidden/expired-but-not-purged) are readable with
@@ -66,11 +66,10 @@ Club studio (`studioDb`, session in sessionStorage):
   `remove([...])` for own files. Max 2 MiB, WebP/JPEG only, 40 objects per org.
 - Errors: `errorKey()` from `@usmfomo/shared/errors` → i18n key under `errors:`.
 
-Owner console (owner session, aal2):
-- At aal1, right after the password step: `rpc('my_posting_status')`. Any club
-  or school state means "not the owner" (sign out with scope local), so a club
-  is never pushed into enrolling 2FA here. The binding check stays owner-admin
-  `status` at aal2.
+Owner console (owner session; there is no 2FA, see 0055):
+- Right after the password step: `rpc('my_posting_status')`. Any club or school
+  state means "not the owner" (sign out with scope local). The binding check
+  stays owner-admin `status`.
 - `from('posts')` select (all rows) and update `hidden_at` (hide/unhide).
 - `from('notices')` select/insert/update/delete.
 - `from('site_settings')` select/update `posting_enabled`, `public_reads_enabled`.
@@ -86,21 +85,22 @@ Authorisation, in this order (any failure stops the request):
 1. CORS: `Origin` must be in `ADMIN_ORIGINS` (comma-separated env); OPTIONS
    preflight answered for those origins only.
 2. Bearer token present → `auth.getClaims(token)` verifies the signature (JWKS)
-   → `role === 'authenticated'` and `aal === 'aal2'` (else 403 `mfa_required`).
+   → `role === 'authenticated'` (else 401 `unauthorized`). The assurance level
+   (`aal`) is not checked: there is no 2FA.
 3. `auth.getUser(token)` succeeds (rejects ended sessions and banned users).
 4. `rpc('admin_is_owner', { p_uid: sub })` is true (else 403 `forbidden`).
 
 Responses: `200 { ok: true, data }` or `{ ok: false, error }` with status
-400 `bad_request` · 401 `unauthorized` · 403 `forbidden`/`mfa_required` ·
+400 `bad_request` · 401 `unauthorized` · 403 `forbidden` ·
 404 `not_found` · 409 `conflict` · 500 `internal`. Never echo secrets,
 passwords of other actions, or stack traces. Details as implemented:
 - A missing or unlisted `Origin` is 403 `forbidden` with no CORS headers
   (preflight included). Non-POST is 400; a body over 8 KiB or not JSON is 400.
 - Invalid, expired or garbage tokens and ended sessions are 401; a verified
   token that is not `role: authenticated` or whose `sub` is not a UUID is 401;
-  `mfa_required` (403) only when `aal` is not `aal2`; Auth outages are 500.
+  Auth outages are 500.
 - Account actions (`reset_password`, `handover`, `set_account_active`,
-  `remove_factors`, `delete_account`) all refuse the owner's own account with
+  `delete_account`) all refuse the owner's own account with
   403 `forbidden` (break-glass for the owner is the CLI). An unknown `userId` is 404.
 - Every account action finds its account with a direct lookup,
   `admin_get_account(p_user)` (one jsonb object, or null without an account
@@ -115,10 +115,9 @@ passwords of other actions, or stack traces. Details as implemented:
 | `list_accounts` | — | every row of `admin_list_accounts` | one array with every account: the function reads `admin_list_accounts(p_limit ≤ 100, p_offset)` page by page until a short page (order: owner first, then organisation name, then `user_id`; a row seen twice is kept once) and fails with 500 rather than return a cut list |
 | `create_account` | `username, orgName, orgSlug, type, campus` | `{ userId, orgId, username, password }` | validate with `createAccountSchema` rules; `auth.admin.createUser({ email, password, email_confirm: true })`, then `admin_create_org_account`; if that fails, delete the auth user |
 | `reset_password` | `userId` | `{ password }` | `admin_allow_password_change` → `updateUserById(userId, { password })` — ends all of that user's sessions |
-| `handover` | `userId` | `{ password }` | deactivate → new password (grant, then Auth; ends sessions) → delete every MFA factor → reactivate |
+| `handover` | `userId` | `{ password }` | deactivate → new password (grant, then Auth; ends sessions) → reactivate |
 | `set_account_active` | `userId, active` | `{}` | `admin_set_account_active`; `false` also bans (`ban_duration: '876000h'`), `true` unbans (`'none'`) |
 | `update_org` | `orgId, name, slug, type, campus, active` | `{}` | `admin_update_org` |
-| `remove_factors` | `userId` | `{ removed }` | `auth.admin.mfa.listFactors` + `deleteFactor` each |
 | `delete_account` | `userId` | `{ removedFiles }` | refuse for the owner account; deactivate first (no upload can land after the listing) → `admin_org_objects` (every file name, one jsonb array) → Storage `remove` (≤1000 per call; any failed batch → 500, org and account kept deactivated so a retry can finish) → `admin_delete_org` → `auth.admin.deleteUser`. Only when `admin_get_account` finds no account row is an existing auth user (left by a failed create) just deleted |
 | `delete_post` | `postId` | `{ removedFiles, failedFiles }` | `admin_delete_post` → Storage `remove` of returned paths. Unknown post 404. A Storage failure does not fail the request: `failedFiles` (a number, 0 when all went) counts the files still in the bucket, which stay public until the daily orphan sweep deletes them |
 | `remove_post_image` | `postId` | `{ removedFiles, failedFiles }` | `admin_remove_post_image` → Storage `remove` (same failure rule and `failedFiles`) |
@@ -189,14 +188,14 @@ read -rs 'k?owner_cli key: '; SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SE
 
 Commands: `list` · `create-owner <username>` · `create <username> --org "<name>" --type club|school [--campus main] [--slug <slug>]` ·
 `reset-password <username>` · `handover <username>` · `deactivate <username>` · `activate <username>` ·
-`remove-factors <username>` · `delete <username> --yes` · `owner-reset-mfa <username>` (break-glass) ·
+`delete <username> --yes` ·
 `seed-local` (local URL only: `owner`, `demo-club` and `demo-school`; existing
 ones are skipped, not reset). Passwords are printed once and never written to disk.
 
 Break-glass meanings: `reset-password`, `deactivate` and `activate` also work on
-the owner account; `handover`, `remove-factors` and `delete` refuse it;
-`owner-reset-mfa` (owner only) sets a new password first, which ends every
-session, then deletes every factor. Every new password goes through
+the owner account (`reset-password` of the owner is the fix for a lost owner
+password, docs/runbooks/owner-lockout.md); `handover` and `delete` refuse it.
+Every new password goes through
 `admin_allow_password_change` first, like the console's. A command finds its
 account with `admin_get_account_by_username` (one jsonb object, or null), never
 by searching the list; `list` reads `admin_list_accounts` page by page, so it

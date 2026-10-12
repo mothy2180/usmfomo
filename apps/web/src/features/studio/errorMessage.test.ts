@@ -27,11 +27,9 @@ describe('studioErrorKey', () => {
     expect(studioErrorKey({ name: 'StorageApiError', message: 'x', status: 403 })).toBe('studio:poster.refused')
   })
 
-  it('names 2FA device problems', () => {
-    expect(studioErrorKey({ name: 'AuthApiError', code: 'mfa_factor_name_conflict', status: 422 })).toBe('studio:settings.nameTaken')
-    expect(studioErrorKey({ name: 'AuthApiError', code: 'too_many_enrolled_mfa_factors', status: 422 })).toBe('studio:settings.tooMany')
-    expect(studioErrorKey({ name: 'AuthApiError', code: 'mfa_verification_failed', status: 422 })).toBe('errors:auth_bad_code')
-    expect(studioErrorKey({ name: 'AuthApiError', code: 'insufficient_aal', status: 403 })).toBe('errors:mfa_required')
+  it('maps Auth errors through the shared errorKey()', () => {
+    expect(studioErrorKey({ name: 'AuthApiError', code: 'invalid_credentials', status: 400 })).toBe('errors:auth_invalid')
+    expect(studioErrorKey({ name: 'AuthApiError', code: 'session_not_found', status: 403 })).toBe('errors:session_ended')
   })
 
   it('says a new post may be live when its answer was lost, unless the check itself was refused', () => {

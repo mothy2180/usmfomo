@@ -39,12 +39,12 @@ describe('createRestClient', () => {
     const { fetch, seen } = fakeFetch(() => json({ ok: 1 }))
     const client = createRestClient(TARGET, fetch)
     assert.deepEqual(await client.request('rest', 'POST', '/rpc/admin_status', {}), { ok: 1 })
-    await client.request('auth', 'GET', '/admin/users/x/factors')
+    await client.request('auth', 'GET', '/admin/users/x')
     await client.request('storage', 'DELETE', '/object/posters', { prefixes: ['a'] })
 
     assert.deepEqual(seen.map((s) => `${s.method} ${s.url}`), [
       'POST http://127.0.0.1:54321/rest/v1/rpc/admin_status',
-      'GET http://127.0.0.1:54321/auth/v1/admin/users/x/factors',
+      'GET http://127.0.0.1:54321/auth/v1/admin/users/x',
       'DELETE http://127.0.0.1:54321/storage/v1/object/posters',
     ])
     for (const s of seen) {

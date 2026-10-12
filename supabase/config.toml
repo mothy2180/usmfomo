@@ -170,10 +170,11 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 [auth.mfa]
 max_enrolled_factors = 10
 
-# TOTP is free: optional for club/school accounts, mandatory for the owner.
+# No 2FA for anyone (decision log, 2026-10-12; migration 0055): TOTP off, so
+# no factor can be added or used and no session reaches aal2.
 [auth.mfa.totp]
-enroll_enabled = true
-verify_enabled = true
+enroll_enabled = false
+verify_enabled = false
 
 [auth.mfa.phone]
 enroll_enabled = false
@@ -224,7 +225,7 @@ CRON_SECRET = "env(CRON_SECRET)"
 ADMIN_ORIGINS = "env(ADMIN_ORIGINS)"
 
 # Both functions authorise in code (new API keys are not JWTs):
-# maintenance checks x-cron-secret; owner-admin verifies an aal2 owner session.
+# maintenance checks x-cron-secret; owner-admin verifies a live owner session.
 [functions.maintenance]
 verify_jwt = false
 

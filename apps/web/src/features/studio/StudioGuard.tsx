@@ -12,7 +12,7 @@ type Terminal = 'owner' | 'inactive' | 'ended'
 
 /**
  * Renders a studio page only for a session the database accepts
- * (my_posting_status = ok). Otherwise: /login, /login/mfa, or a message for
+ * (my_posting_status = ok). Otherwise: /login, or a message for
  * the owner account, a paused account or a revoked session — and those three
  * are signed out of this browser straight away. While the page is shown, 30
  * minutes without input sign this browser out (IdleSignOut).
@@ -41,9 +41,7 @@ export function StudioGuard({
   }, [terminal, queryClient])
 
   useEffect(() => {
-    if (terminal) return
-    if (decision === 'login') void navigate({ to: '/login', replace: true })
-    else if (decision === 'mfa') void navigate({ to: '/login/mfa', replace: true })
+    if (!terminal && decision === 'login') void navigate({ to: '/login', replace: true })
   }, [decision, terminal, navigate])
 
   if (terminal) {

@@ -82,10 +82,10 @@ select throws_ok(format(
   '42501', null, 'anon cannot upload');
 
 select tests.authenticate_as(tests.fx('um'), tests.fx('sm1'), 'aal1');
-select throws_ok(format(
+select lives_ok(format(
   $f$ insert into storage.objects (bucket_id, name, owner_id, metadata) values ('posters', %L, %L, '{"size": 1}') $f$,
   tests.fx('om') || '/' || gen_random_uuid() || '.webp', tests.fx('um')),
-  '42501', null, 'with a verified factor, an aal1 session cannot upload');
+  'no 2FA (0055): an account with a leftover verified factor uploads at aal1');
 
 select tests.become_postgres();
 update public.site_settings set posting_enabled = false;

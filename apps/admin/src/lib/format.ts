@@ -84,14 +84,6 @@ export function formatMytDateTime(iso: string | null | undefined): string {
   return `${p.weekday} ${p.day} ${p.month} ${p.year}, ${p.hour}:${p.minute}${period}`
 }
 
-/** True when `iso` lies within the last `days` days (future dates count too). */
-export function isWithinDays(iso: string | null | undefined, days: number, now: Date): boolean {
-  if (!iso) return false
-  const at = Date.parse(iso)
-  if (Number.isNaN(at)) return false
-  return now.getTime() - at <= days * DAY
-}
-
 /** "1 post" / "3 posts". */
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`

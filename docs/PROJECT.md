@@ -18,6 +18,7 @@ rule, the UI only mirrors it · unofficial project, says so on every page.
 
 | Date | Decision | Options considered | Chosen | Why |
 |---|---|---|---|---|
+| 2026-10-12 | 2FA | keep (owner mandatory, clubs optional); remove for clubs only; remove for everyone | removed for everyone (owner and clubs): TOTP off in Auth, no aal2 anywhere, console and studio have no 2FA screens (0055) | the owner's choice, made knowing the owner account controls every club account, the kill switches and moderation; remaining protection: random 20+ char passwords from the owner, Turnstile on every sign-in, owner console on its own origin with a memory-only session, 30-min idle sign-out, live-session checks, audit log |
 | 2026-10-12 | Live updates | Realtime; poll the lists every N s; poll a change stamp | poll `public.live_state.changed_at` (≈0.2 KB) every `poll_seconds` (default 30 s, owner-set: off/30/60/120/300) and reload lists only when it moves; hidden tabs and tabs idle 30 min don't poll; ended events drop out on the client (0054) | Realtime caps at 200 connections on Free; polling full lists every 60 s would add ≈6 GB egress a month at 3,000 visits a day, the change stamp ≈0.5 GB at 30 s; the owner can slow it without a deploy |
 | 2026-10-06 | Hosted Realtime | leave the default; turn it off | off right after the project is created (deploy.md step 1) | usmfomo never uses it, a hosted project has it on with public channels open to the publishable key, and `config.toml` only switches the local one off |
 | 2026-10-06 | Pages Functions at the daily limit | fail closed; fail open | fail open on both Pages projects (deploy.md step 0) | the static site keeps working; posters fall back to direct Supabase URLs |
@@ -89,9 +90,9 @@ usmfomo-admin.pages.dev  owner console only
         | HTTPS: sb_publishable_ key + user JWT
 Supabase (ap-southeast-1, org "usmfomo")
   Postgres  GRANTs + RLS + SECURITY DEFINER helpers + triggers = security perimeter
-  Auth      username -> username@usmfomo.pages.dev, password, Turnstile, optional TOTP
+  Auth      username -> username@usmfomo.pages.dev, password, Turnstile (no 2FA)
   Storage   public bucket "posters", writes only into the org's own folder
-  Edge Fns  owner-admin (aal2 owner) · maintenance (x-cron-secret)
+  Edge Fns  owner-admin (live owner session) · maintenance (x-cron-secret)
 Cloudflare Worker usmfomo-cron (no URL) --hourly--> REST read + maintenance
 ```
 
@@ -103,16 +104,16 @@ Database (`supabase/migrations`, tested by `supabase/tests`, 160 checks):
   posts. `private` and `audit` are unreachable; service-only `maint_*`/`admin_*`
   RPCs are the Edge Functions' only way in.
 - Every org write goes through `private.my_org_id()`: active account, active
-  org, MFA satisfied (aal2 once a verified factor exists) and a **live session**
-  (a password reset revokes already-issued tokens immediately).
-- Owner = `private.is_owner()`: owner account, aal2, live session.
+  org and a **live session** (a password reset revokes already-issued tokens
+  immediately).
+- Owner = `private.is_owner()`: owner account, active, live session.
 - Trigger rules: kill switch, start/end windows, 15 live posts, 5 new per 24 h
   (from an append-only log), 30 edits per 24 h, 400-day lifetime, exact storage
   paths. CHECKs: lengths, https links without userinfo, no control characters.
 - Storage: 2 MiB, WebP/JPEG only, own folder, 40 objects per org, bucket under
   800 MiB, no listing, no overwrite.
-- Auth: sign-ups off globally (Email provider on for password login), TOTP,
-  Turnstile, 30-minute JWTs, no email ever sent.
+- Auth: sign-ups off globally (Email provider on for password login), no 2FA
+  (TOTP off, 0055), Turnstile, 30-minute JWTs, no email ever sent.
 
 ## 5. Free tier and traps *(verified 2026-10-05)*
 
@@ -131,9 +132,9 @@ Database (`supabase/migrations`, tested by `supabase/tests`, 160 checks):
 | P0 Setup + spikes | routing/headers curl checks on Pages; auth + RLS with new keys; iPhone Blob-video texture; pgTAP harness in CI | logins; Supabase project; Turnstile widget; phone test; USM permission request; contact channel |
 | P1 Database + security core | all migrations; pgTAP denial sweep green; Advisor 0 errors | review the posting rules |
 | P2 Dashboard + static landing | dashboard, event/organiser pages, notices, image proxy, i18n, OG tags, a11y | check BM wording |
-| P3 Club studio + CLI | login, Turnstile, TOTP, quotas shown, CRUD, poster pipeline | try it as a club |
+| P3 Club studio + CLI | login, Turnstile, quotas shown, CRUD, poster pipeline | try it as a club |
 | P4 Expiry + go-live | maintenance + cron live; expired post and files gone within the hour | secrets; resume Supabase if paused |
-| P5 Owner console | handover, reset, MFA removal, moderation, notices, kill switches | create owner + 2 TOTP devices; pilot clubs (soft launch) |
+| P5 Owner console | handover, reset, moderation, notices, kill switches | create owner; pilot clubs (soft launch) |
 | P6 3D landing v1 | atlas pipeline with real media; device matrix passes | send media; approve debug grid |
 | P7 Hardening + launch | verification list passes; USM permission received or risk accepted | announce |
 

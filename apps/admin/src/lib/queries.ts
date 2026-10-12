@@ -6,7 +6,6 @@ import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-quer
 import { useEffect, useRef } from 'react'
 import { adminApi, ownerDb } from './db.ts'
 import { NoRowsError } from './messages.ts'
-import { verifiedTotpFactors } from './mfa.ts'
 
 export const qk = {
   status: ['status'],
@@ -14,7 +13,6 @@ export const qk = {
   settings: ['settings'],
   posts: ['posts'],
   notices: ['notices'],
-  factors: ['factors'],
   live: ['live'],
 } as const
 
@@ -24,10 +22,6 @@ export function useStatus() {
 
 export function useAccounts() {
   return useQuery({ queryKey: qk.accounts, queryFn: () => adminApi.listAccounts() })
-}
-
-export function useFactors() {
-  return useQuery({ queryKey: qk.factors, queryFn: verifiedTotpFactors })
 }
 
 // ---------------------------------------------------------------------------

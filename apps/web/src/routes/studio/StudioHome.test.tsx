@@ -84,8 +84,7 @@ describe('StudioHome', () => {
     // This tab had input just now (see lib/idle.ts).
     saveLastActivity()
     mock.posts = [UPCOMING, NOW_ON, HIDDEN, ENDED]
-    fake().setSession(fakeSession('aal1'), 'INITIAL_SESSION')
-    fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal1'))
+    fake().setSession(fakeSession(), 'INITIAL_SESSION')
     fake().db.rpc.mockResolvedValue({ data: okStatusJson({ live: 12, new_24h: 3 }), error: null })
   })
   afterEach(() => {
@@ -151,7 +150,9 @@ describe('StudioHome', () => {
     renderRoute('/studio', '/studio', StudioHome)
     expect(await screen.findByRole('heading', { name: 'Getting started' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Read the posting rules' }).getAttribute('href')).toBe('/rules')
-    expect(screen.getByRole('link', { name: 'Add 2FA for each committee member who posts' }).getAttribute('href')).toBe('/studio/settings')
+    expect(screen.getByRole('link', { name: 'Create your first post' }).getAttribute('href')).toBe('/studio/new')
+    // Two steps only: no 2FA step any more.
+    expect(within(screen.getByRole('region', { name: 'Getting started' })).getAllByRole('link')).toHaveLength(2)
     expect(await screen.findByText('No posts yet.')).toBeTruthy()
     // It can't be hidden by hand.
     expect(screen.queryByRole('button', { name: /hide/i })).toBeNull()
@@ -160,9 +161,8 @@ describe('StudioHome', () => {
     cleanup()
     renderRoute('/studio', '/studio', StudioHome)
     expect((await screen.findByRole('link', { name: /Read the posting rules/ })).textContent).toContain('(done)')
-    expect(screen.getByRole('link', { name: /Add 2FA/ }).textContent).not.toContain('(done)')
-    // Opening the other two pages finishes it: the checklist is gone.
-    markVisited('robotik', 'mfa')
+    expect(screen.getByRole('link', { name: /Create your first post/ }).textContent).not.toContain('(done)')
+    // Opening the new-post page finishes it: the checklist is gone.
     markVisited('robotik', 'first')
     cleanup()
     renderRoute('/studio', '/studio', StudioHome)
@@ -178,21 +178,17 @@ describe('StudioHome', () => {
     expect(fake().db.auth.signOut).toHaveBeenCalledTimes(1)
   })
 
-  it('sends a session that still needs its code to /login/mfa', async () => {
-    fake().db.rpc.mockResolvedValue({ data: { state: 'mfa_required', username: 'robotik' }, error: null })
+  it('ignores a removed 2FA step stored by an older version', async () => {
+    mock.posts = []
+    window.localStorage.setItem('usmfomo.studio.onboarding.robotik', JSON.stringify(['mfa', 'first']))
     renderRoute('/studio', '/studio', StudioHome)
-    expect(await screen.findByText('route:/login/mfa')).toBeTruthy()
-  })
-
-  it('stays in the studio when every 2FA device was removed elsewhere (no loop to /login/mfa)', async () => {
-    // The cached session still lists a device; the database knows it is gone.
-    fake().db.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(fake().aal('aal1', 'aal2'))
-    fake().db.rpc.mockResolvedValue({ data: okStatusJson({ factors: 0 }), error: null })
+    expect((await screen.findByRole('link', { name: /Create your first post/ })).textContent).toContain('(done)')
+    expect(screen.getByRole('link', { name: /Read the posting rules/ }).textContent).not.toContain('(done)')
+    markRulesSeen()
+    cleanup()
     renderRoute('/studio', '/studio', StudioHome)
-    expect(await screen.findByRole('heading', { level: 3, name: 'Hack Night' })).toBeTruthy()
-    expect(screen.queryByText('route:/login/mfa')).toBeNull()
-    // The stale cached session is refreshed, so supabase-js agrees.
-    expect(fake().db.auth.refreshSession).toHaveBeenCalledTimes(1)
+    await screen.findByText('No posts yet.')
+    expect(screen.queryByRole('heading', { name: 'Getting started' })).toBeNull()
   })
 
   it('signs out a session restored after 30 minutes without input, before using it', async () => {
@@ -209,7 +205,7 @@ describe('StudioHome', () => {
     await screen.findByRole('heading', { level: 3, name: 'Hack Night' })
     // E.g. a restored tab that was offline: its token refreshes once it is back online.
     saveLastActivity(NOW.getTime() - 31 * 60_000)
-    act(() => fake().setSession(fakeSession('aal1'), 'TOKEN_REFRESHED'))
+    act(() => fake().setSession(fakeSession(), 'TOKEN_REFRESHED'))
     expect(await screen.findByText('route:/login')).toBeTruthy()
     expect(fake().db.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
   })

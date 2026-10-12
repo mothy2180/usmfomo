@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { HttpError } from '../../supabase/functions/_shared/http.ts'
 import { BAN_DURATION } from '../../supabase/functions/owner-admin/actions.ts'
 import type { Command } from './args.ts'
 import { type CommandDeps, runCommand, SEED_ACCOUNTS, SEED_OWNER } from './commands.ts'
@@ -51,7 +50,6 @@ describe('create-owner', () => {
       PASSWORD,
     ])
     printedOnce(io.all())
-    assert.match(io.all(), /enrol two TOTP devices/)
   })
 
   it('refuses an existing username before creating anything', async () => {
@@ -131,7 +129,7 @@ describe('reset-password', () => {
 })
 
 describe('handover', () => {
-  it('deactivate, new password, remove every factor, reactivate', async () => {
+  it('deactivate, new password, reactivate', async () => {
     const { run, io, writeCalls } = setup()
     await run({ name: 'handover', username: 'csoc' })
     assert.deepEqual(writeCalls(), [
@@ -139,9 +137,6 @@ describe('handover', () => {
       ['updateAuthUser', CLUB_ID, { ban_duration: BAN_DURATION }],
       ['allowPasswordChange', CLUB_ID],
       ['updateAuthUser', CLUB_ID, { password: PASSWORD }],
-      ['listFactorIds', CLUB_ID],
-      ['deleteFactor', CLUB_ID, 'f1'],
-      ['deleteFactor', CLUB_ID, 'f2'],
       ['setAccountActive', CLUB_ID, true],
       ['updateAuthUser', CLUB_ID, { ban_duration: 'none' }],
     ])
@@ -171,22 +166,6 @@ describe('deactivate / activate', () => {
       ['setAccountActive', CLUB_ID, true],
       ['updateAuthUser', CLUB_ID, { ban_duration: 'none' }],
     ])
-  })
-})
-
-describe('remove-factors', () => {
-  it('removes every factor of a club account and tolerates one already gone', async () => {
-    const { run, io } = setup({
-      deleteFactor: (_u, id) => (id === 'f2' ? Promise.reject(new HttpError('not_found')) : Promise.resolve()),
-    })
-    await run({ name: 'remove-factors', username: 'csoc' })
-    assert.match(io.all(), /Removed 1 2FA factor\(s\) from "csoc"/)
-  })
-
-  it('points the owner to owner-reset-mfa', async () => {
-    const { run, writes } = setup()
-    await failsWith(run({ name: 'remove-factors', username: 'owner' }), /owner-reset-mfa/)
-    assert.deepEqual(writes(), [])
   })
 })
 
@@ -220,28 +199,6 @@ describe('delete', () => {
   })
 })
 
-describe('owner-reset-mfa', () => {
-  it('new password first (ends sessions), then every factor', async () => {
-    const { run, io, writeCalls } = setup()
-    await run({ name: 'owner-reset-mfa', username: 'owner' })
-    assert.deepEqual(writeCalls(), [
-      ['allowPasswordChange', OWNER_ID],
-      ['updateAuthUser', OWNER_ID, { password: PASSWORD }],
-      ['listFactorIds', OWNER_ID],
-      ['deleteFactor', OWNER_ID, 'f1'],
-      ['deleteFactor', OWNER_ID, 'f2'],
-    ])
-    printedOnce(io.all())
-    assert.match(io.all(), /2 2FA factor\(s\) removed/)
-  })
-
-  it('is for the owner account only', async () => {
-    const { run, writes } = setup()
-    await failsWith(run({ name: 'owner-reset-mfa', username: 'csoc' }), /not the owner account/)
-    assert.deepEqual(writes(), [])
-  })
-})
-
 describe('account lookups', () => {
   // As if the account sorted past a page that PostgREST cut at 100 rows: only
   // the direct lookup by username may decide whether an account exists.
@@ -253,14 +210,12 @@ describe('account lookups', () => {
       { name: 'handover', username: 'csoc' },
       { name: 'deactivate', username: 'csoc' },
       { name: 'activate', username: 'csoc' },
-      { name: 'remove-factors', username: 'csoc' },
       { name: 'delete', username: 'csoc', yes: true },
-      { name: 'owner-reset-mfa', username: 'owner' },
     ]
     for (const cmd of commands) {
       const { run, calls } = setup(noListScans)
       await run(cmd)
-      assert.deepEqual(calls[0], ['getAccountByUsername', cmd.name === 'owner-reset-mfa' ? 'owner' : 'csoc'], cmd.name)
+      assert.deepEqual(calls[0], ['getAccountByUsername', 'csoc'], cmd.name)
       assert.equal(calls.some(([op]) => op === 'listAccounts'), false, cmd.name)
     }
   })

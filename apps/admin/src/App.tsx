@@ -1,13 +1,11 @@
-import { ChallengePage } from './auth/ChallengePage.tsx'
-import { EnrolPage } from './auth/EnrolPage.tsx'
 import { CheckingPage, NotOwnerPage, StatusErrorPage } from './auth/GatePages.tsx'
 import { IdleGuard } from './auth/IdleGuard.tsx'
-import { SecondDevicePage } from './auth/SecondDevicePage.tsx'
 import { SignInPage } from './auth/SignInPage.tsx'
 import { Console } from './console/Console.tsx'
 import { useSession, type Phase } from './lib/sessionContext.ts'
 
-/** One screen per sign-in phase; the console itself only once the owner is confirmed at aal2. */
+/** One screen per sign-in phase; the console itself only once owner-admin has
+ * confirmed the owner (or the owner chose limited mode). */
 export function App() {
   const { phase } = useSession()
   return (
@@ -24,16 +22,10 @@ function Screen({ phase }: { phase: Phase }) {
       return <SignInPage notice={phase.notice} />
     case 'not_owner':
       return <NotOwnerPage />
-    case 'enrol':
-      return <EnrolPage />
-    case 'challenge':
-      return <ChallengePage factors={phase.factors} />
     case 'checking':
       return <CheckingPage />
     case 'status_error':
       return <StatusErrorPage error={phase.error} ownerHint={phase.ownerHint} />
-    case 'second_device':
-      return <SecondDevicePage />
     case 'ready':
       return <Console />
   }

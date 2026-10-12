@@ -30,11 +30,10 @@ describe('reloadsOnChange', () => {
   it('reloads public lists and the studio list and status', () => {
     expect(reloadsOnChange(['public', 'search_posts', 'club'])).toBe(true)
     expect(reloadsOnChange(['studio', 'posts', 'org'])).toBe(true)
-    expect(reloadsOnChange(['studio', 'access', 'u', 's', 'aal1'])).toBe(true)
+    expect(reloadsOnChange(['studio', 'access', 'u', 's'])).toBe(true)
   })
-  it('never reloads the post in the edit form, devices or the check itself', () => {
+  it('never reloads the post in the edit form or the check itself', () => {
     expect(reloadsOnChange(['studio', 'post', 'org', 'id'])).toBe(false)
-    expect(reloadsOnChange(['studio', 'devices', 'u'])).toBe(false)
     expect(reloadsOnChange(LIVE_QUERY_KEY)).toBe(false)
   })
 })

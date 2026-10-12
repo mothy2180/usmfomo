@@ -1,10 +1,10 @@
 // What each owner CLI command does. Account changes shared with the owner
-// console (create, handover, 2FA removal, delete, activation) run the Edge
-// Function's own logic (owner-admin/actions.ts) on the CLI's fetch port.
+// console (create, handover, delete, activation) run the Edge Function's own
+// logic (owner-admin/actions.ts) on the CLI's fetch port.
 //
 // The CLI is also the break-glass for the owner account, so unlike the
-// console it can reset the owner's password, deactivate or activate it, and
-// owner-reset-mfa replaces the owner's password and removes its 2FA factors.
+// console it can reset the owner's password (docs/runbooks/owner-lockout.md)
+// and deactivate or activate it.
 //
 // A command finds its account with a direct lookup by username, never by
 // searching the account list.
@@ -13,7 +13,6 @@ import {
   createAccount,
   deleteAccount,
   handover,
-  removeAllFactors,
   setActive,
   setPassword,
 } from '../../supabase/functions/owner-admin/actions.ts'
@@ -79,7 +78,6 @@ async function createOwner(deps: CommandDeps, username: string): Promise<void> {
   }
   io.out(`Created the owner account "${username}".`)
   printPassword(io, password)
-  io.out('Next: sign in to the owner console and enrol two TOTP devices (every owner action needs 2FA).')
 }
 
 async function create(deps: CommandDeps, input: CreateAccountInput): Promise<void> {
@@ -101,9 +99,9 @@ async function resetPassword(deps: CommandDeps, username: string): Promise<void>
 }
 
 async function handOver(deps: CommandDeps, username: string): Promise<void> {
-  const row = await requireClubAccount(deps.port, username, 'use owner-reset-mfa or reset-password instead')
+  const row = await requireClubAccount(deps.port, username, 'use reset-password instead')
   const { password } = await handover(deps, row.user_id)
-  deps.io.out(`Handed over "${username}": new password, every 2FA factor removed, every session ended.`)
+  deps.io.out(`Handed over "${username}": new password, every session ended.`)
   printPassword(deps.io, password)
 }
 
@@ -116,12 +114,6 @@ async function setAccountActive(deps: CommandDeps, username: string, active: boo
     deps.io.out(`"${username}" is deactivated: it can no longer sign in, and posting stopped at once.`)
     if (row.is_owner) deps.io.out(`Owner console access is off until: pnpm account activate ${username}`)
   }
-}
-
-async function removeFactors(deps: CommandDeps, username: string): Promise<void> {
-  const row = await requireClubAccount(deps.port, username, 'use owner-reset-mfa instead')
-  const removed = await removeAllFactors(deps.port, row.user_id)
-  deps.io.out(`Removed ${removed} 2FA factor(s) from "${username}".`)
 }
 
 async function remove(deps: CommandDeps, username: string, yes: boolean): Promise<void> {
@@ -140,22 +132,6 @@ async function remove(deps: CommandDeps, username: string, yes: boolean): Promis
     throw err
   })
   io.out(`Deleted ${what} and ${result.removedFiles} poster file(s).`)
-}
-
-async function ownerResetMfa(deps: CommandDeps, username: string): Promise<void> {
-  const { port, io } = deps
-  const row = await requireAccount(port, username)
-  if (!row.is_owner) {
-    throw new CliError(`"${username}" is not the owner account: use remove-factors or handover`)
-  }
-  // The new password first: it ends every session, so nobody holding the old
-  // password or an old session can enrol a factor of their own afterwards.
-  const password = deps.generatePassword()
-  await setPassword(port, row.user_id, password)
-  const removed = await removeAllFactors(port, row.user_id)
-  io.out(`Owner "${username}": new password, ${removed} 2FA factor(s) removed, every session ended.`)
-  printPassword(io, password)
-  io.out('Next: sign in to the owner console with this password and enrol two TOTP devices immediately.')
 }
 
 async function seedLocal(deps: CommandDeps): Promise<void> {
@@ -192,12 +168,8 @@ export async function runCommand(cmd: Command, deps: CommandDeps): Promise<void>
       return await setAccountActive(deps, cmd.username, false)
     case 'activate':
       return await setAccountActive(deps, cmd.username, true)
-    case 'remove-factors':
-      return await removeFactors(deps, cmd.username)
     case 'delete':
       return await remove(deps, cmd.username, cmd.yes)
-    case 'owner-reset-mfa':
-      return await ownerResetMfa(deps, cmd.username)
     case 'seed-local':
       return await seedLocal(deps)
   }

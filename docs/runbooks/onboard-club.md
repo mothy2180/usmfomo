@@ -57,11 +57,7 @@ Logins are usernames only; behind the scenes they become
 1. <https://usmfomo.pages.dev/login> → username, password, CAPTCHA.
 2. Walk through the first-login checklist and the `/rules` page: what may be
    posted, and what the usmfomo admin may hide.
-3. **2FA** (optional for clubs, strongly recommended): Studio → Settings → each
-   committee member who will post enrols **their own** authenticator, all in
-   **one sitting** from this first session. From then on every login needs a
-   code. Keep at least two devices enrolled so one lost phone is not a lockout.
-4. Post a test event together, then delete it.
+3. Post a test event together, then delete it.
 
 Limits they will see in the status bar (the database enforces them):
 

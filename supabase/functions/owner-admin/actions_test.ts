@@ -80,7 +80,6 @@ Deno.test('account actions refuse the owner account and unknown users', async ()
     { action: 'reset_password', userId: OWNER_ID },
     { action: 'handover', userId: OWNER_ID },
     { action: 'set_account_active', userId: OWNER_ID, active: false },
-    { action: 'remove_factors', userId: OWNER_ID },
     { action: 'delete_account', userId: OWNER_ID },
   ]
   for (const req of actions) {
@@ -103,7 +102,6 @@ Deno.test('account actions look the account up directly, never in the account li
     { action: 'reset_password', userId: CLUB_ID },
     { action: 'handover', userId: CLUB_ID },
     { action: 'set_account_active', userId: CLUB_ID, active: false },
-    { action: 'remove_factors', userId: CLUB_ID },
     { action: 'delete_account', userId: CLUB_ID },
   ]
   for (const req of actions) {
@@ -131,7 +129,7 @@ Deno.test('set_account_active: database flag first, then ban or unban', async ()
   ])
 })
 
-Deno.test('handover: deactivate, new password, delete factors, reactivate', async () => {
+Deno.test('handover: deactivate, new password, reactivate', async () => {
   const { port, calls } = fakePort()
   assertEquals(await runAction({ action: 'handover', userId: CLUB_ID }, deps(port)), { password: PASSWORD })
   assertEquals(calls.map((c) => [c.op, ...c.args]), [
@@ -140,27 +138,18 @@ Deno.test('handover: deactivate, new password, delete factors, reactivate', asyn
     ['updateAuthUser', CLUB_ID, { ban_duration: BAN_DURATION }],
     ['allowPasswordChange', CLUB_ID],
     ['updateAuthUser', CLUB_ID, { password: PASSWORD }],
-    ['listFactorIds', CLUB_ID],
-    ['deleteFactor', CLUB_ID, 'f1'],
-    ['deleteFactor', CLUB_ID, 'f2'],
     ['setAccountActive', CLUB_ID, true],
     ['updateAuthUser', CLUB_ID, { ban_duration: 'none' }],
   ])
 })
 
 Deno.test('handover: a failure midway leaves the account deactivated', async () => {
-  const { port, ops } = fakePort({ deleteFactor: () => Promise.reject(new HttpError('internal')) })
+  const { port, ops } = fakePort({
+    updateAuthUser: (_u, u) => ('password' in u ? Promise.reject(new HttpError('internal')) : Promise.resolve()),
+  })
   await failsWith(runAction({ action: 'handover', userId: CLUB_ID }, deps(port)), 'internal')
   assertEquals(ops().includes('setAccountActive'), true)
   assertEquals(ops().filter((o) => o === 'setAccountActive').length, 1)
-})
-
-Deno.test('remove_factors: deletes each factor, tolerates one already gone', async () => {
-  const { port } = fakePort({
-    listFactorIds: () => Promise.resolve(['f1', 'f2', 'f3']),
-    deleteFactor: (_u, id) => (id === 'f2' ? Promise.reject(new HttpError('not_found')) : Promise.resolve()),
-  })
-  assertEquals(await runAction({ action: 'remove_factors', userId: CLUB_ID }, deps(port)), { removed: 2 })
 })
 
 Deno.test('update_org: passes the validated fields', async () => {

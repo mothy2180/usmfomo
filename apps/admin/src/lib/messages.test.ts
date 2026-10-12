@@ -23,8 +23,6 @@ describe('errorMessage', () => {
     expect(errorMessage({ code: '42501', message: 'permission denied' })).toMatch(/session may have ended/)
     expect(errorMessage({ code: 'invalid_credentials', status: 400 })).toBe('Wrong username or password.')
     expect(errorMessage({ code: 'captcha_failed', status: 400 })).toMatch(/security check/)
-    expect(errorMessage({ code: 'mfa_verification_failed', status: 422 })).toMatch(/code didn't work/)
-    expect(errorMessage({ code: 'mfa_factor_name_conflict', status: 422 })).toMatch(/already have a device with that name/)
     expect(errorMessage(new TypeError('Failed to fetch'))).toMatch(/Couldn't reach the server/)
     expect(errorMessage(new NoRowsError())).toMatch(/Nothing changed/)
     expect(errorMessage(undefined)).toBe('Something went wrong. Try again.')
