@@ -1,22 +1,18 @@
 import { googleCalendarUrl } from '@usmfomo/shared/ics'
 import { useTranslation } from 'react-i18next'
-import { Button } from '../../components/ui.tsx'
-import { calendarEventFor, downloadIcs } from './calendar.ts'
+import { calendarEventFor } from './calendar.ts'
 
 type Props = {
   post: { id: string; title: string; starts_at: string; ends_at: string; venue: string; description: string | null }
   pageUrl: string
 }
 
-/** "Hold the date": an .ics file for any calendar app, plus Google Calendar. */
+/** "Hold the date": a Google Calendar link. */
 export function CalendarActions({ post, pageUrl }: Props) {
   const { t } = useTranslation('dashboard')
   const ev = calendarEventFor(post, pageUrl)
   return (
     <div className="flex flex-wrap gap-2">
-      <Button variant="primary" onClick={() => downloadIcs(ev)}>
-        {t('event.addToCalendar')}
-      </Button>
       <a
         href={googleCalendarUrl(ev)}
         target="_blank"

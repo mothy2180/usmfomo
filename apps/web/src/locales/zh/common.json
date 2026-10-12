@@ -17,9 +17,11 @@
   "footer": {
     "label": "页脚",
     "disclaimer": "usmfomo 是一个独立、非官方的学生项目，与 Universiti Sains Malaysia 无关联，也未获其认可。活动均由各社团和学院自行发布。",
-    "report": "举报有问题的帖子",
     "rules": "发布规则",
-    "createdBy": "由<creator>一名 CS 学生</creator>制作"
+    "createdBy": "由<creator>一名 CS 学生</creator>制作",
+    "helpLabel": "反馈与联系",
+    "feedback": "反馈",
+    "contact": "联系我们"
   },
   "lang": {
     "label": "语言",

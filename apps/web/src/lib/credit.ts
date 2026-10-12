@@ -2,3 +2,6 @@
  * footer.createdBy in the locale files). Put your link here
  * (https:// only); while it is empty the name shows as plain text. */
 export const CREATOR_URL = 'https://youtu.be/xvFZjo5PgG0?si=25XWB--t1LCdGB6E'
+
+/** The "Feedback" link at the right of the footer (a Google Form). */
+export const FEEDBACK_URL = 'https://forms.gle/hqWyaVEqhYQN8Wz99'

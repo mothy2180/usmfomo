@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { CONTACT_URL } from '../env.ts'
-import { CREATOR_URL } from '../lib/credit.ts'
+import { CREATOR_URL, FEEDBACK_URL } from '../lib/credit.ts'
 import { useLiveUpdates } from '../lib/live.ts'
 import { LanguageSwitch } from './LanguageSwitch.tsx'
 
@@ -10,31 +10,39 @@ export function SiteFooter() {
   const { t } = useTranslation()
   return (
     <footer className="mt-12 border-t border-line px-4 py-6 text-xs text-muted">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3">
-        <p className="m-0 max-w-3xl">{t('footer.disclaimer')}</p>
-        <nav aria-label={t('footer.label')} className="flex flex-wrap gap-x-4 gap-y-2">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:justify-between sm:gap-8">
+        <div className="flex flex-col gap-3">
+          <p className="m-0 max-w-3xl">{t('footer.disclaimer')}</p>
+          <nav aria-label={t('footer.label')} className="flex flex-wrap gap-x-4 gap-y-2">
+            <Link to="/rules" className="underline">
+              {t('footer.rules')}
+            </Link>
+          </nav>
+          <p className="m-0">
+            <Trans
+              t={t}
+              i18nKey="footer.createdBy"
+              components={{
+                creator: CREATOR_URL.startsWith('https://') ? (
+                  <a href={CREATOR_URL} target="_blank" rel="noopener noreferrer" className="underline" />
+                ) : (
+                  <span />
+                ),
+              }}
+            />
+          </p>
+        </div>
+        {/* Feedback, and the contact channel under it, on the right from sm. */}
+        <nav aria-label={t('footer.helpLabel')} className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" className="underline">
+            {t('footer.feedback')}
+          </a>
           {CONTACT_URL ? (
             <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className="underline">
-              {t('footer.report')}
+              {t('footer.contact')}
             </a>
           ) : null}
-          <Link to="/rules" className="underline">
-            {t('footer.rules')}
-          </Link>
         </nav>
-        <p className="m-0">
-          <Trans
-            t={t}
-            i18nKey="footer.createdBy"
-            components={{
-              creator: CREATOR_URL.startsWith('https://') ? (
-                <a href={CREATOR_URL} target="_blank" rel="noopener noreferrer" className="underline" />
-              ) : (
-                <span />
-              ),
-            }}
-          />
-        </p>
       </div>
     </footer>
   )

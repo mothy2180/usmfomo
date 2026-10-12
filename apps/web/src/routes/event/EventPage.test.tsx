@@ -140,7 +140,7 @@ describe('EventPage', () => {
     expect(registration.getAttribute('rel')).toBe('noopener noreferrer nofollow ugc')
     expect(within(registration).getByText('(forms.gle)')).toBeTruthy()
 
-    expect(screen.getByRole('button', { name: 'Add to calendar' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add to calendar' })).toBeNull()
     const google = screen.getByRole('link', { name: /Google Calendar/ })
     expect(google.getAttribute('href')).toMatch(/^https:\/\/calendar\.google\.com\/calendar\/render\?action=TEMPLATE/)
     expect(google.getAttribute('target')).toBe('_blank')

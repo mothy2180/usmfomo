@@ -17,9 +17,11 @@
   "footer": {
     "label": "Kaki halaman",
     "disclaimer": "usmfomo ialah projek pelajar yang bebas dan tidak rasmi, tidak bergabung dengan atau disokong oleh Universiti Sains Malaysia. Acara disiarkan oleh kelab dan pusat pengajian sendiri.",
-    "report": "Laporkan masalah pada siaran",
     "rules": "Peraturan siaran",
-    "createdBy": "Oleh <creator>seorang pelajar CS</creator>"
+    "createdBy": "Oleh <creator>seorang pelajar CS</creator>",
+    "helpLabel": "Maklum balas dan hubungi",
+    "feedback": "Maklum balas",
+    "contact": "Hubungi"
   },
   "lang": {
     "label": "Bahasa",

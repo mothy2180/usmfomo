@@ -81,7 +81,6 @@
     "posterAlt": "Poster: {{title}}",
     "cancelledNote": "This event has been cancelled by its organiser.",
     "updatedNote": "The organiser changed the time or venue on {{day}}.",
-    "addToCalendar": "Add to calendar",
     "googleCalendar": "Google Calendar",
     "newTab": "(opens in a new tab)",
     "mycsd": "MyCSD",

@@ -81,7 +81,6 @@
     "posterAlt": "海报：{{title}}",
     "cancelledNote": "主办方已取消此活动。",
     "updatedNote": "主办方已于{{day}}更改时间或地点。",
-    "addToCalendar": "添加到日历",
     "googleCalendar": "Google 日历",
     "newTab": "（在新标签页中打开）",
     "mycsd": "MyCSD",

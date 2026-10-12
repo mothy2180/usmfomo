@@ -8,7 +8,7 @@ import { EventCover } from './EventCover.tsx'
 import { FallbackImage } from './FallbackImage.tsx'
 import type { PostCard } from './types.ts'
 
-const THUMB_PX = 80
+const THUMB_PX = 112
 
 /**
  * One event in a list. The title link is stretched over the whole card (its
@@ -20,7 +20,7 @@ export function EventCard({ post, now }: { post: PostCard; now: Date }) {
   const lang = currentLang()
   const org = { id: post.org_id, name: post.org_name, type: post.org_type }
   return (
-    <article className="relative flex gap-2.5 rounded-xl border border-line bg-surface p-2.5 transition-colors hover:border-sky/60 has-[.card-link:focus-visible]:border-sky">
+    <article className="relative flex gap-4 rounded-xl border border-line bg-surface p-2.5 transition-colors hover:border-sky/60 has-[.card-link:focus-visible]:border-sky">
       <div className="shrink-0">
         {/* alt="": the title and organiser next to it say the same thing. */}
         <FallbackImage
@@ -28,8 +28,8 @@ export function EventCard({ post, now }: { post: PostCard; now: Date }) {
           alt=""
           width={THUMB_PX}
           height={THUMB_PX}
-          className="h-16 w-auto min-w-12 max-w-24 rounded-lg bg-surface-2 object-contain sm:h-20 sm:max-w-30"
-          fallback={<EventCover org={org} className="size-16 rounded-lg sm:size-20" />}
+          className="h-24 w-auto min-w-16 max-w-32 rounded-lg bg-surface-2 object-contain sm:h-28 sm:max-w-40"
+          fallback={<EventCover org={org} className="size-24 rounded-lg sm:size-28" />}
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import i18n, { setLanguage } from '../lib/i18n.ts'
 import { AppShell } from './AppShell.tsx'
 
-vi.mock('../env.ts', () => ({ CONTACT_URL: '' }))
+vi.mock('../env.ts', () => ({ CONTACT_URL: 'https://www.instagram.com/kind.a.mad/' }))
 // Live polling has its own tests (lib/live.test.tsx).
 vi.mock('../lib/live.ts', () => ({ useLiveUpdates: () => ({ paused: false }) }))
 
@@ -44,6 +44,16 @@ describe('AppShell', () => {
     expect(screen.getByRole('navigation', { name: 'Kaki halaman' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'BM' }).getAttribute('aria-pressed')).toBe('true')
     expect(document.documentElement.lang).toBe('ms')
+  })
+
+  it('puts Feedback and, under it, Contact in their own footer navigation', async () => {
+    await renderShell()
+    const help = screen.getByRole('navigation', { name: 'Feedback and contact' })
+    const links = [...help.querySelectorAll('a')]
+    expect(links.map((a) => a.textContent)).toEqual(['Feedback', 'Contact'])
+    expect(links[0]?.getAttribute('href')).toBe('https://forms.gle/hqWyaVEqhYQN8Wz99')
+    expect(links[1]?.getAttribute('href')).toBe('https://www.instagram.com/kind.a.mad/')
+    for (const a of links) expect(a.getAttribute('rel')).toBe('noopener noreferrer')
   })
 
   it('makes the header sticky only from the lg breakpoint, where it is one short row', async () => {

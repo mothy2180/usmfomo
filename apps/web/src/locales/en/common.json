@@ -17,9 +17,11 @@
   "footer": {
     "label": "Footer",
     "disclaimer": "usmfomo is an independent, unofficial student project, not affiliated with or endorsed by Universiti Sains Malaysia. Events are posted by the clubs and schools themselves.",
-    "report": "Report a problem with a post",
     "rules": "Posting rules",
-    "createdBy": "By <creator>a CS student</creator>"
+    "createdBy": "By <creator>a CS student</creator>",
+    "helpLabel": "Feedback and contact",
+    "feedback": "Feedback",
+    "contact": "Contact"
   },
   "lang": {
     "label": "Language",

@@ -91,8 +91,8 @@ describe('EventCard', () => {
     expect(img?.getAttribute('alt')).toBe('')
     expect(img?.getAttribute('loading')).toBe('lazy')
     expect(img?.getAttribute('decoding')).toBe('async')
-    expect(img?.getAttribute('width')).toBe('80')
-    expect(img?.getAttribute('height')).toBe('80')
+    expect(img?.getAttribute('width')).toBe('112')
+    expect(img?.getAttribute('height')).toBe('112')
   })
 
   it('draws a generated cover from the organiser initial when there is no poster', async () => {
