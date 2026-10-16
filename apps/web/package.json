@@ -13,31 +13,31 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.117.2",
-    "@tanstack/react-query": "5.104.1",
-    "@tanstack/react-router": "1.170.41",
+    "@supabase/supabase-js": "2.117.3",
+    "@tanstack/react-query": "5.104.2",
+    "@tanstack/react-router": "1.170.44",
     "@usmfomo/shared": "workspace:*",
-    "i18next": "26.4.2",
+    "i18next": "26.4.4",
     "react": "~19.3.0",
     "react-dom": "~19.3.0",
-    "react-i18next": "17.0.15",
+    "react-i18next": "17.0.16",
     "three": "0.186.1",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "5.20261003.1",
+    "@cloudflare/workers-types": "5.20261013.1",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/react": "16.3.3",
-    "@types/node": "26.6.4",
+    "@types/node": "26.6.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/three": "0.186.0",
-    "@vitejs/plugin-react": "6.1.1",
-    "jsdom": "30.1.1",
-    "oxlint": "1.86.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "jsdom": "30.1.2",
+    "oxlint": "1.88.0",
     "tailwindcss": "4.3.3",
     "typescript": "~7.0.2",
-    "vite": "8.3.2",
-    "vitest": "5.0.3"
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
   }
 }
