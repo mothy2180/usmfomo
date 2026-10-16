@@ -21,12 +21,12 @@
     "gen:types": "supabase gen types typescript --local --schema public > src/database.types.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.117.2",
-    "zod": "4.6.5"
+    "@supabase/supabase-js": "2.117.3",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "typescript": "~7.0.2",
-    "vitest": "5.0.3"
+    "vitest": "5.0.4"
   },
   "sideEffects": [
     "./src/schemas.ts",
