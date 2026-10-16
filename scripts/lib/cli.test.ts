@@ -36,7 +36,7 @@ function fakeSupabase() {
 
 const statusWithKey = () => `API_URL="http://127.0.0.1:54321"\nSECRET_KEY="${KEY}"\n`
 
-async function run(argv: string[], env: Record<string, string> = {}) {
+async function run(argv: string[], env: Record<string, string> = {}, stdin?: string) {
   const io = captureIo()
   const server = fakeSupabase()
   const code = await main(argv, {
@@ -45,6 +45,7 @@ async function run(argv: string[], env: Record<string, string> = {}) {
     fetch: server.fetch,
     readLocalStatus: statusWithKey,
     generatePassword: () => PASSWORD,
+    readStdin: () => (stdin === undefined ? Promise.reject(new Error('stdin must not be read')) : Promise.resolve(stdin)),
   })
   return { code, io, seen: server.seen }
 }
@@ -86,6 +87,27 @@ describe('main', () => {
     assert.deepEqual(seen[0]?.body, { email: 'robotics@usmfomo.pages.dev', password: PASSWORD, email_confirm: true })
     assert.equal(io.all().split(PASSWORD).length - 1, 1)
     assert.equal(io.all().includes(KEY), false)
+  })
+
+  it('create --password-stdin: the piped password goes to Auth and is never printed', async () => {
+    const given = 'Typed by the Owner 2026'
+    const { code, io, seen } = await run(
+      ['create', 'robotics', '--org', 'Robotics Club', '--type', 'club', '--password-stdin'],
+      {},
+      `${given}\n`,
+    )
+    assert.equal(code, 0)
+    assert.deepEqual(seen[0]?.body, { email: 'robotics@usmfomo.pages.dev', password: given, email_confirm: true })
+    assert.equal(io.all().includes(given), false)
+    assert.equal(io.all().includes(PASSWORD), false)
+  })
+
+  it('--password-stdin with a weak password exits 2 before any request', async () => {
+    const { code, io, seen } = await run(['reset-password', 'csoc', '--password-stdin'], {}, 'short1A\n')
+    assert.equal(code, 2)
+    assert.match(io.stderr.join('\n'), /^error: the password from stdin is not accepted; it needs: at least 12 characters/)
+    assert.equal(io.all().includes('short1A'), false)
+    assert.equal(seen.length, 0)
   })
 
   it('list: every account and the true total, although each reply is cut at 100 rows', async () => {

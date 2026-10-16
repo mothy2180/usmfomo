@@ -85,6 +85,10 @@ function describeApiError(err: ApiError): string {
       return CONSTRAINTS[constraint] ?? 'this already exists'
     }
     if (err.code === 'P0001' && /_not_found$/.test(err.message)) return 'no such account or organisation'
+    if (err.code === 'P0001' && err.message === 'username_taken') return 'this username is already taken'
+    if (err.code === 'P0001' && err.message === 'account_is_owner') {
+      return 'this command is for club and school accounts, not the owner account'
+    }
     if (err.code === 'PGRST202') return 'the admin_* database functions are missing: are the migrations applied?'
   }
   const code = err.code ? ` ${err.code}` : ''

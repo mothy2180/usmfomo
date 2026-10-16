@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useId, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { Dialog } from '../../components/Dialog.tsx'
+import { PasswordField } from '../../components/PasswordField.tsx'
 import { ShowOncePassword } from '../../components/ShowOncePassword.tsx'
 import { Button, Field, FormError, Input, RadioGroup, Select } from '../../components/ui.tsx'
 import { PUBLIC_SITE_URL } from '../../env.ts'
@@ -21,29 +22,35 @@ import {
   slugAfterSlugChange,
   slugSuggestion,
   validateCreate,
+  validateTypedPassword,
   type CreateValues,
 } from './accountForms.ts'
 
+/** Form order for focusing the first invalid field: the account fields, then the password. */
+const FIELDS = [...CREATE_FIELDS, 'password'] as const
+
 type Created = { username: string; password: string; orgName: string }
 
-/** Create an organisation and its account; the generated password is shown once. */
+/** Create an organisation and its account; the password (typed or generated) is shown once. */
 export function CreateAccountDialog({ accounts, onClose }: { accounts: readonly AccountRow[]; onClose: () => void }) {
   const queryClient = useQueryClient()
   const announce = useAnnounce()
   const formId = useId()
   const [values, setValues] = useState<Omit<CreateValues, 'orgSlug'>>(INITIAL_CREATE)
   const [slug, setSlug] = useState(INITIAL_SLUG)
+  const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<Created | null>(null)
 
-  const ids: Record<(typeof CREATE_FIELDS)[number], string> = {
+  const ids: Record<(typeof FIELDS)[number], string> = {
     orgName: `${formId}-org`,
     orgSlug: `${formId}-slug`,
     username: `${formId}-user`,
     type: `${formId}-type`,
     campus: `${formId}-campus`,
+    password: `${formId}-password`,
   }
   const suggestion = slugSuggestion(slug, values.orgName)
 
@@ -52,18 +59,22 @@ export function CreateAccountDialog({ accounts, onClose }: { accounts: readonly 
     if (busy) return
     setError(null)
     const result = validateCreate({ ...values, orgSlug: slug.slug }, accounts)
-    if (!result.ok) {
+    const typed = validateTypedPassword(password)
+    if (!result.ok || !typed.ok) {
+      const found = { ...(result.ok ? {} : result.errors), ...(typed.ok ? {} : typed.errors) }
       // Commit the errors first, so the field is already invalid (and
       // described by its error) when it receives focus.
-      flushSync(() => setErrors(result.errors))
-      const first = firstInvalid(CREATE_FIELDS, result.errors)
+      flushSync(() => setErrors(found))
+      const first = firstInvalid(FIELDS, found)
       if (first) document.getElementById(ids[first])?.focus()
       return
     }
     setErrors({})
     setBusy(true)
     try {
-      const account = await adminApi.createAccount(result.data)
+      const account = await adminApi.createAccount(result.data, typed.data)
+      // The password is in `created` now; drop the form's copy.
+      setPassword('')
       setCreated({ username: account.username, password: account.password, orgName: result.data.orgName })
       void queryClient.invalidateQueries({ queryKey: qk.accounts })
       void queryClient.invalidateQueries({ queryKey: qk.status })
@@ -155,7 +166,7 @@ export function CreateAccountDialog({ accounts, onClose }: { accounts: readonly 
         <Field
           id={ids.username}
           label="Username"
-          hint="What they sign in with: 3–32 lowercase letters, digits or hyphens. It can’t be changed later."
+          hint="What they sign in with: 3–32 lowercase letters, digits or hyphens. Only you can change it later (Manage → Change username)."
           error={errors.username}
         >
           {({ id, describedBy, invalid }) => (
@@ -206,9 +217,17 @@ export function CreateAccountDialog({ accounts, onClose }: { accounts: readonly 
             </Select>
           )}
         </Field>
-        <p className="m-0 text-sm text-muted">
-          A random 24-character password is generated and shown once on the next screen.
-        </p>
+        <PasswordField
+          id={ids.password}
+          label="Password"
+          value={password}
+          onChange={(next) => {
+            setPassword(next)
+            setErrors((e) => ({ ...e, password: undefined }))
+          }}
+          error={errors.password}
+          disabled={busy}
+        />
         <FormError message={error} />
         <div className="flex flex-wrap justify-end gap-2">
           <Button onClick={onClose} disabled={busy}>

@@ -24,7 +24,9 @@ tokens of ended sessions at once). So always:
 
 **Owner console** → Accounts → the organisation → **Hand over to a new
 committee**. One click does, in this order: deactivate (and ban) → new password
-(ends every session) → reactivate. The new password is shown **once**.
+(ends every session) → reactivate. The new password is shown **once**. Leave the
+password field empty for a random one, or type (or suggest) your own; on the
+CLI, `--password-stdin` does the same.
 
 From your laptop instead (production: the `owner_cli` key for this command only):
 

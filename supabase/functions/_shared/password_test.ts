@@ -1,4 +1,11 @@
 import { assert, assertEquals, assertThrows } from '@std/assert'
+// The console's suggestion (packages/shared/src/password.ts) must stay the same generator.
+import {
+  passwordProblems,
+  SUGGESTED_PASSWORD_ALPHABET,
+  SUGGESTED_PASSWORD_LENGTH,
+  suggestPassword,
+} from '../../../packages/shared/src/password.ts'
 import {
   generatePassword,
   hasRequiredClasses,
@@ -67,4 +74,21 @@ Deno.test('hasRequiredClasses', () => {
   assertEquals(hasRequiredClasses('abcdefgh'), false)
   assertEquals(hasRequiredClasses('ABC234'), false)
   assertEquals(hasRequiredClasses('abcABC'), false)
+})
+
+Deno.test('the console suggests passwords like generatePassword, and they pass the typed-password rules', () => {
+  assertEquals(SUGGESTED_PASSWORD_ALPHABET, PASSWORD_ALPHABET)
+  assertEquals(SUGGESTED_PASSWORD_LENGTH, PASSWORD_LENGTH)
+  let n = 0
+  const counter: RandomFill = (buf) => {
+    for (let i = 0; i < buf.length; i++) buf[i] = (n++ * 37) % 256
+    return buf
+  }
+  let m = 0
+  const same: RandomFill = (buf) => {
+    for (let i = 0; i < buf.length; i++) buf[i] = (m++ * 37) % 256
+    return buf
+  }
+  assertEquals(suggestPassword(counter), generatePassword(same))
+  for (let i = 0; i < 200; i++) assertEquals(passwordProblems(generatePassword()), [])
 })

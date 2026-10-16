@@ -9,6 +9,12 @@ describe('errorMessage', () => {
     )
     expect(errorMessage(new AdminApiError('update_org', 'conflict', 409))).toBe('Another organisation already uses that name or slug.')
     expect(errorMessage(new AdminApiError('status', 'conflict', 409))).toBe('That conflicts with existing data.')
+    expect(errorMessage(new AdminApiError('rename_account', 'conflict', 409))).toBe(
+      'Another account already uses that username. Choose another one.',
+    )
+    expect(errorMessage(new AdminApiError('rename_account', 'bad_request', 400))).toMatch(/rejected this username/)
+    expect(errorMessage(new AdminApiError('rename_account', 'forbidden', 403))).toMatch(/owner account's username/)
+    expect(errorMessage(new AdminApiError('handover', 'bad_request', 400))).toMatch(/rejected this password/)
     expect(errorMessage(new AdminApiError('status', 'unavailable', 404))).toMatch(/unavailable/)
     // A dropped connection may or may not have run the action.
     expect(errorMessage(new AdminApiError('handover', 'network'))).toMatch(/may or may not have happened/)

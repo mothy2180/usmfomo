@@ -121,6 +121,9 @@ isOneToOne: false
               "poster_path": string,"thumb_path": string
             }[]
                            },
+"admin_rename_account":
+{ Args: { "p_user": string,"p_username": string }; Returns: undefined
+                           },
 "admin_set_account_active":
 { Args: { "p_active": boolean,"p_user": string }; Returns: undefined
                            },

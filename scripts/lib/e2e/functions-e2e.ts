@@ -5,7 +5,8 @@
 //
 // It creates throwaway accounts named zz-e2e-<run>-* (the owner through the
 // CLI), signs in with the CAPTCHA test token (there is no 2FA: a password
-// session is all the owner needs), runs every owner-admin action, checks that a club cannot
+// session is all the owner needs), runs every owner-admin action (renames and
+// owner-typed passwords included), checks that a club cannot
 // change its own password and that lists, lookups and deletes still work past
 // PostgREST's 100-row cap (101 more accounts, an org with 105 files), and
 // removes everything it created, also when a check fails. Output is one line
@@ -287,10 +288,14 @@ async function corsAndAuthChecks(owner: string): Promise<void> {
   check('owner password session -> 200', plain.status === 200 && plain.json?.ok === true, String(plain.status))
 }
 
-/** Runs the owner CLI in-process; stdout comes back, stderr is dropped. */
-async function cli(...argv: string[]): Promise<{ code: number; out: string }> {
+/** Runs the owner CLI in-process; stdout comes back, stderr is dropped. `stdin` feeds --password-stdin. */
+async function cli(argv: string[], stdin?: string): Promise<{ code: number; out: string }> {
   const out: string[] = []
-  const code = await main(argv, { env: process.env, io: { out: (l) => out.push(l), err: () => {} } })
+  const code = await main(argv, {
+    env: process.env,
+    io: { out: (l) => out.push(l), err: () => {} },
+    ...(stdin === undefined ? {} : { readStdin: () => Promise.resolve(stdin) }),
+  })
   return { code, out: out.join('\n') }
 }
 
@@ -342,11 +347,11 @@ async function beyondMaxRowsChecks(ok: (body: Record<string, unknown>) => Promis
   const reset = await ok({ action: 'reset_password', userId: last.userId })
   check('reset_password of an account past the first page', typeof reset.password === 'string')
 
-  const list = await cli('list')
+  const list = await cli(['list'])
   const total = /^(\d+) account\(s\)/m.exec(list.out)?.[1]
   check('CLI list shows every account and the true total', list.code === 0 && total === String(listed.length), total)
-  const off = await cli('deactivate', last.username)
-  const on = await cli('activate', last.username)
+  const off = await cli(['deactivate', last.username])
+  const on = await cli(['activate', last.username])
   check('CLI deactivate and activate an account past the first page', off.code === 0 && on.code === 0)
 
   // delete_account lists the org's files in one jsonb value (0051), so all 105 go.
@@ -548,6 +553,45 @@ async function run(): Promise<void> {
     clubRow?.account_active === true && clubRow.banned_until === null,
   )
 
+  // rename_account: the next sign-in needs the new name; open sessions keep working.
+  const renamedClub = `zz-e2e-${RUN}-club2`
+  const beforeRename = await session(names.club, handed.password)
+  const rename = await ok({ action: 'rename_account', userId: club.userId, username: renamedClub.toUpperCase() })
+  check('rename_account returns the normalised new username', rename.username === renamedClub)
+  check(
+    'rename_account: the new username signs in, the old one does not',
+    (await signIn(renamedClub, handed.password)).status === 200 &&
+      (await signIn(names.club, handed.password)).status === 400,
+  )
+  check('rename_account: a session from before the rename keeps working', (await postingState(beforeRename)) === 'ok')
+  const listedRename = ((await ok({ action: 'list_accounts' })) as Row[]).find((a) => a.user_id === club.userId)
+  check('rename_account: the account row has the new username', listedRename?.username === renamedClub)
+  await expectError(
+    'rename_account to a taken username',
+    { action: 'rename_account', userId: club.userId, username: names.fresh },
+    409,
+    'conflict',
+  )
+  check(
+    'a refused rename changes neither sign-in',
+    (await signIn(renamedClub, handed.password)).status === 200 &&
+      (await signIn(names.fresh, fresh.password)).status === 200,
+  )
+  await expectError(
+    'rename_account with a malformed username',
+    { action: 'rename_account', userId: club.userId, username: 'no spaces allowed' },
+    400,
+    'bad_request',
+  )
+  const sameName = await ok({ action: 'rename_account', userId: club.userId, username: renamedClub })
+  check('rename_account to the current username changes nothing', sameName.username === renamedClub)
+  const cliRename = await cli(['rename', renamedClub, names.club])
+  check(
+    'CLI rename back: the original username signs in again, the interim one does not',
+    cliRename.code === 0 && (await signIn(names.club, handed.password)).status === 200 &&
+      (await signIn(renamedClub, handed.password)).status === 400,
+  )
+
   // reset_password ends sessions at once (database writes too).
   const freshToken = await session(names.fresh, fresh.password)
   check('new school account can sign in', (await postingState(freshToken)) === 'ok')
@@ -576,10 +620,30 @@ async function run(): Promise<void> {
   check('reactivated: sign-in works', (await signIn(names.fresh, reset.password)).status === 200)
 
   // The CLI asks the database for the one-time grant too.
-  const cliReset = await cli('reset-password', names.fresh)
+  const cliReset = await cli(['reset-password', names.fresh])
   check(
     'CLI reset-password: the new password works',
     cliReset.code === 0 && (await signIn(names.fresh, printedPassword(cliReset.out))).status === 200,
+  )
+
+  // A password the owner types instead of a generated one.
+  const typed = `E2e Typed ${RUN} Password 9`
+  const typedReset = await ok({ action: 'reset_password', userId: fresh.userId, password: typed })
+  check(
+    'reset_password with a typed password: returned as typed, and it signs in',
+    typedReset.password === typed && (await signIn(names.fresh, typed)).status === 200,
+  )
+  await expectError(
+    'reset_password with a weak typed password',
+    { action: 'reset_password', userId: fresh.userId, password: 'weakpassword' },
+    400,
+    'bad_request',
+  )
+  const piped = `E2e Piped ${RUN} Password 7`
+  const cliPiped = await cli(['handover', names.fresh, '--password-stdin'], `${piped}\n`)
+  check(
+    'CLI handover --password-stdin: the piped password signs in and is not printed',
+    cliPiped.code === 0 && !cliPiped.out.includes(piped) && (await signIn(names.fresh, piped)).status === 200,
   )
 
   // update_org
@@ -627,6 +691,12 @@ async function run(): Promise<void> {
   for (const action of ['reset_password', 'handover', 'delete_account']) {
     await expectError(`${action} of the owner`, { action, userId: ownerId }, 403, 'forbidden')
   }
+  await expectError(
+    'rename_account of the owner',
+    { action: 'rename_account', userId: ownerId, username: `zz-e2e-${RUN}-boss` },
+    403,
+    'forbidden',
+  )
   await expectError(
     'set_account_active of the owner',
     { action: 'set_account_active', userId: ownerId, active: false },
@@ -688,7 +758,7 @@ async function run(): Promise<void> {
 
   // Break-glass: the CLI resets the owner's own password through a grant too.
   // Last, because it ends every owner session.
-  const ownerReset = await cli('reset-password', names.owner)
+  const ownerReset = await cli(['reset-password', names.owner])
   check(
     'CLI reset-password of the owner: the new password works',
     ownerReset.code === 0 && (await signIn(names.owner, printedPassword(ownerReset.out))).status === 200,

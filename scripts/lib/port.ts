@@ -12,8 +12,6 @@ type Functions = Database['public']['Functions']
 type AdminFunction = Extract<keyof Functions, `admin_${string}`>
 
 export interface CliPort extends OwnerAdminPort {
-  /** admin_get_account_by_username: the account with this username, or null. */
-  getAccountByUsername(username: string): Promise<AccountRow | null>
   /** admin_link_owner: marks an existing auth user as the owner account. */
   linkOwner(userId: string, username: string): Promise<void>
 }
@@ -86,6 +84,9 @@ export function createCliPort(client: RestClient): CliPort {
     },
     async setAccountActive(userId, active) {
       await rpc('admin_set_account_active', { p_user: userId, p_active: active })
+    },
+    async renameAccount(userId, username) {
+      await rpc('admin_rename_account', { p_user: userId, p_username: username })
     },
     async updateOrg(input: UpdateOrgInput) {
       await rpc('admin_update_org', {

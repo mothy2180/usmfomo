@@ -12,6 +12,8 @@ import {
   takenErrors,
   validateCreate,
   validateOrgEdit,
+  validateRename,
+  validateTypedPassword,
 } from './accountForms.ts'
 
 const row = (over: Partial<AccountRow> = {}): AccountRow => ({
@@ -134,6 +136,49 @@ describe('organisation edit', () => {
       'Inactive: hidden from the public and cannot post',
     ])
     expect(describeOrgChanges(values, { ...values, campus: 'engineering' })).toEqual([])
+  })
+})
+
+describe('validateRename (usernameSchema)', () => {
+  const club = row()
+  const chess = row({ user_id: 'b0000000-0000-4000-8000-000000000002', username: 'chess', org_id: '33333333-3333-4333-8333-333333333333', org_name: 'Chess Club', org_slug: 'chess' })
+  const all = [...ACCOUNTS, chess]
+
+  it('normalises a valid new username', () => {
+    expect(validateRename(' Robotics-USM ', club, all)).toEqual({ ok: true, data: 'robotics-usm' })
+  })
+
+  it('explains the format rule', () => {
+    for (const bad of ['', 'x', 'has space', '-robotics', 'a_b']) {
+      const result = validateRename(bad, club, all)
+      expect(result.ok ? null : result.errors.username, bad).toMatch(/^Use 3–32 characters/)
+    }
+  })
+
+  it('refuses the current username and one another account uses', () => {
+    const same = validateRename('Robotics-Club', club, all)
+    expect(same.ok ? null : same.errors.username).toBe('That is already the username.')
+    const taken = validateRename('chess', club, all)
+    expect(taken.ok ? null : taken.errors.username).toBe('Chess Club already uses this username.')
+    const owner = validateRename('owner', club, all)
+    expect(owner.ok ? null : owner.errors.username).toBe('That is the owner’s username.')
+  })
+})
+
+describe('validateTypedPassword (shared password rules)', () => {
+  it('empty means a random password from the server', () => {
+    expect(validateTypedPassword('')).toEqual({ ok: true, data: undefined })
+  })
+
+  it('passes a good password through as typed', () => {
+    expect(validateTypedPassword(' Typed by the Owner 2026 ')).toEqual({ ok: true, data: ' Typed by the Owner 2026 ' })
+  })
+
+  it('refuses one that breaks a rule', () => {
+    for (const bad of ['short1A', 'abcdefghijk1', 'ABCDEFGHIJK1', 'abcdefghiJKl', 'abcdefghiJK1\t', 'aB3'.repeat(25)]) {
+      const result = validateTypedPassword(bad)
+      expect(result.ok ? null : result.errors.password, bad).toMatch(/doesn’t meet every rule/)
+    }
   })
 })
 

@@ -27,9 +27,14 @@ export async function rpc<T>(client: AdminClient, fn: string, args?: Record<stri
 // SQLSTATEs caused by bad input rather than by the server.
 const BAD_INPUT = new Set(['22001', '22023', '22P02', '23502', '23514'])
 
-/** not_found for our "*_not_found" raises, conflict for unique violations, bad_request for invalid input. */
+/**
+ * not_found for our "*_not_found" raises, conflict for "*_taken" raises and
+ * unique violations, forbidden for "account_is_owner", bad_request for invalid input.
+ */
 export function httpErrorFromRpc(err: RpcError): HttpError {
   if (err.code === 'P0001' && /^[a-z_]+_not_found$/.test(err.message)) return new HttpError('not_found')
+  if (err.code === 'P0001' && /^[a-z_]+_taken$/.test(err.message)) return new HttpError('conflict')
+  if (err.code === 'P0001' && err.message === 'account_is_owner') return new HttpError('forbidden')
   if (err.code === '23505') return new HttpError('conflict')
   if (BAD_INPUT.has(err.code)) return new HttpError('bad_request')
   return new HttpError('internal')

@@ -24,7 +24,9 @@ SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account reset
 password**, which ends every owner session, so nobody holding the old password
 or an old session can carry on. The new password is printed once: save it in
 your password manager. Then sign in at <https://usmfomo-admin.pages.dev> with
-it.
+it. To set one you chose (say, straight from your password manager's
+generator) pipe it in with `--password-stdin` instead (docs/api.md); it is not
+printed.
 
 ## 2. Lost the `owner_cli` key too
 

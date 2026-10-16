@@ -33,7 +33,10 @@ Logins are usernames only; behind the scenes they become
 ## 3. Create the account
 
 - Owner console (<https://usmfomo-admin.pages.dev>) → **Accounts** → **Create
-  account**. The generated password (24 characters) is shown **once**.
+  account**. The generated password (24 characters) is shown **once**. To choose
+  it yourself, type one in the Password field (12+ characters with a lowercase
+  letter, an uppercase letter and a digit) or press **Suggest a strong password**
+  and edit it; the CLI takes `--password-stdin` (docs/api.md).
 - Or from your laptop, for production with the `owner_cli` key for this one command:
 
   ```zsh
@@ -77,6 +80,13 @@ Nothing else about the person.
 
 - New committee: [handover.md](handover.md). Forgotten password or lost phone:
   [forgot-password.md](forgot-password.md).
+- New username (a rebrand, a typo, a merged club): only you can change it, after
+  checking the request through the official channel like in step 1. Console →
+  the organisation → **Change username**, or
+  `pnpm account rename <username> <new-username>`. The password stays; sessions
+  already signed in keep working, but every new sign-in needs the new name, so
+  tell the verified contact 1:1 before they next sign in. Change the public link
+  separately (Edit organisation → slug) if it should follow.
 - Pause an account: console → Deactivate (or `pnpm account deactivate <username>`).
   It can no longer sign in or post; its existing posts stay up. To take the
   organisation's posts off the site too, edit the organisation and switch

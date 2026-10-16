@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { ConfirmBody } from '../../components/ConfirmDialog.tsx'
 import { Dialog } from '../../components/Dialog.tsx'
+import { PasswordField } from '../../components/PasswordField.tsx'
 import { ShowOncePassword } from '../../components/ShowOncePassword.tsx'
 import { Badge, Button } from '../../components/ui.tsx'
 import { useAnnounce } from '../../lib/announce.ts'
@@ -13,7 +15,9 @@ import { errorMessage } from '../../lib/messages.ts'
 import { qk } from '../../lib/queries.ts'
 import { reportSessionProblem } from '../../lib/sessionEvents.ts'
 import { useNow } from '../../lib/useNow.ts'
+import { validateTypedPassword } from './accountForms.ts'
 import { EditOrgForm } from './EditOrgForm.tsx'
+import { RenameForm } from './RenameForm.tsx'
 
 type ActionKind = 'reset' | 'handover' | 'pause' | 'resume' | 'delete'
 
@@ -21,6 +25,8 @@ type Step =
   | { kind: 'menu' }
   | { kind: 'confirm'; action: ActionKind }
   | { kind: 'edit' }
+  | { kind: 'rename'; draft: string }
+  | { kind: 'confirm-rename'; username: string }
   | { kind: 'password'; password: string; lead: string }
 
 type ActionCopy = {
@@ -39,11 +45,11 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
     case 'reset':
       return {
         label: 'Reset password',
-        summary: 'New random password; signs them out everywhere.',
+        summary: 'New password (typed or random); signs them out everywhere.',
         title: `Reset the password of ${a.username}?`,
         effect: (
           <>
-            <p className="m-0">A new random password is generated and shown to you once.</p>
+            <p className="m-0">The new password, yours or a random one, is shown to you once.</p>
             <p className="m-0">Every session of {a.username} ends at once, on every device.</p>
           </>
         ),
@@ -58,8 +64,8 @@ function actionCopy(action: ActionKind, a: AccountRow): ActionCopy {
         effect: (
           <>
             <p className="m-0">
-              In one step: the account is paused, gets a new random password (which ends every session), and is then
-              active again.
+              In one step: the account is paused, gets a new password (which ends every session), and is then active
+              again.
             </p>
             <p className="m-0">
               Give the new password only to the new committee, through {org}’s official channel. Posts stay up.
@@ -125,7 +131,7 @@ function menuActions(a: AccountRow): ActionKind[] {
 }
 
 /** Manage one club/school account. Every action explains itself and asks for
- * confirmation; generated passwords are shown once and dropped on Done. */
+ * confirmation; new passwords are shown once and dropped on Done. */
 export function AccountDialog({
   account,
   accounts,
@@ -140,9 +146,15 @@ export function AccountDialog({
   const [step, setStepState] = useState<Step>({ kind: 'menu' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A password the owner typed for reset or handover; empty = a random one.
+  const [typedPassword, setTypedPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | undefined>(undefined)
+  const passwordId = useId()
 
   const setStep = (next: Step) => {
     setError(null)
+    setPasswordError(undefined)
+    setTypedPassword('')
     setStepState(next)
   }
 
@@ -157,21 +169,35 @@ export function AccountDialog({
     announce(message)
   }
 
+  /** The typed password for reset/handover (undefined: a random one), or null after marking the field invalid. */
+  function checkedPassword(): string | undefined | null {
+    const typed = validateTypedPassword(typedPassword)
+    if (typed.ok) return typed.data
+    // Commit the error first, so the field is already invalid when it receives focus.
+    flushSync(() => setPasswordError(typed.errors.password))
+    document.getElementById(passwordId)?.focus()
+    return null
+  }
+
   async function run(action: ActionKind) {
     if (busy) return
+    const chosen = action === 'reset' || action === 'handover' ? checkedPassword() : undefined
+    if (chosen === null) return
     setBusy(true)
     setError(null)
     const id = account.user_id
     try {
       switch (action) {
         case 'reset': {
-          const { password } = await adminApi.resetPassword(id)
+          const { password } = await adminApi.resetPassword(id, chosen)
+          setTypedPassword('')
           refresh()
           setStepState({ kind: 'password', password, lead: `Password reset. Every session of ${account.username} has ended.` })
           break
         }
         case 'handover': {
-          const { password } = await adminApi.handover(id)
+          const { password } = await adminApi.handover(id, chosen)
+          setTypedPassword('')
           refresh()
           setStepState({
             kind: 'password',
@@ -201,6 +227,27 @@ export function AccountDialog({
     }
   }
 
+  async function rename(username: string) {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    const before = account.username
+    try {
+      const renamed = await adminApi.renameAccount(account.user_id, username)
+      // Show the new name at once; the refetch confirms it.
+      queryClient.setQueryData<AccountRow[]>(qk.accounts, (rows) =>
+        rows?.map((r) => (r.user_id === account.user_id ? { ...r, username: renamed.username } : r)),
+      )
+      refresh()
+      finish(`${before} is now ${renamed.username}. They sign in with ${renamed.username} from now on.`)
+    } catch (err) {
+      reportSessionProblem(err)
+      setError(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function done() {
     // Drop the password from state before the dialog goes away.
     setStepState({ kind: 'menu' })
@@ -219,6 +266,7 @@ export function AccountDialog({
     case 'confirm': {
       const copy = actionCopy(step.action, account)
       title = copy.title
+      const setsPassword = step.action === 'reset' || step.action === 'handover'
       body = (
         <ConfirmBody
           key={step.action}
@@ -232,6 +280,56 @@ export function AccountDialog({
           cancelLabel="Back"
         >
           {copy.effect}
+          {setsPassword ? (
+            <PasswordField
+              id={passwordId}
+              value={typedPassword}
+              onChange={(next) => {
+                setTypedPassword(next)
+                setPasswordError(undefined)
+              }}
+              error={passwordError}
+              disabled={busy}
+            />
+          ) : null}
+        </ConfirmBody>
+      )
+      break
+    }
+    case 'rename':
+      title = `Change the username of ${account.username}`
+      body = (
+        <RenameForm
+          account={account}
+          accounts={accounts}
+          initial={step.draft}
+          onCancel={() => setStep({ kind: 'menu' })}
+          onNext={(username) => setStep({ kind: 'confirm-rename', username })}
+        />
+      )
+      break
+    case 'confirm-rename': {
+      const org = account.org_name ?? account.username
+      title = `Change ${account.username} to ${step.username}?`
+      body = (
+        <ConfirmBody
+          key="rename"
+          confirmLabel="Change username"
+          tone="primary"
+          busy={busy}
+          error={error}
+          onConfirm={() => void rename(step.username)}
+          onCancel={() => setStep({ kind: 'rename', draft: step.username })}
+          cancelLabel="Back"
+        >
+          <p className="m-0">
+            From now on, {org} signs in with <span className="break-all font-mono">{step.username}</span> instead of{' '}
+            <span className="break-all font-mono">{account.username}</span>. The password stays the same.
+          </p>
+          <p className="m-0">
+            Sessions that are already signed in keep working. Tell the committee the new username through {org}’s official
+            channel, or their next sign-in fails.
+          </p>
         </ConfirmBody>
       )
       break
@@ -296,6 +394,18 @@ function Menu({ account: a, onPick, onClose }: { account: AccountRow; onPick: (s
           </Button>
           <p id={`${baseId}-edit`} className="m-0 text-xs text-muted">
             Name, public link, type, campus, and whether it is active (listed publicly and allowed to post).
+          </p>
+        </li>
+        <li className="flex flex-col gap-1">
+          <Button
+            onClick={() => onPick({ kind: 'rename', draft: '' })}
+            aria-describedby={`${baseId}-rename`}
+            className="self-start"
+          >
+            Change username
+          </Button>
+          <p id={`${baseId}-rename`} className="m-0 text-xs text-muted">
+            A new login name, e.g. after a rebrand. They sign in with it from now on; open sessions keep working.
           </p>
         </li>
         {menuActions(a).map((action) => {

@@ -150,6 +150,96 @@ describe('handover', () => {
   })
 })
 
+describe('a password the owner gave (--password-stdin)', () => {
+  const GIVEN = 'Typed by the Owner 2026'
+  const given = (overrides: Partial<CliPort> = {}, accounts = [OWNER, CLUB]) => {
+    const fake = fakePort(accounts, overrides)
+    const io = captureIo()
+    const deps: CommandDeps = {
+      port: fake.port,
+      io,
+      password: GIVEN,
+      generatePassword: () => {
+        throw new Error('must not generate')
+      },
+      local: true,
+    }
+    return { ...fake, io, run: (cmd: Command) => runCommand(cmd, deps) }
+  }
+
+  it('replaces the generated one in create-owner, create, reset-password and handover, and is never printed', async () => {
+    const commands: Array<[Command, string]> = [
+      [{ name: 'create-owner', username: 'tim' }, 'createAuthUser'],
+      [
+        {
+          name: 'create',
+          input: { username: 'robotics', orgName: 'Robotics Club', orgSlug: 'robotics', type: 'club', campus: 'main' },
+        },
+        'createAuthUser',
+      ],
+      [{ name: 'reset-password', username: 'csoc' }, 'updateAuthUser'],
+      [{ name: 'handover', username: 'csoc' }, 'updateAuthUser'],
+    ]
+    for (const [cmd, op] of commands) {
+      const { run, io, calls } = given({}, cmd.name === 'create-owner' ? [CLUB] : [OWNER, CLUB])
+      await run(cmd)
+      assert.ok(calls.some(([o, ...args]) => o === op && JSON.stringify(args).includes(GIVEN)), cmd.name)
+      assert.equal(io.all().includes(GIVEN), false, cmd.name)
+      assert.match(io.all(), /password: the one you gave \(not shown\)/, cmd.name)
+    }
+  })
+})
+
+describe('rename', () => {
+  it('runs the console rename_account logic: Auth email, then the account row', async () => {
+    const { run, io, writeCalls, accounts } = setup()
+    await run({ name: 'rename', username: 'csoc', newUsername: 'cs-society' })
+    assert.deepEqual(writeCalls(), [
+      ['updateAuthUser', CLUB_ID, { email: 'cs-society@usmfomo.pages.dev', email_confirm: true }],
+      ['renameAccount', CLUB_ID, 'cs-society'],
+    ])
+    assert.equal(accounts.find((a) => a.user_id === CLUB_ID)?.username, 'cs-society')
+    assert.match(io.all(), /Renamed "csoc" to "cs-society"\. Computer Science Society signs in with "cs-society"/)
+    assert.match(io.all(), /already signed in keep working/)
+  })
+
+  it('the same username changes nothing', async () => {
+    const { run, io, writes } = setup()
+    await run({ name: 'rename', username: 'csoc', newUsername: 'csoc' })
+    assert.deepEqual(writes(), [])
+    assert.match(io.all(), /already has this username; nothing changed/)
+  })
+
+  it('refuses a taken username, the owner account and unknown accounts before any change', async () => {
+    const taken = setup()
+    await failsWith(taken.run({ name: 'rename', username: 'csoc', newUsername: 'owner' }), /"owner" is already taken/)
+    assert.deepEqual(taken.writes(), [])
+
+    const owner = setup()
+    await failsWith(
+      owner.run({ name: 'rename', username: 'owner', newUsername: 'tim' }),
+      /"owner" is the owner account: its username cannot be changed/,
+    )
+    assert.deepEqual(owner.writes(), [])
+
+    const unknown = setup()
+    await failsWith(unknown.run({ name: 'rename', username: 'nobody', newUsername: 'x-y-z' }), /no account named "nobody"/)
+    assert.deepEqual(unknown.writes(), [])
+  })
+
+  it('a refused account row puts the old Auth email back', async () => {
+    const { run, writeCalls } = setup({
+      renameAccount: () => Promise.reject(new ApiError('rest', 400, 'P0001', 'username_taken')),
+    })
+    await assert.rejects(run({ name: 'rename', username: 'csoc', newUsername: 'cs-society' }), ApiError)
+    assert.deepEqual(writeCalls(), [
+      ['updateAuthUser', CLUB_ID, { email: 'cs-society@usmfomo.pages.dev', email_confirm: true }],
+      ['renameAccount', CLUB_ID, 'cs-society'],
+      ['updateAuthUser', CLUB_ID, { email: 'csoc@usmfomo.pages.dev', email_confirm: true }],
+    ])
+  })
+})
+
 describe('deactivate / activate', () => {
   it('database flag first, then the Auth ban; the owner is allowed (break-glass)', async () => {
     const off = setup()
@@ -210,6 +300,7 @@ describe('account lookups', () => {
       { name: 'handover', username: 'csoc' },
       { name: 'deactivate', username: 'csoc' },
       { name: 'activate', username: 'csoc' },
+      { name: 'rename', username: 'csoc', newUsername: 'cs-society' },
       { name: 'delete', username: 'csoc', yes: true },
     ]
     for (const cmd of commands) {

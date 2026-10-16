@@ -61,6 +61,8 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
         (row) => row.user_id,
       ),
     getAccount: (userId) => rpc<AccountRow | null>(client, 'admin_get_account', { p_user: userId }),
+    getAccountByUsername: (username) =>
+      rpc<AccountRow | null>(client, 'admin_get_account_by_username', { p_username: username }),
     async authUserExists(userId) {
       const { data, error } = await admin.getUserById(userId)
       if (error) {
@@ -102,6 +104,9 @@ export function createOwnerAdminPort(client: AdminClient): OwnerAdminPort {
       }),
     async setAccountActive(userId, active) {
       await rpc<null>(client, 'admin_set_account_active', { p_user: userId, p_active: active })
+    },
+    async renameAccount(userId, username) {
+      await rpc<null>(client, 'admin_rename_account', { p_user: userId, p_username: username })
     },
     async updateOrg(input) {
       await rpc<null>(client, 'admin_update_org', {

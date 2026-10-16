@@ -85,6 +85,10 @@ export function fakePort(initial: AccountRow[] = [OWNER, CLUB], overrides: Parti
       for (const a of accounts) if (a.user_id === userId) a.account_active = active
       return Promise.resolve()
     },
+    renameAccount: (userId, username) => {
+      for (const a of accounts) if (a.user_id === userId) a.username = username
+      return Promise.resolve()
+    },
     updateOrg: () => Promise.resolve(),
     deleteOrg: (orgId) => {
       const i = accounts.findIndex((a) => a.org_id === orgId)

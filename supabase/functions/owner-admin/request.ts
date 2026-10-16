@@ -23,14 +23,18 @@ export type UpdateOrgInput = {
   active: boolean
 }
 
+/** A password the owner typed. Without one, the action generates a password. */
+export type ChosenPassword = { password?: string }
+
 export type ActionRequest =
   | { action: 'status' }
   | { action: 'list_accounts' }
-  | ({ action: 'create_account' } & CreateAccountInput)
-  | { action: 'reset_password'; userId: string }
-  | { action: 'handover'; userId: string }
+  | ({ action: 'create_account' } & CreateAccountInput & ChosenPassword)
+  | ({ action: 'reset_password'; userId: string } & ChosenPassword)
+  | ({ action: 'handover'; userId: string } & ChosenPassword)
   | { action: 'set_account_active'; userId: string; active: boolean }
   | ({ action: 'update_org' } & UpdateOrgInput)
+  | { action: 'rename_account'; userId: string; username: string }
   | { action: 'delete_account'; userId: string }
   | { action: 'delete_post'; postId: string }
   | { action: 'remove_post_image'; postId: string }
@@ -43,6 +47,11 @@ function badRequest(): never {
 
 function required<T>(value: T | null): T {
   return value === null ? badRequest() : value
+}
+
+/** `{ password }` when the body has one (it must pass the rules), `{}` when it has none. */
+function chosenPassword(value: unknown): ChosenPassword {
+  return value === undefined ? {} : { password: required(v.password(value)) }
 }
 
 export function parseActionRequest(body: unknown): ActionRequest {
@@ -61,11 +70,12 @@ export function parseActionRequest(body: unknown): ActionRequest {
         orgSlug: required(v.orgSlug(b.orgSlug)),
         type: required(v.orgType(b.type)),
         campus: required(v.orgCampus(b.campus)),
+        ...chosenPassword(b.password),
       }
     case 'reset_password':
-      return { action: 'reset_password', userId: required(v.uuid(b.userId)) }
+      return { action: 'reset_password', userId: required(v.uuid(b.userId)), ...chosenPassword(b.password) }
     case 'handover':
-      return { action: 'handover', userId: required(v.uuid(b.userId)) }
+      return { action: 'handover', userId: required(v.uuid(b.userId)), ...chosenPassword(b.password) }
     case 'set_account_active':
       return { action: 'set_account_active', userId: required(v.uuid(b.userId)), active: required(v.bool(b.active)) }
     case 'update_org':
@@ -77,6 +87,12 @@ export function parseActionRequest(body: unknown): ActionRequest {
         type: required(v.orgType(b.type)),
         campus: required(v.orgCampus(b.campus)),
         active: required(v.bool(b.active)),
+      }
+    case 'rename_account':
+      return {
+        action: 'rename_account',
+        userId: required(v.uuid(b.userId)),
+        username: required(v.username(b.username)),
       }
     case 'delete_account':
       return { action: 'delete_account', userId: required(v.uuid(b.userId)) }

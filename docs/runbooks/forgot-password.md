@@ -25,7 +25,8 @@ SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=$k pnpm account reset
 
 The new password (shown once) replaces the old one and **signs out every
 session** of that account, including one left open on a lost phone or a shared
-PC.
+PC. It is random unless you type or suggest one in the console's password field
+(CLI: `--password-stdin`); a random one is the better default.
 
 For the **owner** account, see [owner-lockout.md](owner-lockout.md).
 

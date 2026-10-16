@@ -25,6 +25,7 @@ export type ActionDeps = {
 
 export type CreatedAccount = { userId: string; orgId: string; username: string; password: string }
 export type NewPassword = { password: string }
+export type RenamedAccount = { username: string }
 export type RemovedFiles = { removedFiles: number }
 /** Poster files of a deleted post or removed image: failedFiles stay public until the daily orphan sweep. */
 export type PosterFiles = { removedFiles: number; failedFiles: number }
@@ -36,12 +37,14 @@ export async function runAction(req: ActionRequest, deps: ActionDeps): Promise<u
       return await port.status()
     case 'list_accounts':
       return await port.listAccounts()
-    case 'create_account':
-      return await createAccount(deps, req)
+    case 'create_account': {
+      const { password, ...input } = req
+      return await createAccount(deps, input, password)
+    }
     case 'reset_password':
-      return await resetPassword(deps, req.userId)
+      return await resetPassword(deps, req.userId, req.password)
     case 'handover':
-      return await handover(deps, req.userId)
+      return await handover(deps, req.userId, req.password)
     case 'set_account_active':
       await clubAccount(port, req.userId)
       await setActive(port, req.userId, req.active)
@@ -49,6 +52,8 @@ export async function runAction(req: ActionRequest, deps: ActionDeps): Promise<u
     case 'update_org':
       await port.updateOrg(req)
       return {}
+    case 'rename_account':
+      return await renameAccount(port, req.userId, req.username)
     case 'delete_account':
       return await deleteAccount(port, req.userId)
     case 'delete_post':
@@ -66,9 +71,14 @@ async function clubAccount(port: OwnerAdminPort, userId: string): Promise<Accoun
   return { ...row, org_id: row.org_id }
 }
 
-export async function createAccount(deps: ActionDeps, input: CreateAccountInput): Promise<CreatedAccount> {
+/** `chosen` is a password the owner typed (already validated); without one, a generated password. */
+export async function createAccount(
+  deps: ActionDeps,
+  input: CreateAccountInput,
+  chosen?: string,
+): Promise<CreatedAccount> {
   const { port } = deps
-  const password = deps.generatePassword()
+  const password = chosen ?? deps.generatePassword()
   const userId = await port.createAuthUser(usernameToEmail(input.username), password)
   try {
     const orgId = await port.createOrgAccount(userId, input)
@@ -94,9 +104,9 @@ export async function setPassword(port: OwnerAdminPort, userId: string, password
   await port.updateAuthUser(userId, { password })
 }
 
-async function resetPassword(deps: ActionDeps, userId: string): Promise<NewPassword> {
+async function resetPassword(deps: ActionDeps, userId: string, chosen?: string): Promise<NewPassword> {
   await clubAccount(deps.port, userId)
-  const password = deps.generatePassword()
+  const password = chosen ?? deps.generatePassword()
   await setPassword(deps.port, userId, password)
   return { password }
 }
@@ -108,14 +118,40 @@ export async function setActive(port: OwnerAdminPort, userId: string, active: bo
 }
 
 /** New committee: deactivate → new password (ends sessions) → reactivate. */
-export async function handover(deps: ActionDeps, userId: string): Promise<NewPassword> {
+export async function handover(deps: ActionDeps, userId: string, chosen?: string): Promise<NewPassword> {
   const { port } = deps
   await clubAccount(port, userId)
   await setActive(port, userId, false)
-  const password = deps.generatePassword()
+  const password = chosen ?? deps.generatePassword()
   await setPassword(port, userId, password)
   await setActive(port, userId, true)
   return { password }
+}
+
+/**
+ * A new login name for a club or school account: the Auth email first, then
+ * admin_rename_account (0056). If the database refuses, the old email goes
+ * back, so sign-in and the account row never disagree. Sessions stay signed
+ * in; the next sign-in needs the new name. The current name again changes
+ * nothing. A name another account has is a 409 before anything changes (Auth
+ * answers a taken email on update with a bare 500).
+ */
+export async function renameAccount(port: OwnerAdminPort, userId: string, username: string): Promise<RenamedAccount> {
+  const row = await clubAccount(port, userId)
+  if (row.username === username) return { username }
+  if (await port.getAccountByUsername(username)) throw new HttpError('conflict')
+  await port.updateAuthUser(userId, { email: usernameToEmail(username), email_confirm: true })
+  try {
+    await port.renameAccount(userId, username)
+  } catch (err) {
+    try {
+      await port.updateAuthUser(userId, { email: usernameToEmail(row.username), email_confirm: true })
+    } catch {
+      console.error(JSON.stringify({ event: 'rename_account_revert_failed' }))
+    }
+    throw err
+  }
+  return { username }
 }
 
 export async function deleteAccount(port: OwnerAdminPort, userId: string): Promise<RemovedFiles> {

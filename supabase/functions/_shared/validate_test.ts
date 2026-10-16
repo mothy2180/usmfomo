@@ -12,6 +12,11 @@ import {
   orgSlugSchema,
   usernameSchema,
 } from '../../../packages/shared/src/schemas.ts'
+import {
+  PASSWORD_MAX_BYTES as SHARED_PASSWORD_MAX_BYTES,
+  PASSWORD_MIN_LENGTH as SHARED_PASSWORD_MIN_LENGTH,
+  passwordProblems,
+} from '../../../packages/shared/src/password.ts'
 import { usernameToEmail as sharedUsernameToEmail } from '../../../packages/shared/src/supabase.ts'
 import * as v from './validate.ts'
 
@@ -70,6 +75,38 @@ const ORG_NAMES = [
   null,
 ]
 
+const PASSWORDS = [
+  'abcdefghiJK1',
+  'abcdefghiJK',
+  'ABCDEFGHIJK1',
+  'abcdefghijk1',
+  'abcdefghiJKl',
+  'Correct Horse 9 Battery',
+  ' padded Pass 1 ',
+  'abcdefghiJK1\t',
+  'abcdefghiJK1\n',
+  'abc\u0000defghiJK1',
+  'aB3'.repeat(24),
+  'aB3'.repeat(24) + 'x',
+  'aB3' + '€'.repeat(9),
+  'aB3' + '€'.repeat(24),
+  'aB3😀aaaaaaa',
+  'aB3😀aaaaaaaa',
+  'Ünïcödé-Passw0rd',
+  '',
+  12345678901234,
+  null,
+  undefined,
+  ['abcdefghiJK1'],
+]
+
+Deno.test('password() matches passwordProblems', () => {
+  for (const input of PASSWORDS) {
+    const shared = typeof input === 'string' && passwordProblems(input).length === 0
+    assertEquals(v.password(input), shared ? input : null, JSON.stringify(input))
+  }
+})
+
 Deno.test('username() matches usernameSchema', () => {
   for (const input of USERNAMES) {
     const shared = usernameSchema.safeParse(input)
@@ -106,6 +143,8 @@ Deno.test('constants match packages/shared/src/config.ts', () => {
   assertEquals(v.ACCOUNT_EMAIL_DOMAIN, SHARED_DOMAIN)
   assertEquals([...v.CAMPUSES], [...SHARED_CAMPUSES])
   assertEquals([...v.ORG_TYPES], [...SHARED_ORG_TYPES])
+  assertEquals(v.PASSWORD_MIN_LENGTH, SHARED_PASSWORD_MIN_LENGTH)
+  assertEquals(v.PASSWORD_MAX_BYTES, SHARED_PASSWORD_MAX_BYTES)
   for (const name of ['csoc', ' Robotics-Club ']) assertEquals(v.usernameToEmail(name), sharedUsernameToEmail(name))
 })
 

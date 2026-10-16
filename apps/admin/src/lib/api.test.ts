@@ -57,6 +57,7 @@ describe('request shaping', () => {
       ['reset_password', (api) => api.resetPassword(userId), { action: 'reset_password', userId }, { password: 'x'.repeat(24) }],
       ['handover', (api) => api.handover(userId), { action: 'handover', userId }, { password: 'y'.repeat(24) }],
       ['set_account_active', (api) => api.setAccountActive(userId, false), { action: 'set_account_active', userId, active: false }, {}],
+      ['rename_account', (api) => api.renameAccount(userId, 'robotics'), { action: 'rename_account', userId, username: 'robotics' }, { username: 'robotics' }],
       ['delete_account', (api) => api.deleteAccount(userId), { action: 'delete_account', userId }, { removedFiles: 4 }],
       ['delete_post', (api) => api.deletePost(postId), { action: 'delete_post', postId }, { removedFiles: 2 }],
       ['remove_post_image', (api) => api.removePostImage(postId), { action: 'remove_post_image', postId }, { removedFiles: 2 }],
@@ -69,6 +70,27 @@ describe('request shaping', () => {
     }
   })
 
+  it('reset_password and handover send a typed password only when there is one', async () => {
+    const userId = ACCOUNT.user_id
+    for (const action of ['reset_password', 'handover'] as const) {
+      const { fn, api } = fakeInvoke(ok({ password: 'Typed by the Owner 2026' }))
+      const run = action === 'reset_password' ? api.resetPassword : api.handover
+      await expect(run(userId, 'Typed by the Owner 2026')).resolves.toEqual({ password: 'Typed by the Owner 2026' })
+      await run(userId)
+      expect(fn.mock.calls.map((c) => c[1])).toEqual([
+        { body: { action, userId, password: 'Typed by the Owner 2026' } },
+        { body: { action, userId } },
+      ])
+    }
+  })
+
+  it('rename_account returns the new username and rejects a reply without one', async () => {
+    const { api } = fakeInvoke(ok({ username: 'robotics' }))
+    await expect(api.renameAccount(ACCOUNT.user_id, 'robotics')).resolves.toEqual({ username: 'robotics' })
+    const bad = fakeInvoke(ok({}))
+    expect((await failure(bad.api.renameAccount(ACCOUNT.user_id, 'robotics'))).code).toBe('bad_response')
+  })
+
   it('sends exactly the contract fields for create_account and update_org', async () => {
     const created = { userId: ACCOUNT.user_id, orgId: ACCOUNT.org_id, username: 'robotics-club', password: 'P'.repeat(24) }
     const { fn, api } = fakeInvoke(ok(created))
@@ -77,6 +99,13 @@ describe('request shaping', () => {
     await expect(api.createAccount(input)).resolves.toEqual(created)
     expect(fn.mock.calls[0]?.[1]).toEqual({
       body: { action: 'create_account', username: 'robotics-club', orgName: 'Robotics Club', orgSlug: 'robotics-club', type: 'club', campus: 'engineering' },
+    })
+
+    // A password the owner typed is sent as `password`; without one, no field at all.
+    const typed = fakeInvoke(ok(created))
+    await typed.api.createAccount(input, 'Typed by the Owner 2026')
+    expect(typed.fn.mock.calls[0]?.[1]).toEqual({
+      body: { action: 'create_account', username: 'robotics-club', orgName: 'Robotics Club', orgSlug: 'robotics-club', type: 'club', campus: 'engineering', password: 'Typed by the Owner 2026' },
     })
 
     const update = fakeInvoke(ok({}))

@@ -62,7 +62,7 @@ select set_eq(
         'admin_is_owner', 'admin_create_org_account', 'admin_link_owner', 'admin_set_account_active',
         'admin_update_org', 'admin_list_accounts', 'admin_get_account', 'admin_get_account_by_username',
         'admin_org_objects', 'admin_delete_org', 'admin_delete_post', 'admin_remove_post_image',
-        'admin_status', 'admin_allow_password_change'],
+        'admin_status', 'admin_allow_password_change', 'admin_rename_account'],
   'the service-only maint_/admin_ RPCs are exactly these');
 
 select is(

@@ -77,6 +77,8 @@ describe('describeFailure', () => {
         /username is already taken/,
       ],
       [new ApiError('rest', 400, 'P0001', 'account_not_found'), /no such account/],
+      [new ApiError('rest', 400, 'P0001', 'username_taken'), /^this username is already taken$/],
+      [new ApiError('rest', 400, 'P0001', 'account_is_owner'), /not the owner account/],
       [new ApiError('rest', 404, 'PGRST202', 'Could not find the function'), /migrations/],
       [new ApiError('rest', 0, 'network', 'cannot reach 127.0.0.1:54321'), /^cannot reach 127\.0\.0\.1:54321$/],
       [new ApiError('storage', 500, 'internal', 'boom'), /^storage API answered 500 internal: boom$/],

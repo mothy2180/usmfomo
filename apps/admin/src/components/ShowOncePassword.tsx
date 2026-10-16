@@ -12,7 +12,7 @@ type Props = {
 }
 
 /**
- * Shows a generated password exactly once. The password is never stored by
+ * Shows a new password (generated, or typed by the owner) exactly once. The password is never stored by
  * the console or the server, so it is gone once the owner presses Done (the
  * parent clears it from state) or signs out.
  */

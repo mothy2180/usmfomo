@@ -207,7 +207,7 @@ Deno.test('listAccounts: reads every page although PostgREST cuts each reply at 
   assertEquals(asked, [{ p_limit: 100, p_offset: 0 }, { p_limit: 100, p_offset: 100 }])
 })
 
-Deno.test('getAccount, allowPasswordChange, orgObjects: one direct RPC each', async () => {
+Deno.test('getAccount, getAccountByUsername, allowPasswordChange, orgObjects: one direct RPC each', async () => {
   const OTHER_ID = '00000000-0000-4000-8000-000000000009'
   const ORG = '00000000-0000-4000-8000-0000000000bb'
   const seen: Array<[string, unknown]> = []
@@ -219,6 +219,8 @@ Deno.test('getAccount, allowPasswordChange, orgObjects: one direct RPC each', as
       case '/rest/v1/rpc/admin_get_account':
         // A jsonb result: one value, which max_rows never cuts; null without an account row.
         return json(body.p_user === USER_ID ? { user_id: USER_ID, username: 'csoc' } : null)
+      case '/rest/v1/rpc/admin_get_account_by_username':
+        return json(body.p_username === 'csoc' ? { user_id: USER_ID, username: 'csoc' } : null)
       case '/rest/v1/rpc/admin_allow_password_change':
         return new Response(null, { status: 204 })
       case '/rest/v1/rpc/admin_org_objects':
@@ -230,13 +232,50 @@ Deno.test('getAccount, allowPasswordChange, orgObjects: one direct RPC each', as
   await withPort(handler, async (port) => {
     assertEquals((await port.getAccount(USER_ID))?.username, 'csoc')
     assertEquals(await port.getAccount(OTHER_ID), null)
+    assertEquals((await port.getAccountByUsername('csoc'))?.user_id, USER_ID)
+    assertEquals(await port.getAccountByUsername('nobody'), null)
     await port.allowPasswordChange(USER_ID)
     assertEquals(await port.orgObjects(ORG), [`${ORG}/a.webp`, `${ORG}/a-thumb.webp`])
   })
   assertEquals(seen, [
     ['/rest/v1/rpc/admin_get_account', { p_user: USER_ID }],
     ['/rest/v1/rpc/admin_get_account', { p_user: OTHER_ID }],
+    ['/rest/v1/rpc/admin_get_account_by_username', { p_username: 'csoc' }],
+    ['/rest/v1/rpc/admin_get_account_by_username', { p_username: 'nobody' }],
     ['/rest/v1/rpc/admin_allow_password_change', { p_user: USER_ID }],
     ['/rest/v1/rpc/admin_org_objects', { p_org: ORG }],
+  ])
+})
+
+Deno.test('renameAccount and a new email: one RPC, one Admin API update; a taken email is a conflict', async () => {
+  const seen: Array<[string, unknown]> = []
+  const handler: Handler = async (url, req) => {
+    assertEquals(req.headers.get('apikey'), KEY)
+    const route = `${req.method} ${url.pathname}`
+    const body = await req.json()
+    seen.push([route, body])
+    switch (route) {
+      case 'POST /rest/v1/rpc/admin_rename_account':
+        return body.p_username === 'taken'
+          ? json({ code: 'P0001', message: 'username_taken' }, 400)
+          : new Response(null, { status: 204 })
+      case `PUT /auth/v1/admin/users/${USER_ID}`:
+        return body.email === 'taken@usmfomo.pages.dev'
+          ? json({ code: 422, error_code: 'email_exists', msg: 'already registered' }, 422)
+          : json({ id: USER_ID })
+      default:
+        return json({ msg: route }, 418)
+    }
+  }
+  await withPort(handler, async (port) => {
+    await port.updateAuthUser(USER_ID, { email: 'robotics@usmfomo.pages.dev', email_confirm: true })
+    await port.renameAccount(USER_ID, 'robotics')
+    await failsWith(port.updateAuthUser(USER_ID, { email: 'taken@usmfomo.pages.dev', email_confirm: true }), 'conflict')
+    const err = await assertRejects(() => port.renameAccount(USER_ID, 'taken'))
+    assertEquals((err as { message?: string }).message, 'username_taken')
+  })
+  assertEquals(seen.slice(0, 2), [
+    [`PUT /auth/v1/admin/users/${USER_ID}`, { email: 'robotics@usmfomo.pages.dev', email_confirm: true }],
+    ['POST /rest/v1/rpc/admin_rename_account', { p_user: USER_ID, p_username: 'robotics' }],
   ])
 })

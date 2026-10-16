@@ -1,6 +1,8 @@
 // Command line of the owner CLI (docs/api.md, "Owner CLI"). Usernames and new
-// organisations are validated with the shared schemas the owner console uses.
+// organisations are validated with the shared schemas the owner console uses,
+// passwords given with --password-stdin with the shared password rules.
 import { parseArgs } from 'node:util'
+import { PASSWORD_RULES, passwordProblems } from '../../packages/shared/src/password.ts'
 import { createAccountSchema, slugify, usernameSchema } from '../../packages/shared/src/schemas.ts'
 import type { CreateAccountInput } from '../../supabase/functions/owner-admin/request.ts'
 
@@ -13,16 +15,25 @@ commands:
                                a club or school account; the slug defaults to one made from --org
   reset-password <username>    new password; ends every session of that account (works on the owner too)
   handover <username>          new committee: new password, every session ended
+  rename <username> <new-username>
+                               new login name for a club or school account; sessions stay signed in
   deactivate <username>        stop sign-in and posting
   activate <username>          undo deactivate
   delete <username> --yes      delete a club or school account, its organisation, posts and posters
   seed-local                   local stack only: an owner and two demo accounts
 
+options:
+  --password-stdin             create-owner, create, reset-password, handover: read the new password
+                               from stdin (a pipe, never a terminal) instead of generating one:
+                                 read -rs 'p?New password: '; echo; printf %s "$p" | pnpm account handover <username> --password-stdin; unset p
+                               12+ characters (at most 72 bytes) with a lowercase letter, an uppercase
+                               letter and a digit; it is not printed
+
 environment:
   SUPABASE_URL           project URL (default http://127.0.0.1:54321)
   SUPABASE_SECRET_KEY    secret API key; may be omitted for the local stack
 
-Passwords are printed once and never written to disk.`
+Generated passwords are printed once and never written to disk.`
 
 export class UsageError extends Error {
   constructor(message: string) {
@@ -37,29 +48,35 @@ export type AccountCommand =
   | 'deactivate'
   | 'activate'
 
+/** --password-stdin: the new password comes from stdin, not the generator. */
+export type PasswordSource = { passwordStdin?: true }
+
 export type Command =
   | { name: 'help' }
   | { name: 'list' }
   | { name: 'seed-local' }
-  | { name: 'create-owner'; username: string }
-  | { name: 'create'; input: CreateAccountInput }
-  | { name: AccountCommand; username: string }
+  | ({ name: 'create-owner'; username: string } & PasswordSource)
+  | ({ name: 'create'; input: CreateAccountInput } & PasswordSource)
+  | ({ name: AccountCommand; username: string } & PasswordSource)
+  | { name: 'rename'; username: string; newUsername: string }
   | { name: 'delete'; username: string; yes: boolean }
 
-type OptionName = 'org' | 'type' | 'campus' | 'slug' | 'yes'
+type OptionName = 'org' | 'type' | 'campus' | 'slug' | 'yes' | 'password-stdin'
 
 type Spec = { args: readonly string[]; options: readonly OptionName[] }
 
 const USER: Spec = { args: ['<username>'], options: [] }
+const USER_PASSWORD: Spec = { args: ['<username>'], options: ['password-stdin'] }
 
 // A Map, so that names such as "toString" are not found on Object.prototype.
 const SPECS: ReadonlyMap<string, Spec> = new Map<string, Spec>([
   ['list', { args: [], options: [] }],
   ['seed-local', { args: [], options: [] }],
-  ['create-owner', USER],
-  ['create', { args: ['<username>'], options: ['org', 'type', 'campus', 'slug'] }],
-  ['reset-password', USER],
-  ['handover', USER],
+  ['create-owner', USER_PASSWORD],
+  ['create', { args: ['<username>'], options: ['org', 'type', 'campus', 'slug', 'password-stdin'] }],
+  ['reset-password', USER_PASSWORD],
+  ['handover', USER_PASSWORD],
+  ['rename', { args: ['<username>', '<new-username>'], options: [] }],
   ['deactivate', USER],
   ['activate', USER],
   ['delete', { args: ['<username>'], options: ['yes'] }],
@@ -124,6 +141,7 @@ const PARSE_CONFIG = {
     campus: { type: 'string' },
     slug: { type: 'string' },
     yes: { type: 'boolean' },
+    'password-stdin': { type: 'boolean' },
     help: { type: 'boolean', short: 'h' },
   },
 } as const
@@ -148,29 +166,47 @@ export function parseCommand(argv: readonly string[]): Command {
   if (args.length !== spec.args.length) {
     throw new UsageError(`usage: pnpm account ${[name, ...spec.args].join(' ')}`)
   }
-  for (const option of ['org', 'type', 'campus', 'slug', 'yes'] as const) {
+  for (const option of ['org', 'type', 'campus', 'slug', 'yes', 'password-stdin'] as const) {
     if (values[option] !== undefined && !spec.options.includes(option)) {
       throw new UsageError(`--${option} does not apply to "${name}"`)
     }
   }
 
-  const [first = ''] = args
+  const [first = '', second = ''] = args
+  const source: PasswordSource = values['password-stdin'] === true ? { passwordStdin: true } : {}
   switch (name) {
     case 'list':
     case 'seed-local':
       return { name }
     case 'create-owner':
-      return { name, username: username(first) }
+      return { name, username: username(first), ...source }
     case 'create':
-      return { name, input: parseCreate(first, values) }
+      return { name, input: parseCreate(first, values), ...source }
     case 'delete':
       return { name, username: username(first), yes: values.yes === true }
+    case 'rename':
+      return { name, username: username(first), newUsername: username(second) }
     case 'reset-password':
     case 'handover':
+      return { name, username: username(first), ...source }
     case 'deactivate':
     case 'activate':
       return { name, username: username(first) }
     default:
       throw new UsageError(`unknown command "${name}"`)
   }
+}
+
+/**
+ * A password read with --password-stdin: one trailing line break (from echo or
+ * a file) is dropped, nothing else. It must meet the shared password rules.
+ */
+export function chosenPassword(raw: string): string {
+  const password = raw.replace(/\r?\n$/, '')
+  const problems = new Set(passwordProblems(password))
+  if (problems.size > 0) {
+    const broken = PASSWORD_RULES.filter((r) => problems.has(r.rule)).map((r) => r.label.toLowerCase())
+    throw new UsageError(`the password from stdin is not accepted; it needs: ${broken.join('; ')}`)
+  }
+  return password
 }

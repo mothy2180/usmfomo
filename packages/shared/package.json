@@ -11,6 +11,7 @@
     "./images": "./src/images.ts",
     "./errors": "./src/errors.ts",
     "./ics": "./src/ics.ts",
+    "./password": "./src/password.ts",
     "./schemas": "./src/schemas.ts",
     "./supabase": "./src/supabase.ts"
   },

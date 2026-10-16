@@ -74,6 +74,60 @@ Deno.test('userId actions', () => {
   }
 })
 
+Deno.test('create_account, reset_password and handover: an optional password the owner typed', () => {
+  const create = {
+    action: 'create_account',
+    username: 'csoc',
+    orgName: 'CS Soc',
+    orgSlug: 'cs-soc',
+    type: 'club',
+    campus: 'main',
+  }
+  const typed = ' Typed by the Owner 2026 '
+  assertEquals<unknown>(parseActionRequest({ ...create, password: typed }), { ...create, password: typed })
+  for (const action of ['reset_password', 'handover']) {
+    assertEquals<unknown>(parseActionRequest({ action, userId: U, password: typed }), {
+      action,
+      userId: U,
+      password: typed,
+    })
+  }
+  for (const base of [create, { action: 'reset_password', userId: U }, { action: 'handover', userId: U }]) {
+    // Without one, nothing: the action generates a password.
+    assertEquals('password' in parseActionRequest(base), false)
+    for (
+      const bad of [
+        'abcdefghiJK', // 11 characters
+        'abcdefghijk1', // no uppercase letter
+        'ABCDEFGHIJK1', // no lowercase letter
+        'abcdefghiJKl', // no digit
+        'aB3'.repeat(24) + 'x', // 73 bytes
+        'abcdefghiJK1\t',
+        'abcdefghiJK1\u0000',
+        '',
+        null,
+        123456789012345,
+        ['abcdefghiJK1'],
+      ]
+    ) {
+      rejects({ ...base, password: bad })
+    }
+  }
+})
+
+Deno.test('rename_account: a user id and a username normalised like create_account', () => {
+  assertEquals(parseActionRequest({ action: 'rename_account', userId: U.toUpperCase(), username: ' CS-Society ' }), {
+    action: 'rename_account',
+    userId: U,
+    username: 'cs-society',
+  })
+  for (const username of ['a', 'has space', '-csoc', 'a'.repeat(33), 'a_b', undefined, null, 42]) {
+    rejects({ action: 'rename_account', userId: U, username })
+  }
+  rejects({ action: 'rename_account', username: 'csoc' })
+  rejects({ action: 'rename_account', userId: 'csoc', username: 'csoc' })
+})
+
 Deno.test('set_account_active: needs a real boolean', () => {
   assertEquals(parseActionRequest({ action: 'set_account_active', userId: U, active: false }), {
     action: 'set_account_active',

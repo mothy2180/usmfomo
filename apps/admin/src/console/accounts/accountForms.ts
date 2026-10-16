@@ -1,10 +1,11 @@
-// Form logic for creating accounts and editing organisations. The rules come
-// from @usmfomo/shared (createAccountSchema, which mirrors the database
-// CHECKs); this module only adds UI behaviour: the slug suggestion, friendly
-// messages and a duplicate pre-check against the loaded list. The server and
-// the database stay the authority.
+// Form logic for creating accounts, editing organisations, changing usernames
+// and typed passwords. The rules come from @usmfomo/shared (createAccountSchema,
+// which mirrors the database CHECKs, and the password rules); this module only
+// adds UI behaviour: the slug suggestion, friendly messages and a duplicate
+// pre-check against the loaded list. The server and the database stay the authority.
 import { type Campus, type OrgType } from '@usmfomo/shared/config'
-import { createAccountSchema, slugify, type CreateAccountInput } from '@usmfomo/shared/schemas'
+import { passwordProblems } from '@usmfomo/shared/password'
+import { createAccountSchema, slugify, usernameSchema, type CreateAccountInput } from '@usmfomo/shared/schemas'
 import type { AccountRow } from '../../lib/api.ts'
 import { fieldErrors, type Validated } from '../../lib/forms.ts'
 import { CAMPUS_LABELS, TYPE_LABELS } from '../../lib/labels.ts'
@@ -142,6 +143,41 @@ export function describeOrgChanges(before: OrgEditValues, after: OrgEditOutput):
     out.push(after.active ? 'Active again: listed publicly and can post' : 'Inactive: hidden from the public and cannot post')
   }
   return out
+}
+
+// ---------------------------------------------------------------------------
+// Change username (rename_account). Same rule as at creation.
+// ---------------------------------------------------------------------------
+
+/** The new username, normalised, or a message: invalid, unchanged or taken. */
+export function validateRename(
+  value: string,
+  account: Pick<AccountRow, 'user_id' | 'username'>,
+  accounts: readonly (Existing & Pick<AccountRow, 'user_id'>)[],
+): Validated<string> {
+  const parsed = usernameSchema.safeParse(value)
+  if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error.issues.map((i) => ({ ...i, path: ['username'] }))) }
+  const username = parsed.data
+  if (username === account.username) return { ok: false, errors: { username: 'That is already the username.' } }
+  const other = accounts.find((a) => a.username === username && a.user_id !== account.user_id)
+  if (other) {
+    const taken = takenErrors({ username, orgName: '', orgSlug: '' }, [other]).username
+    return { ok: false, errors: { username: taken } }
+  }
+  return { ok: true, data: username }
+}
+
+// ---------------------------------------------------------------------------
+// A password the owner typed (create, reset, handover). Empty means "generate
+// one on the server", as before typed passwords existed.
+// ---------------------------------------------------------------------------
+
+export function validateTypedPassword(value: string): Validated<string | undefined> {
+  if (value === '') return { ok: true, data: undefined }
+  if (passwordProblems(value).length > 0) {
+    return { ok: false, errors: { password: 'This password doesn’t meet every rule below. Fix it, or leave it empty.' } }
+  }
+  return { ok: true, data: value }
 }
 
 // ---------------------------------------------------------------------------

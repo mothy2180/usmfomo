@@ -32,7 +32,11 @@ export type PosterPaths = { poster_path: string | null; thumb_path: string | nul
 
 export type TokenClaims = { sub: unknown; role: unknown }
 
-export type AuthUserUpdate = { password: string } | { ban_duration: string }
+export type AuthUserUpdate =
+  | { password: string }
+  | { ban_duration: string }
+  /** A new login name: the synthetic email, confirmed at once (no email is ever sent). */
+  | { email: string; email_confirm: true }
 
 export interface OwnerAdminPort {
   /** auth.getClaims: verifies the signature (JWKS) and expiry. */
@@ -46,6 +50,8 @@ export interface OwnerAdminPort {
   listAccounts(): Promise<AccountRow[]>
   /** admin_get_account: the account with this user id, or null when there is no account row. */
   getAccount(userId: string): Promise<AccountRow | null>
+  /** admin_get_account_by_username: the account with this username, or null. */
+  getAccountByUsername(username: string): Promise<AccountRow | null>
   authUserExists(userId: string): Promise<boolean>
   orgObjects(orgId: string): Promise<string[]>
 
@@ -56,6 +62,8 @@ export interface OwnerAdminPort {
   deleteAuthUser(userId: string): Promise<void>
   createOrgAccount(userId: string, input: CreateAccountInput): Promise<string>
   setAccountActive(userId: string, active: boolean): Promise<void>
+  /** admin_rename_account (0056): the new username of a club or school account. */
+  renameAccount(userId: string, username: string): Promise<void>
   updateOrg(input: UpdateOrgInput): Promise<void>
   deleteOrg(orgId: string): Promise<void>
   deletePost(postId: string): Promise<PosterPaths[]>

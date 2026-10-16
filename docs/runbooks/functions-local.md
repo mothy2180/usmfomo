@@ -43,7 +43,9 @@ The script does the following:
    in with the CAPTCHA test token. That password session is all the owner
    needs (there is no 2FA); it also checks that Auth refuses 2FA enrolment.
 3. It runs every owner-admin action, including the conflict, validation and
-   unknown-id cases.
+   unknown-id cases, a rename round trip (the new username signs in, the old
+   one does not, an open session survives; the CLI renames it back) and
+   owner-typed passwords (console and CLI `--password-stdin`).
 4. It checks that a club account gets 403 `forbidden`. Other origins and a
    missing Origin are refused.
 5. It checks that an owner session ended by sign-out gets 401 while its

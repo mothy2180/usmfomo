@@ -3,9 +3,21 @@ import { RpcError } from '../_shared/db.ts'
 import { HttpError } from '../_shared/http.ts'
 import { BAN_DURATION, runAction } from './actions.ts'
 import type { ActionRequest } from './request.ts'
-import { account, CLUB_ID, fakePort, NEW_ORG_ID, NEW_USER_ID, ORG_ID, OWNER_ID, OWNER_ROW, POST_ID } from './testing.ts'
+import {
+  account,
+  captureLogs,
+  CLUB_ID,
+  fakePort,
+  NEW_ORG_ID,
+  NEW_USER_ID,
+  ORG_ID,
+  OWNER_ID,
+  OWNER_ROW,
+  POST_ID,
+} from './testing.ts'
 
 const PASSWORD = 'Generated-Password-24ch9'
+const CHOSEN = 'Typed by the Owner 2026'
 const deps = (port: ReturnType<typeof fakePort>['port']) => ({ port, generatePassword: () => PASSWORD })
 
 async function failsWith(promise: Promise<unknown>, code: string) {
@@ -64,6 +76,34 @@ Deno.test('reset_password: the one-time database grant, then the new password', 
   ])
 })
 
+Deno.test('create_account, reset_password and handover: a password the owner typed replaces the generated one', async () => {
+  const notGenerated = (port: ReturnType<typeof fakePort>['port']) => ({
+    port,
+    generatePassword: (): string => {
+      throw new Error('must not generate')
+    },
+  })
+  const created = fakePort()
+  assertEquals(await runAction({ ...CREATE, password: CHOSEN }, notGenerated(created.port)), {
+    userId: NEW_USER_ID,
+    orgId: NEW_ORG_ID,
+    username: 'csoc',
+    password: CHOSEN,
+  })
+  assertEquals(created.calls[0], { op: 'createAuthUser', args: ['csoc@usmfomo.pages.dev', CHOSEN] })
+  // The password never reaches the database RPC.
+  assertEquals(JSON.stringify(created.calls[1].args).includes(CHOSEN), false)
+
+  for (const action of ['reset_password', 'handover'] as const) {
+    const { port, calls } = fakePort()
+    assertEquals(await runAction({ action, userId: CLUB_ID, password: CHOSEN }, notGenerated(port)), {
+      password: CHOSEN,
+    })
+    const i = calls.findIndex((c) => c.op === 'allowPasswordChange')
+    assertEquals(calls[i + 1], { op: 'updateAuthUser', args: [CLUB_ID, { password: CHOSEN }] }, action)
+  }
+})
+
 Deno.test('reset_password and handover: no new password when the grant fails', async () => {
   for (const action of ['reset_password', 'handover'] as const) {
     const { port, calls } = fakePort({
@@ -80,6 +120,7 @@ Deno.test('account actions refuse the owner account and unknown users', async ()
     { action: 'reset_password', userId: OWNER_ID },
     { action: 'handover', userId: OWNER_ID },
     { action: 'set_account_active', userId: OWNER_ID, active: false },
+    { action: 'rename_account', userId: OWNER_ID, username: 'new-owner' },
     { action: 'delete_account', userId: OWNER_ID },
   ]
   for (const req of actions) {
@@ -102,6 +143,7 @@ Deno.test('account actions look the account up directly, never in the account li
     { action: 'reset_password', userId: CLUB_ID },
     { action: 'handover', userId: CLUB_ID },
     { action: 'set_account_active', userId: CLUB_ID, active: false },
+    { action: 'rename_account', userId: CLUB_ID, username: 'cs-society' },
     { action: 'delete_account', userId: CLUB_ID },
   ]
   for (const req of actions) {
@@ -150,6 +192,79 @@ Deno.test('handover: a failure midway leaves the account deactivated', async () 
   await failsWith(runAction({ action: 'handover', userId: CLUB_ID }, deps(port)), 'internal')
   assertEquals(ops().includes('setAccountActive'), true)
   assertEquals(ops().filter((o) => o === 'setAccountActive').length, 1)
+})
+
+Deno.test('rename_account: the Auth email first, then the account row', async () => {
+  const { port, calls } = fakePort()
+  assertEquals(await runAction({ action: 'rename_account', userId: CLUB_ID, username: 'cs-society' }, deps(port)), {
+    username: 'cs-society',
+  })
+  assertEquals(calls.map((c) => [c.op, ...c.args]), [
+    ['getAccount', CLUB_ID],
+    ['getAccountByUsername', 'cs-society'],
+    ['updateAuthUser', CLUB_ID, { email: 'cs-society@usmfomo.pages.dev', email_confirm: true }],
+    ['renameAccount', CLUB_ID, 'cs-society'],
+  ])
+})
+
+Deno.test('rename_account: the current username again succeeds and changes nothing', async () => {
+  const { port, ops } = fakePort()
+  assertEquals(await runAction({ action: 'rename_account', userId: CLUB_ID, username: 'csoc' }, deps(port)), {
+    username: 'csoc',
+  })
+  assertEquals(ops(), ['getAccount'])
+})
+
+Deno.test('rename_account: a username another account has is a conflict before anything changes', async () => {
+  for (const taken of ['owner', 'robotics']) {
+    const { port, ops } = fakePort({
+      getAccountByUsername: (name) => Promise.resolve(name === taken ? account({ username: taken }) : null),
+    })
+    await failsWith(runAction({ action: 'rename_account', userId: CLUB_ID, username: taken }, deps(port)), 'conflict')
+    assertEquals(ops(), ['getAccount', 'getAccountByUsername'], taken)
+  }
+})
+
+Deno.test('rename_account: a failed Auth update changes nothing else', async () => {
+  const { port, ops } = fakePort({ updateAuthUser: () => Promise.reject(new HttpError('internal')) })
+  await failsWith(
+    runAction({ action: 'rename_account', userId: CLUB_ID, username: 'robotics' }, deps(port)),
+    'internal',
+  )
+  assertEquals(ops(), ['getAccount', 'getAccountByUsername', 'updateAuthUser'])
+})
+
+Deno.test('rename_account: a refused account row puts the old email back', async () => {
+  const taken = new RpcError('admin_rename_account', 'P0001', 'username_taken')
+  const { port, calls } = fakePort({ renameAccount: () => Promise.reject(taken) })
+  const err = await assertRejects(
+    () => runAction({ action: 'rename_account', userId: CLUB_ID, username: 'robotics' }, deps(port)),
+    RpcError,
+  )
+  assertEquals(err, taken)
+  assertEquals(calls.slice(2).map((c) => [c.op, ...c.args]), [
+    ['updateAuthUser', CLUB_ID, { email: 'robotics@usmfomo.pages.dev', email_confirm: true }],
+    ['renameAccount', CLUB_ID, 'robotics'],
+    ['updateAuthUser', CLUB_ID, { email: 'csoc@usmfomo.pages.dev', email_confirm: true }],
+  ])
+})
+
+Deno.test('rename_account: a failed revert is logged, and the original error still wins', async () => {
+  let authCalls = 0
+  const { port } = fakePort({
+    updateAuthUser: () => (++authCalls === 1 ? Promise.resolve() : Promise.reject(new HttpError('internal'))),
+    renameAccount: () => Promise.reject(new RpcError('admin_rename_account', 'P0001', 'username_taken')),
+  })
+  const { result, logs } = await captureLogs(() =>
+    runAction({ action: 'rename_account', userId: CLUB_ID, username: 'robotics' }, deps(port)).then(
+      () => null,
+      (err: unknown) => err,
+    )
+  )
+  assertEquals(result instanceof RpcError, true)
+  assertEquals(authCalls, 2)
+  assertEquals(logs.includes('rename_account_revert_failed'), true)
+  assertEquals(logs.includes('robotics'), false)
 })
 
 Deno.test('update_org: passes the validated fields', async () => {

@@ -38,6 +38,7 @@ describe('createCliPort', () => {
     })
     await port.deleteOrg(ORG_ID)
     await port.linkOwner(CLUB_ID, 'owner')
+    await port.renameAccount(CLUB_ID, 'robotics')
     await port.updateOrg({ orgId: ORG_ID, name: 'CS', slug: 'cs', type: 'school', campus: 'health', active: false })
     assert.deepEqual(await port.listAccounts(), [])
     assert.deepEqual(await port.deletePost('p'), [])
@@ -67,6 +68,12 @@ describe('createCliPort', () => {
         method: 'POST',
         path: '/rpc/admin_link_owner',
         body: { p_user: CLUB_ID, p_username: 'owner' },
+      },
+      {
+        service: 'rest',
+        method: 'POST',
+        path: '/rpc/admin_rename_account',
+        body: { p_user: CLUB_ID, p_username: 'robotics' },
       },
       {
         service: 'rest',
@@ -134,6 +141,7 @@ describe('createCliPort', () => {
     const port = createCliPort(client)
     assert.equal(await port.createAuthUser('csoc@usmfomo.pages.dev', 'pw'), CLUB_ID)
     await port.updateAuthUser(CLUB_ID, { ban_duration: '876000h' })
+    await port.updateAuthUser(CLUB_ID, { email: 'robotics@usmfomo.pages.dev', email_confirm: true })
     await port.deleteAuthUser(CLUB_ID)
     assert.deepEqual(requests, [
       {
@@ -143,6 +151,12 @@ describe('createCliPort', () => {
         body: { email: 'csoc@usmfomo.pages.dev', password: 'pw', email_confirm: true },
       },
       { service: 'auth', method: 'PUT', path: `/admin/users/${CLUB_ID}`, body: { ban_duration: '876000h' } },
+      {
+        service: 'auth',
+        method: 'PUT',
+        path: `/admin/users/${CLUB_ID}`,
+        body: { email: 'robotics@usmfomo.pages.dev', email_confirm: true },
+      },
       { service: 'auth', method: 'DELETE', path: `/admin/users/${CLUB_ID}`, body: undefined },
     ])
   })

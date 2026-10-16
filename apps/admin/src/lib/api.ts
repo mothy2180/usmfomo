@@ -37,6 +37,7 @@ export type AdminAction =
   | 'handover'
   | 'set_account_active'
   | 'update_org'
+  | 'rename_account'
   | 'delete_account'
   | 'delete_post'
   | 'remove_post_image'
@@ -115,6 +116,8 @@ const createdSchema = z.object({
   username: z.string(),
   password: z.string().min(1),
 })
+
+const renamedSchema = z.object({ username: z.string().min(1) })
 
 /** `{}` per the contract; the action already happened, so any data is accepted. */
 const done = z.unknown().transform((): void => undefined)
@@ -247,6 +250,9 @@ export type NewAccount = {
   campus: Campus
 }
 
+/** `{ password }` for a password the owner typed; nothing, so the function generates one. */
+const typed = (password?: string): Record<string, unknown> => (password === undefined ? {} : { password })
+
 export function createAdminApi(invoke: Invoke) {
   async function call<T>(action: AdminAction, params: Record<string, unknown>, schema: z.ZodType<T>): Promise<T> {
     let result: InvokeResult
@@ -273,14 +279,22 @@ export function createAdminApi(invoke: Invoke) {
   return {
     status: () => call('status', {}, statusSchema),
     listAccounts: () => call('list_accounts', {}, z.array(accountRowSchema)),
-    createAccount: (input: NewAccount) =>
+    createAccount: (input: NewAccount, password?: string) =>
       call(
         'create_account',
-        { username: input.username, orgName: input.orgName, orgSlug: input.orgSlug, type: input.type, campus: input.campus },
+        {
+          username: input.username,
+          orgName: input.orgName,
+          orgSlug: input.orgSlug,
+          type: input.type,
+          campus: input.campus,
+          ...typed(password),
+        },
         createdSchema,
       ),
-    resetPassword: (userId: string) => call('reset_password', { userId }, passwordSchema),
-    handover: (userId: string) => call('handover', { userId }, passwordSchema),
+    resetPassword: (userId: string, password?: string) => call('reset_password', { userId, ...typed(password) }, passwordSchema),
+    handover: (userId: string, password?: string) => call('handover', { userId, ...typed(password) }, passwordSchema),
+    renameAccount: (userId: string, username: string) => call('rename_account', { userId, username }, renamedSchema),
     setAccountActive: (userId: string, active: boolean) => call('set_account_active', { userId, active }, done),
     updateOrg: (org: OrgUpdate) =>
       call(

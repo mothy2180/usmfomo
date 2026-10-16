@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { parseCommand, UsageError } from './args.ts'
+import { chosenPassword, parseCommand, USAGE, UsageError } from './args.ts'
 
 const fails = (argv: string[], message: RegExp) =>
   assert.throws(() => parseCommand(argv), (err: unknown) => {
@@ -26,6 +26,35 @@ describe('parseCommand', () => {
       assert.deepEqual(parseCommand([name, ' CSoc ']), { name, username: 'csoc' })
     }
     assert.deepEqual(parseCommand(['create-owner', 'Tim']), { name: 'create-owner', username: 'tim' })
+  })
+
+  it('rename: two usernames, both normalised and checked', () => {
+    assert.deepEqual(parseCommand(['rename', ' CSoc ', 'CS-Society']), {
+      name: 'rename',
+      username: 'csoc',
+      newUsername: 'cs-society',
+    })
+    fails(['rename', 'csoc'], /usage: pnpm account rename <username> <new-username>/)
+    fails(['rename', 'csoc', 'has space'], /invalid username "has space"/)
+    fails(['rename', 'csoc', 'cs-society', '--password-stdin'], /--password-stdin does not apply to "rename"/)
+    assert.match(USAGE, /rename <username> <new-username>/)
+  })
+
+  it('--password-stdin for the commands that set a password, and only those', () => {
+    for (const name of ['reset-password', 'handover', 'create-owner']) {
+      assert.deepEqual(parseCommand([name, 'csoc', '--password-stdin']), { name, username: 'csoc', passwordStdin: true })
+    }
+    assert.deepEqual(
+      parseCommand(['create', 'robotics', '--org', 'Robotics Club', '--type', 'club', '--password-stdin']),
+      {
+        name: 'create',
+        input: { username: 'robotics', orgName: 'Robotics Club', orgSlug: 'robotics-club', type: 'club', campus: 'main' },
+        passwordStdin: true,
+      },
+    )
+    for (const argv of [['deactivate', 'csoc'], ['activate', 'csoc'], ['delete', 'csoc', '--yes'], ['list']]) {
+      fails([...argv, '--password-stdin'], /--password-stdin does not apply/)
+    }
   })
 
   it('delete reads --yes', () => {
@@ -96,5 +125,31 @@ describe('parseCommand', () => {
     fails(['create', 'csoc', '--org'], /argument missing/)
     fails(['reset-password', 'has space'], /invalid username "has space"/)
     fails(['reset-password', 'x'], /invalid username/)
+  })
+})
+
+describe('chosenPassword', () => {
+  it('drops one trailing line break and nothing else', () => {
+    assert.equal(chosenPassword('Typed by the Owner 2026'), 'Typed by the Owner 2026')
+    assert.equal(chosenPassword('Typed by the Owner 2026\n'), 'Typed by the Owner 2026')
+    assert.equal(chosenPassword('Typed by the Owner 2026\r\n'), 'Typed by the Owner 2026')
+    assert.equal(chosenPassword(' Typed by the Owner 2026 '), ' Typed by the Owner 2026 ')
+  })
+
+  it('names the rules a refused password breaks, never the password', () => {
+    const refused = (raw: string, message: RegExp) =>
+      assert.throws(() => chosenPassword(raw), (err: unknown) => {
+        assert.ok(err instanceof UsageError)
+        assert.match(err.message, message)
+        assert.equal(raw.trim() !== '' && err.message.includes(raw.trim()), false)
+        return true
+      })
+    refused('', /at least 12 characters; a lowercase letter.*a digit/)
+    refused('short1A\n', /at least 12 characters/)
+    refused('abcdefghijk1', /an uppercase letter/)
+    refused('ABCDEFGHIJK1', /a lowercase letter/)
+    refused('abcdefghiJKl', /a digit/)
+    refused('Typed by the Owner 2026\n\n', /control characters/)
+    refused('aB3'.repeat(25), /at most 72 bytes/)
   })
 })

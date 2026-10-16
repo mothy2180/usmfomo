@@ -3,7 +3,7 @@ import { parseAllowedOrigins } from '../_shared/cors.ts'
 import { RpcError } from '../_shared/db.ts'
 import { HttpError } from '../_shared/http.ts'
 import { handleOwnerAdmin } from './handler.ts'
-import { ALLOWED_ORIGIN, captureLogs, fakePort, OWNER_ID, TOKEN } from './testing.ts'
+import { account, ALLOWED_ORIGIN, captureLogs, fakePort, OWNER_ID, TOKEN } from './testing.ts'
 
 const allowedOrigins = parseAllowedOrigins(`${ALLOWED_ORIGIN},https://usmfomo-admin.pages.dev`)
 const PASSWORD = 'Generated-Password-24ch9'
@@ -139,6 +139,40 @@ Deno.test('database errors map to 404 / 409 / 400', async () => {
   }
 })
 
+Deno.test('rename_account: a taken username is 409, the owner account 403, an unknown one 404', async () => {
+  const CLUB = '00000000-0000-4000-8000-000000000002'
+  const cases: Array<[Partial<Parameters<typeof fakePort>[0]>, string, number, string]> = [
+    [{ getAccountByUsername: () => Promise.resolve(account({ username: 'robotics' })) }, CLUB, 409, 'conflict'],
+    [
+      { renameAccount: () => Promise.reject(new RpcError('admin_rename_account', 'P0001', 'username_taken')) },
+      CLUB,
+      409,
+      'conflict',
+    ],
+    [
+      { renameAccount: () => Promise.reject(new RpcError('admin_rename_account', 'P0001', 'account_is_owner')) },
+      CLUB,
+      403,
+      'forbidden',
+    ],
+    [
+      { renameAccount: () => Promise.reject(new RpcError('admin_rename_account', '23514', 'check constraint')) },
+      CLUB,
+      400,
+      'bad_request',
+    ],
+    [{}, OWNER_ID, 403, 'forbidden'],
+    [{}, '99999999-9999-4999-8999-999999999999', 404, 'not_found'],
+  ]
+  for (const [overrides, userId, status, code] of cases) {
+    const { port } = fakePort(overrides)
+    const { res, body } = await call(post({ action: 'rename_account', userId, username: 'robotics' }), port)
+    assertEquals([res.status, body], [status, { ok: false, error: code }])
+  }
+  const { res, body } = await call(post({ action: 'rename_account', userId: CLUB, username: 'Robotics' }))
+  assertEquals([res.status, body], [200, { ok: true, data: { username: 'robotics' } }])
+})
+
 Deno.test('unexpected errors are a bare 500: no message, no stack', async () => {
   const { port } = fakePort({ status: () => Promise.reject(new Error('boom: sb_secret_leak at line 3')) })
   const { result, logs } = await captureLogs(() => call(post({ action: 'status' }), port))
@@ -166,4 +200,21 @@ Deno.test('a generated password is returned once and never logged', async () => 
   assertEquals(logs.includes(PASSWORD), false)
   assertEquals(logs.includes('csoc'), false)
   assert(logs.includes('"action":"create_account"'))
+})
+
+Deno.test('a password the owner typed is used, returned once and never logged', async () => {
+  const typed = 'Typed by the Owner 2026'
+  const { port, calls } = fakePort()
+  const { result, logs } = await captureLogs(() =>
+    call(post({ action: 'reset_password', userId: '00000000-0000-4000-8000-000000000002', password: typed }), port)
+  )
+  assertEquals([result.res.status, result.body], [200, { ok: true, data: { password: typed } }])
+  assert(calls.some((c) => c.op === 'updateAuthUser' && JSON.stringify(c.args).includes(typed)))
+  assertEquals(logs.includes(typed), false)
+
+  const weak = await call(
+    post({ action: 'handover', userId: '00000000-0000-4000-8000-000000000002', password: 'short1A' }),
+  )
+  assertEquals([weak.res.status, weak.body], [400, { ok: false, error: 'bad_request' }])
+  assertEquals(weak.text.includes('short1A'), false)
 })

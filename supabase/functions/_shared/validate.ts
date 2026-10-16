@@ -1,5 +1,5 @@
 // Input validation for owner-admin. These mirror the rules of
-// packages/shared/src/schemas.ts (createAccountSchema) and config.ts, which the
+// packages/shared/src/schemas.ts (createAccountSchema), password.ts and config.ts, which the
 // Edge runtime cannot import (only supabase/functions is deployed); the tests
 // in validate_test.ts compare both against the same inputs. The database CHECKs
 // in 0010_settings_orgs_accounts.sql remain the authority.
@@ -51,6 +51,24 @@ export function orgType(value: unknown): OrgType | null {
 
 export function orgCampus(value: unknown): OrgCampus | null {
   return value !== 'online' && (CAMPUSES as readonly unknown[]).includes(value) ? (value as OrgCampus) : null
+}
+
+export const PASSWORD_MIN_LENGTH = 12
+export const PASSWORD_MAX_BYTES = 72
+
+/**
+ * A password the owner typed (passwordProblems in packages/shared/src/password.ts):
+ * 12+ characters with a lowercase letter, an uppercase letter and a digit (Auth's
+ * own minimum), at most 72 bytes (bcrypt ignores the rest) and no control
+ * characters. Returned as sent: nothing is trimmed.
+ */
+export function password(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const ok = [...value].length >= PASSWORD_MIN_LENGTH &&
+    new TextEncoder().encode(value).byteLength <= PASSWORD_MAX_BYTES &&
+    /[a-z]/.test(value) && /[A-Z]/.test(value) && /[0-9]/.test(value) &&
+    NO_CONTROL.test(value)
+  return ok ? value : null
 }
 
 export function bool(value: unknown): boolean | null {

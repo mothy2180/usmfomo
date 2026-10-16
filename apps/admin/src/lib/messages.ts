@@ -40,7 +40,7 @@ const ADMIN: Record<AdminErrorCode, string> = {
 const BY_ACTION: Partial<Record<AdminAction, Partial<Record<AdminErrorCode, string>>>> = {
   create_account: {
     conflict: 'That username, organisation name or slug is already taken.',
-    bad_request: 'The server rejected these details. Check the username, organisation name, slug and campus.',
+    bad_request: 'The server rejected these details. Check the username, organisation name, slug, campus and password.',
     bad_response:
       "The account was probably created, but the server didn't return its password. Check the list, then reset its password.",
   },
@@ -53,10 +53,19 @@ const BY_ACTION: Partial<Record<AdminAction, Partial<Record<AdminErrorCode, stri
     bad_request: "This account can't be deleted from the console.",
   },
   reset_password: {
+    bad_request: 'The server rejected this password. Check it against the rules, or leave it empty for a random one.',
     bad_response: "The password was probably changed, but the server didn't return it. Reset it again to get a new one.",
   },
   handover: {
+    bad_request: 'The server rejected this password. Check it against the rules, or leave it empty for a random one.',
     bad_response: "The handover probably ran, but the server didn't return the new password. Reset the password to get one.",
+  },
+  rename_account: {
+    conflict: 'Another account already uses that username. Choose another one.',
+    bad_request: 'The server rejected this username. Use 3–32 lowercase letters, digits and hyphens.',
+    forbidden: "The owner account's username can't be changed from the console.",
+    not_found: 'This account no longer exists. Refresh the list.',
+    bad_response: 'The username was probably changed, but the server sent an unexpected response. Refresh the list to check.',
   },
 }
 

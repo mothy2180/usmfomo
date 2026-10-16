@@ -31,7 +31,8 @@ to it and to each other. Change a contract here first, then the code.
 - Logins are usernames: `username` → `username@usmfomo.pages.dev`
   (`usernameToEmail` in `packages/shared`). No email is ever sent.
 - Passwords change only through the owner's tools (owner-admin `reset_password`
-  and `handover`, the owner CLI). A trigger on `auth.users` (0052) refuses any
+  and `handover`, the owner CLI), and so do usernames (`rename_account`, CLI
+  `rename`, 0056). A trigger on `auth.users` (0052) refuses any
   new password without a one-time grant from `admin_allow_password_change`
   (service role only, valid 60 seconds, used up by the change), which those
   tools call right before the Auth Admin API update. So a signed-in user's own
@@ -100,7 +101,7 @@ passwords of other actions, or stack traces. Details as implemented:
   token that is not `role: authenticated` or whose `sub` is not a UUID is 401;
   Auth outages are 500.
 - Account actions (`reset_password`, `handover`, `set_account_active`,
-  `delete_account`) all refuse the owner's own account with
+  `rename_account`, `delete_account`) all refuse the owner's own account with
   403 `forbidden` (break-glass for the owner is the CLI). An unknown `userId` is 404.
 - Every account action finds its account with a direct lookup,
   `admin_get_account(p_user)` (one jsonb object, or null without an account
@@ -113,9 +114,10 @@ passwords of other actions, or stack traces. Details as implemented:
 |---|---|---|---|
 | `status` | — | `admin_status()` JSON | heartbeat age, storage totals, settings |
 | `list_accounts` | — | every row of `admin_list_accounts` | one array with every account: the function reads `admin_list_accounts(p_limit ≤ 100, p_offset)` page by page until a short page (order: owner first, then organisation name, then `user_id`; a row seen twice is kept once) and fails with 500 rather than return a cut list |
-| `create_account` | `username, orgName, orgSlug, type, campus` | `{ userId, orgId, username, password }` | validate with `createAccountSchema` rules; `auth.admin.createUser({ email, password, email_confirm: true })`, then `admin_create_org_account`; if that fails, delete the auth user |
-| `reset_password` | `userId` | `{ password }` | `admin_allow_password_change` → `updateUserById(userId, { password })` — ends all of that user's sessions |
-| `handover` | `userId` | `{ password }` | deactivate → new password (grant, then Auth; ends sessions) → reactivate |
+| `create_account` | `username, orgName, orgSlug, type, campus`, optional `password` | `{ userId, orgId, username, password }` | validate with `createAccountSchema` rules; `auth.admin.createUser({ email, password, email_confirm: true })`, then `admin_create_org_account`; if that fails, delete the auth user |
+| `reset_password` | `userId`, optional `password` | `{ password }` | `admin_allow_password_change` → `updateUserById(userId, { password })` — ends all of that user's sessions |
+| `handover` | `userId`, optional `password` | `{ password }` | deactivate → new password (grant, then Auth; ends sessions) → reactivate |
+| `rename_account` | `userId, username` | `{ username }` | new login name of a club or school account (username rules as `create_account`). `admin_get_account_by_username` finds the name free (else 409 `conflict`; Auth itself answers a taken email on update with a bare 500) → `updateUserById(userId, { email: <username>@usmfomo.pages.dev, email_confirm: true })` → `admin_rename_account`; if that fails, the old email is set back. Sessions stay signed in; the next sign-in needs the new name. The current username again is a 200 that changes nothing |
 | `set_account_active` | `userId, active` | `{}` | `admin_set_account_active`; `false` also bans (`ban_duration: '876000h'`), `true` unbans (`'none'`) |
 | `update_org` | `orgId, name, slug, type, campus, active` | `{}` | `admin_update_org` |
 | `delete_account` | `userId` | `{ removedFiles }` | refuse for the owner account; deactivate first (no upload can land after the listing) → `admin_org_objects` (every file name, one jsonb array) → Storage `remove` (≤1000 per call; any failed batch → 500, org and account kept deactivated so a retry can finish) → `admin_delete_org` → `auth.admin.deleteUser`. Only when `admin_get_account` finds no account row is an existing auth user (left by a failed create) just deleted |
@@ -125,6 +127,21 @@ passwords of other actions, or stack traces. Details as implemented:
 Generated passwords: 24 characters from `crypto.getRandomValues`, alphabet
 without look-alikes (no 0/O/1/l/I), always containing a lowercase letter, an
 uppercase letter and a digit (`password_requirements = lower_upper_letters_digits`).
+
+A `password` the owner typed replaces the generated one when present: at least
+12 characters with a lowercase letter, an uppercase letter and a digit, at most
+72 bytes of UTF-8 (bcrypt ignores the rest) and no control characters, taken
+as sent (nothing trimmed). Anything else, `null` included, is 400
+`bad_request`; leaving the field out generates one. The response returns it
+like a generated one. The rules live in `packages/shared/src/password.ts`
+(console checklist, CLI) and are mirrored in `_shared/validate.ts`.
+
+`admin_rename_account(p_user, p_username)` (0056, service_role only) stores the
+new username (trimmed, lower-cased) and audits `account_rename` with
+`changes: { username: [old, new] }`. It raises P0001 `account_not_found`,
+`account_is_owner` (403) or `username_taken` (409); a malformed name fails
+`accounts_username_format` (400); the same name again is a no-op without an
+audit row.
 
 ## `maintenance` Edge Function
 
@@ -187,10 +204,23 @@ read -rs 'k?owner_cli key: '; SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SE
 ```
 
 Commands: `list` · `create-owner <username>` · `create <username> --org "<name>" --type club|school [--campus main] [--slug <slug>]` ·
-`reset-password <username>` · `handover <username>` · `deactivate <username>` · `activate <username>` ·
-`delete <username> --yes` ·
+`reset-password <username>` · `handover <username>` · `rename <username> <new-username>` ·
+`deactivate <username>` · `activate <username>` · `delete <username> --yes` ·
 `seed-local` (local URL only: `owner`, `demo-club` and `demo-school`; existing
-ones are skipped, not reset). Passwords are printed once and never written to disk.
+ones are skipped, not reset). Generated passwords are printed once and never written to disk.
+
+`create-owner`, `create`, `reset-password` and `handover` take
+`--password-stdin` to set a password you choose instead: it is read from stdin,
+which must be a pipe (a terminal is refused, so nothing is echoed), one
+trailing line break is dropped, the console's rules apply (else exit 2 before
+any request), and it is never printed:
+
+```
+read -rs 'p?New password: '; echo; printf %s "$p" | pnpm account reset-password <username> --password-stdin; unset p
+```
+
+`rename` runs the console's `rename_account` logic for a club or school account
+(the owner account is refused; a taken name stops before any change).
 
 Break-glass meanings: `reset-password`, `deactivate` and `activate` also work on
 the owner account (`reset-password` of the owner is the fix for a lost owner
