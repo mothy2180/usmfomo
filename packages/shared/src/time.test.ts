@@ -53,8 +53,10 @@ describe('formatEventRange', () => {
     expect(formatEventRange('2026-10-11T14:00:00Z', '2026-10-11T18:00:00Z')).toBe('Sun 11 Oct 10:00 PM – Mon 12 Oct 2:00 AM')
   })
 
-  it('multi-day range shows only days', () => {
-    expect(formatEventRange('2026-10-06T01:00:00Z', '2026-10-10T09:00:00Z')).toBe('Tue 6 – Sat 10 Oct')
+  it('multi-day range shows only days, each with its month', () => {
+    expect(formatEventRange('2026-10-06T01:00:00Z', '2026-10-10T09:00:00Z')).toBe('Tue 6 Oct – Sat 10 Oct')
+    // Sat 17 Oct 9:00 AM – Tue 27 Oct 6:00 PM MYT.
+    expect(formatEventRange('2026-10-17T01:00:00Z', '2026-10-27T10:00:00Z')).toBe('Sat 17 Oct – Tue 27 Oct')
     expect(formatEventRange('2026-10-30T01:00:00Z', '2026-11-02T09:00:00Z')).toBe('Fri 30 Oct – Mon 2 Nov')
   })
 

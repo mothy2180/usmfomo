@@ -60,7 +60,7 @@
   },
   "time": {
     "mytNote": "时间均为马来西亚时间（MYT）",
-    "onUntil": "持续至{{day}}",
+    "onUntil": "从{{from}}持续至{{until}}",
     "happeningNow": "正在进行",
     "updated": "已更新",
     "cancelled": "已取消"

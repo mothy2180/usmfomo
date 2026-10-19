@@ -60,7 +60,7 @@
   },
   "time": {
     "mytNote": "Times are Malaysia time (MYT)",
-    "onUntil": "On until {{day}}",
+    "onUntil": "On from {{from}} until {{until}}",
     "happeningNow": "Happening now",
     "updated": "Updated",
     "cancelled": "Cancelled"

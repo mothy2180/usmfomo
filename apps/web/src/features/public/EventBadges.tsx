@@ -28,7 +28,7 @@ export function EventBadges({ badges, className }: { badges: readonly CardBadge[
           case 'onUntil':
             return (
               <Badge key="onUntil" tone="sky">
-                {t('common:time.onUntil', { day: formatDay(badge.until, lang) })}
+                {t('common:time.onUntil', { from: formatDay(badge.from, lang), until: formatDay(badge.until, lang) })}
               </Badge>
             )
           case 'updated':

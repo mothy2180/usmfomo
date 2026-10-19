@@ -22,13 +22,13 @@ describe('badgesFor', () => {
     expect(badgesFor(post('2026-10-11T00:00:00Z', '2026-10-12T00:00:00Z'), now)).toEqual([{ kind: 'now' }])
   })
 
-  it('says On until <end> for an event longer than 24 hours, never Happening now', () => {
+  it('says On from <start> until <end> for an event longer than 24 hours, never Happening now', () => {
     expect(badgesFor(post('2026-10-09T01:00:00Z', '2026-10-13T09:00:00Z'), now)).toEqual([
-      { kind: 'onUntil', until: '2026-10-13T09:00:00Z' },
+      { kind: 'onUntil', from: '2026-10-09T01:00:00Z', until: '2026-10-13T09:00:00Z' },
     ])
-    // ...also before it starts (the plan: multi-day events show "On until").
+    // ...also before it starts.
     expect(badgesFor(post('2026-10-20T01:00:00Z', '2026-10-22T09:00:00Z'), now)).toEqual([
-      { kind: 'onUntil', until: '2026-10-22T09:00:00Z' },
+      { kind: 'onUntil', from: '2026-10-20T01:00:00Z', until: '2026-10-22T09:00:00Z' },
     ])
   })
 

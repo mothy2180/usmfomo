@@ -75,7 +75,7 @@ export function isLongEvent(startIso: string, endIso: string): boolean {
  * Human range in MYT:
  *   same day  "Sat 11 Oct · 8:00–10:00 PM"
  *   overnight "Sat 11 Oct 10:00 PM – Sun 12 Oct 2:00 AM"
- *   long      "Mon 6 – Fri 10 Oct" (or "Fri 30 Oct – Mon 2 Nov")
+ *   long      "Mon 6 Oct – Fri 10 Oct" (or "Fri 30 Oct – Mon 2 Nov")
  */
 export function formatEventRange(startIso: string, endIso: string, locale: Locale = 'en'): string {
   const s = new Date(startIso)
@@ -83,9 +83,8 @@ export function formatEventRange(startIso: string, endIso: string, locale: Local
   if (isLongEvent(startIso, endIso)) {
     const ps = partsOf(s, { weekday: 'short', day: 'numeric', month: 'short' }, locale)
     const pe = partsOf(e, { weekday: 'short', day: 'numeric', month: 'short' }, locale)
-    return ps.month === pe.month
-      ? `${ps.weekday} ${ps.day} – ${pe.weekday} ${pe.day} ${pe.month}`
-      : `${ps.weekday} ${ps.day} ${ps.month} – ${pe.weekday} ${pe.day} ${pe.month}`
+    // Both ends carry their month, even within one month ("Sat 17 Oct – Tue 27 Oct").
+    return `${ps.weekday} ${ps.day} ${ps.month} – ${pe.weekday} ${pe.day} ${pe.month}`
   }
   // An event that ends exactly at midnight belongs to the day it started on
   // ("Sat 11 Oct · 8:00 PM–12:00 AM"), not to the next day.
@@ -98,7 +97,7 @@ export function formatEventRange(startIso: string, endIso: string, locale: Local
   return `${dayLabel(s, locale)} ${timeLabel(s, locale)} – ${dayLabel(e, locale)} ${timeLabel(e, locale)}`
 }
 
-/** "Fri 10 Oct" in MYT (used for "On until ..."). */
+/** "Fri 10 Oct" in MYT (used for "On from ... until ..."). */
 export function formatDay(iso: string, locale: Locale = 'en'): string {
   return dayLabel(new Date(iso), locale)
 }

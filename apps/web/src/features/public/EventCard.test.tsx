@@ -117,9 +117,10 @@ describe('EventCard', () => {
     expect(screen.queryByText('Happening now')).toBeNull()
   })
 
-  it('says On until <day> for a multi-day event', async () => {
+  it('says On from <day> until <day> for a multi-day event', async () => {
     await renderInRouter(<EventCard post={post({ starts_at: '2026-10-09T01:00:00Z', ends_at: '2026-10-13T09:00:00Z' })} now={now} />)
-    expect(screen.getByText('On until Tue 13 Oct')).toBeTruthy()
+    expect(screen.getByText('On from Fri 9 Oct until Tue 13 Oct')).toBeTruthy()
+    expect(screen.getByText('Fri 9 Oct – Tue 13 Oct')).toBeTruthy()
     expect(screen.queryByText('Happening now')).toBeNull()
   })
 

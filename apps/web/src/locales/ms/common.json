@@ -60,7 +60,7 @@
   },
   "time": {
     "mytNote": "Masa dalam waktu Malaysia (MYT)",
-    "onUntil": "Berlangsung hingga {{day}}",
+    "onUntil": "Berlangsung dari {{from}} hingga {{until}}",
     "happeningNow": "Sedang berlangsung",
     "updated": "Dikemas kini",
     "cancelled": "Dibatalkan"
