@@ -155,7 +155,9 @@ function EventDetails({ post, now }: { post: EventDetail; now: Date }) {
         </div>
       </div>
 
-      <div className="lg:order-1">
+      {/* The poster comes first on every screen: above the details on phones,
+          to their left from lg. The details stay first in the HTML for screen readers. */}
+      <div className="order-first">
         <FallbackImage
           paths={[post.poster_path, post.thumb_path]}
           alt={t('event.posterAlt', { title: post.title })}
@@ -164,7 +166,7 @@ function EventDetails({ post, now }: { post: EventDetail; now: Date }) {
           loading="eager"
           fetchPriority="high"
           // Any shape of poster: shown whole at its own aspect ratio, never cropped.
-          className="mx-auto block h-auto max-h-[85vh] w-auto max-w-full rounded-xl border border-line bg-surface-2 object-contain"
+          className="mx-auto block h-auto max-h-[70vh] w-auto max-w-full rounded-xl lg:max-h-[85vh] border border-line bg-surface-2 object-contain"
           fallback={<EventCover org={coverOrg} large className="aspect-[2/1] w-full rounded-xl lg:aspect-[4/5]" />}
         />
       </div>
