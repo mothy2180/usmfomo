@@ -13,6 +13,7 @@ component contracts: [`../api.md`](../api.md).
 | [local-dev.md](local-dev.md) | setting up a laptop, the daily loop, campus Wi-Fi, FirstApp's port clash, Docker tools |
 | [functions-local.md](functions-local.md) | testing the Edge Functions, the cron Worker and the owner CLI locally |
 | [deploy.md](deploy.md) | first-time production setup, how the pipeline deploys, keeping local values out of production, setting or rotating `CRON_SECRET`, smoke tests, changing project settings, rollbacks |
+| [secrets.md](secrets.md) | finding which password or key is where, what goes in your password manager, renewing an expiring token |
 | [usm-permission-letter.md](usm-permission-letter.md) | asking the Vice-Chancellor for written permission (Student Discipline Rules 2024, r.12), BM + EN |
 | [learning-path.md](learning-path.md) | learning the stack to write parts yourself (FirstApp's evenings + usmfomo's) |
 

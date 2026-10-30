@@ -16,12 +16,34 @@ decisions are in [`docs/adr/`](docs/adr/); operating procedures in
 
 ## Status
 
-Code public, not yet deployed (2026-10-06): database security core (160 pgTAP
-tests), public site + club studio + animated landing (`apps/web`), owner console
-(`apps/admin`), two Edge Functions, the cron Worker and the owner CLI, CI/CD
-workflows and runbooks. The landing page uses synthetic test clips until the
-real media arrives. Next: accounts on Supabase, Cloudflare and GitHub, then the
-first deploy (`docs/runbooks/deploy.md`).
+**Live since 2026-10-12.**
+
+| | |
+|---|---|
+| Public site | https://usmfomo.pages.dev |
+| Club & school studio | https://usmfomo.pages.dev/login |
+| Owner console | https://usmfomo-admin.pages.dev |
+
+What's in it:
+
+- **Public site** (`apps/web`): a glass-shard three.js landing page with real
+  campus clips, then a dashboard of Clubs and Schools events grouped by Happening
+  now, Today, Tomorrow, This week and Later; search, campus filter, event and
+  organiser pages, an "Add to Google Calendar" button, owner notices, and
+  English, Bahasa Malaysia and Chinese.
+- **Live updates** without Realtime: open pages poll one tiny row and reload
+  only when something changed; the owner sets the interval (or turns it off).
+- **Club studio**: trusted accounts post, edit, cancel and delete events with a
+  poster (shrunk in the browser); daily and live-post limits are enforced by
+  the database.
+- **Owner console** (`apps/admin`): create, rename, reset and hand over
+  accounts (typed or suggested passwords), moderate posts, notices, kill
+  switches and the live-update interval.
+- **Behind it**: about 200 pgTAP security tests, two Edge Functions, an hourly
+  cron Worker that deletes ended events and keeps Supabase awake, and an owner
+  CLI (`pnpm account`).
+- Sign-in is username + password + CAPTCHA; there is no 2FA (decision in
+  `docs/PROJECT.md`). Sign-ups are closed: only the owner creates accounts.
 
 ## Stack
 
@@ -30,7 +52,20 @@ React + TypeScript + Vite single-page app and a plain three.js landing page on
 `usmfomo-admin.pages.dev`) · **Supabase Free** in Singapore (Postgres with RLS,
 Auth with CAPTCHA, Storage, two Edge Functions) · an hourly **Cloudflare
 Worker** cron for cleanup and keep-alive · GitHub Actions · pnpm. Everything is
-on free plans; nothing needs a card.
+on free plans; nothing needs a card, and nothing runs on a laptop: the site
+stays up when it is off.
+
+## Deploying
+
+Push to `main`. CI runs lint, types, unit and pgTAP tests and gitleaks; then the
+Deploy workflow applies migrations, deploys the Edge Functions, both Pages
+projects and the cron Worker. All deploy secrets live in GitHub, so any computer
+with the repo and the `mothy2180` GitHub login can ship. Only auth settings
+(`supabase config push`) and function secrets are changed by hand
+([`deploy.md`](docs/runbooks/deploy.md)).
+
+Which passwords and keys exist, where each is kept and what to do if one is
+lost: [`docs/runbooks/secrets.md`](docs/runbooks/secrets.md).
 
 ## Local development
 
@@ -68,7 +103,7 @@ Run Deno from `supabase/functions` (or set `DENO_NO_PACKAGE_JSON=1`): from the
 repo root Deno rewrites the root `package.json`.
 
 Operations: [`docs/runbooks/`](docs/runbooks/) — first deploy
-([`deploy.md`](docs/runbooks/deploy.md)), local development, onboarding a club,
+([`deploy.md`](docs/runbooks/deploy.md)), secrets, local development, onboarding a club,
 committee handover, forgotten passwords, owner lockout, account takeover, quota
 attack, and the USM permission letter.
 
