@@ -5,7 +5,7 @@
 # Nothing is copied in: compose bind-mounts the repository at /app, and the
 # Linux node_modules live in named volumes, so the macOS ones are never touched.
 # Base image pinned by digest; Dependabot (docker, monthly) proposes updates.
-FROM node:26-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
+FROM node:26-slim@sha256:e4db4c914bf8ad241bd24804fc25d272d89bad97e68cdc8a1414862790a02c39
 
 # The pnpm version in package.json "packageManager", installed with npm (no Corepack).
 RUN npm install --global pnpm@12.9.1 \
