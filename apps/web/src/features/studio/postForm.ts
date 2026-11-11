@@ -15,6 +15,8 @@ export type PostFormValues = {
   campus: Campus
   description: string
   link_url: string
+  /** Where to email to register (optional, public). */
+  contact_email: string
   /** The event counts for MyCSD. */
   mycsd: boolean
 }
@@ -36,6 +38,7 @@ export const FIELD_ORDER: readonly PostField[] = [
   'campus',
   'description',
   'link_url',
+  'contact_email',
 ]
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -47,6 +50,7 @@ const SCHEMA_KEYS = new Set([
   'too_long_text',
   'bad_chars',
   'link_format',
+  'email_format',
   'date_format',
   'time_format',
   'end_before_start',
@@ -62,10 +66,10 @@ const TIMING_FIELD: Record<string, PostField> = {
 export const normalizeIso = (iso: string): string => new Date(iso).toISOString()
 
 export function emptyPostValues(campus: Campus): PostFormValues {
-  return { title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus, description: '', link_url: '', mycsd: false }
+  return { title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus, description: '', link_url: '', contact_email: '', mycsd: false }
 }
 
-type EditablePost = Pick<PostRow, 'title' | 'venue' | 'campus' | 'description' | 'link_url' | 'mycsd' | 'starts_at' | 'ends_at'>
+type EditablePost = Pick<PostRow, 'title' | 'venue' | 'campus' | 'description' | 'link_url' | 'contact_email' | 'mycsd' | 'starts_at' | 'ends_at'>
 
 export function postToValues(post: EditablePost): PostFormValues {
   const s = isoToMytInput(post.starts_at)
@@ -80,6 +84,7 @@ export function postToValues(post: EditablePost): PostFormValues {
     campus: post.campus,
     description: post.description ?? '',
     link_url: post.link_url ?? '',
+    contact_email: post.contact_email ?? '',
     mycsd: post.mycsd ?? false,
   }
 }
@@ -165,25 +170,27 @@ export function validatePostForm(values: PostFormValues, mode: FormMode, now: Da
 }
 
 /** Insert payload: only granted columns; never org_id (set by the trigger). */
-export function toInsertRow(data: ValidPost, poster: { poster: string; thumb: string } | null): PostInsertRow {
+export function toInsertRow(data: ValidPost, poster: { poster: string; thumb: string } | null, qrPath: string | null = null): PostInsertRow {
   return {
     title: data.title,
     venue: data.venue,
     campus: data.campus,
     description: data.description,
     link_url: data.link_url,
+    contact_email: data.contact_email,
     mycsd: data.mycsd,
     starts_at: data.starts_at,
     ends_at: data.ends_at,
     poster_path: poster?.poster ?? null,
     thumb_path: poster?.thumb ?? null,
+    qr_path: qrPath,
   }
 }
 
 /**
  * Update payload with only the columns that changed (every UPDATE counts
  * towards the 30 edits/24 h limit, and a schedule or venue change shows the
- * public "Updated" badge). Poster columns are added by submitPost.
+ * public "Updated" badge). Poster and QR columns are added by submitPost.
  */
 export function toUpdatePatch(post: PostRow, data: ValidPost, cancelled: boolean, now: Date = new Date()): PostPatch {
   const patch: PostPatch = {}
@@ -192,6 +199,7 @@ export function toUpdatePatch(post: PostRow, data: ValidPost, cancelled: boolean
   if (data.campus !== post.campus) patch.campus = data.campus
   if (data.description !== post.description) patch.description = data.description
   if (data.link_url !== post.link_url) patch.link_url = data.link_url
+  if ((data.contact_email ?? null) !== (post.contact_email ?? null)) patch.contact_email = data.contact_email
   if (data.mycsd !== (post.mycsd ?? false)) patch.mycsd = data.mycsd
   if (Date.parse(data.starts_at) !== Date.parse(post.starts_at)) patch.starts_at = data.starts_at
   if (Date.parse(data.ends_at) !== Date.parse(post.ends_at)) patch.ends_at = data.ends_at

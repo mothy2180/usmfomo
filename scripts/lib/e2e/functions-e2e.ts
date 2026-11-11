@@ -178,6 +178,32 @@ async function postWithPoster(token: string, orgId: string): Promise<{ id: strin
   return { id: res.json[0].id as string, files }
 }
 
+/** A post with a poster, its thumbnail, a QR image and a contact email (0057). */
+async function postWithQr(token: string, orgId: string): Promise<{ id: string; files: string[]; qr: string }> {
+  const id = randomUUID()
+  const files = [`${orgId}/${id}.webp`, `${orgId}/${id}-thumb.webp`]
+  const qr = `${orgId}/${randomUUID()}-qr.webp`
+  for (const f of [...files, qr]) if ((await upload(token, f)) !== 200) throw new Error('upload failed: ' + f.slice(-12))
+  const now = Date.now()
+  const res = await http('POST', '/rest/v1/posts', {
+    token,
+    headers: { Prefer: 'return=representation' },
+    body: {
+      campus: 'main',
+      title: `ZZ e2e qr ${RUN}`,
+      venue: 'DK A',
+      starts_at: new Date(now + 2 * 3600e3).toISOString(),
+      ends_at: new Date(now + 4 * 3600e3).toISOString(),
+      poster_path: files[0],
+      thumb_path: files[1],
+      qr_path: qr,
+      contact_email: 'reg@e2e.example',
+    },
+  })
+  if (res.status !== 201) throw new Error(`post insert answered ${res.status}`)
+  return { id: res.json[0].id as string, files, qr }
+}
+
 const ownPost = async (token: string, id: string) =>
   (await http('GET', `/rest/v1/posts?id=eq.${id}&select=id,poster_path,thumb_path`, { token })).json as Array<
     { poster_path: string | null }
@@ -537,6 +563,37 @@ async function run(): Promise<void> {
     { action: 'remove_post_image', postId: randomUUID() },
     404,
     'not_found',
+  )
+  // Registration QR image (0057): a club uploads it, the post carries its path and
+  // an email, and delete_post removes the QR file together with the poster files.
+  const q = await postWithQr(clubToken, club.orgId)
+  check('club uploaded a QR image and posted with a contact email', (await publicObject(q.qr)) === 200)
+  const readBack = (await http('GET', `/rest/v1/posts?id=eq.${q.id}&select=contact_email,qr_path`, { token: clubToken })).json as Array<
+    { contact_email: string | null; qr_path: string | null }
+  >
+  check('the row holds the email and the QR path', readBack[0]?.contact_email === 'reg@e2e.example' && readBack[0]?.qr_path === q.qr)
+  const badEmail = await http('POST', '/rest/v1/posts', {
+    token: clubToken,
+    body: {
+      campus: 'main',
+      title: `ZZ e2e bad ${RUN}`,
+      venue: 'DK A',
+      starts_at: new Date(Date.now() + 2 * 3600e3).toISOString(),
+      ends_at: new Date(Date.now() + 4 * 3600e3).toISOString(),
+      contact_email: 'not an email',
+    },
+  })
+  check('a malformed contact email is refused by the database', badEmail.status === 400, `status ${badEmail.status}`)
+  check(
+    'a QR file name must end in .webp or .jpg',
+    (await upload(clubToken, `${club.orgId}/${randomUUID()}-qr.png`)) !== 200,
+  )
+  const delQ = await ok({ action: 'delete_post', postId: q.id })
+  check(
+    'delete_post -> post, poster files and QR file gone',
+    delQ.removedFiles === 3 && delQ.failedFiles === 0 && (await ownPost(clubToken, q.id)).length === 0 &&
+      (await publicObject(q.qr)) !== 200 && (await publicObject(q.files[0] ?? '')) !== 200,
+    JSON.stringify(delQ),
   )
   const orphan = `${club.orgId}/${randomUUID()}.webp`
   check('club uploaded a file without a post', (await upload(clubToken, orphan)) === 200)

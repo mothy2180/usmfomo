@@ -20,6 +20,8 @@ export type PurgedRow = {
   id: string
   poster_path: string | null
   thumb_path: string | null
+  /** Registration QR image (0057); absent from answers that predate it. */
+  qr_path?: string | null
 }
 
 export type Retention = { post_log: number; audit: number }
@@ -96,7 +98,9 @@ export async function runMaintenance(
     const rows = await port.purgeExpired(PURGE_LIMIT)
     purged.posts = rows.filter((r) => r.kind === 'post').length
     purged.notices = rows.filter((r) => r.kind === 'notice').length
-    const removal = await port.removeFiles(rows.flatMap((r) => [r.poster_path, r.thumb_path]))
+    const removal = await port.removeFiles(
+      rows.flatMap((r) => [r.poster_path, r.thumb_path, ...(r.qr_path ? [r.qr_path] : [])]),
+    )
     files = removal.removed
     if (removal.failed > 0) failed.push('files')
   } catch (err) {

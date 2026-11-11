@@ -23,6 +23,7 @@
   "venue_length": "Tempat mesti 2–120 aksara.",
   "description_length": "Penerangan paling banyak 1,000 aksara.",
   "link_format": "Gunakan pautan https:// yang lengkap (contohnya https://forms.gle/…).",
+  "email_format": "Gunakan alamat e-mel yang lengkap (contohnya nama@kelab.example).",
   "date_format": "Masukkan tarikh dan masa yang sah.",
   "time_format": "Masukkan masa yang sah.",
   "end_before_start": "Masa tamat mesti selepas masa mula.",

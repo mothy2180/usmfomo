@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CAMPUSES, LIMITS, ORG_TYPES } from './config.ts'
-import { LINK_URL_RE } from './links.ts'
+import { CONTACT_EMAIL_RE, LINK_URL_RE } from './links.ts'
 import { mytInputToIso } from './time.ts'
 
 // zod 4 probes `new Function` unless told not to; our CSP has no 'unsafe-eval'.
@@ -30,6 +30,13 @@ export const linkSchema = z
   .max(LIMITS.linkMax, 'too_long_text')
   .regex(LINK_URL_RE, 'link_format')
 
+/** Registration contact email: optional, trimmed, same shape as the database CHECK. */
+export const contactEmailSchema = z
+  .string()
+  .trim()
+  .max(LIMITS.emailMax, 'too_long_text')
+  .regex(CONTACT_EMAIL_RE, 'email_format')
+
 const optionalText = (max: number, re: RegExp) =>
   z
     .string()
@@ -55,6 +62,13 @@ export const postFormSchema = z
       .transform((v) => (v === '' ? null : v))
       .nullable()
       .pipe(linkSchema.nullable()),
+    // Optional, like mycsd: a form that leaves it out has no registration email.
+    contact_email: z
+      .string()
+      .trim()
+      .optional()
+      .transform((v) => (v === undefined || v === '' ? null : v))
+      .pipe(contactEmailSchema.nullable()),
     // Whether the event counts for MyCSD (no when left out).
     mycsd: z.boolean().optional().transform((v) => v ?? false),
     startDate: dateInput,
@@ -78,6 +92,7 @@ export const postFormSchema = z
       campus: v.campus,
       description: v.description,
       link_url: v.link_url,
+      contact_email: v.contact_email,
       mycsd: v.mycsd,
       starts_at,
       ends_at,

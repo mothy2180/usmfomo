@@ -85,7 +85,11 @@
     "newTab": "(opens in a new tab)",
     "mycsd": "MyCSD",
     "mycsdNote": "As stated by the organiser",
-    "mycsdYes": "Yes"
+    "mycsdYes": "Yes",
+    "register": "How to register",
+    "qrAlt": "Registration QR code: {{title}}",
+    "qrCaption": "Scan to register",
+    "emailLabel": "Register by email:"
   },
   "share": {
     "copied": "Link copied.",

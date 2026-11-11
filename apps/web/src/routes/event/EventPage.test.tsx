@@ -40,6 +40,8 @@ const event = (extra: Partial<EventDetail> = {}): EventDetail => ({
   venue: 'Dewan Kuliah A',
   description: 'Bring a laptop.\nSnacks provided.',
   link_url: 'https://forms.gle/example',
+  contact_email: null,
+  qr_path: null,
   starts_at: '2026-10-12T12:00:00Z',
   ends_at: '2026-10-12T15:00:00Z',
   poster_path: `${ORG_ID}/0e933cbb-0166-4b16-8dbd-caaba70c978b.webp`,
@@ -110,7 +112,7 @@ describe('EventPage', () => {
     expect(post?.table).toBe('posts')
     expect(post?.chain[0]).toEqual([
       'select',
-      ['id,org_id,campus,title,venue,description,link_url,mycsd,starts_at,ends_at,poster_path,thumb_path,cancelled_at,details_changed_at,updated_at,org:orgs(id,name,slug,type)'],
+      ['id,org_id,campus,title,venue,description,link_url,contact_email,mycsd,starts_at,ends_at,poster_path,thumb_path,qr_path,cancelled_at,details_changed_at,updated_at,org:orgs(id,name,slug,type)'],
     ])
     expect(post?.chain[1]).toEqual(['eq', ['id', ID]])
     expect(post?.chain.some(([method]) => method === 'maybeSingle')).toBe(true)
@@ -146,6 +148,54 @@ describe('EventPage', () => {
     expect(google.getAttribute('target')).toBe('_blank')
     expect(google.getAttribute('rel')).toBe('noopener noreferrer')
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
+  })
+
+  const QR = `${ORG_ID}/66666666-6666-4666-8666-666666666666-qr.webp`
+
+  it('shows the registration QR image above the link, and the email as a mail link', async () => {
+    mock.handler = serve(event({ qr_path: QR, contact_email: 'reg@club.example' }))
+    renderEvent(ID)
+    await screen.findByRole('heading', { level: 1, name: TITLE })
+    const register = screen.getByRole('region', { name: 'How to register' })
+    const qr = within(register).getByRole('img', { name: `Registration QR code: ${TITLE}` })
+    expect(qr.getAttribute('src')).toBe(`/i/${QR}`)
+    expect(within(register).getByText('Scan to register')).toBeTruthy()
+    const link = within(register).getByRole('link', { name: /Registration and details/ })
+    // The QR image comes first in the page, then the link.
+    expect(qr.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const mail = within(register).getByRole('link', { name: 'reg@club.example' })
+    expect(mail.getAttribute('href')).toBe('mailto:reg@club.example')
+  })
+
+  it('shows the QR image alone when the club gave no link, and the email alone without a QR image', async () => {
+    mock.handler = serve(event({ link_url: null, qr_path: QR }))
+    renderEvent(ID)
+    await screen.findByRole('heading', { level: 1, name: TITLE })
+    const register = screen.getByRole('region', { name: 'How to register' })
+    expect(within(register).getByRole('img', { name: `Registration QR code: ${TITLE}` })).toBeTruthy()
+    expect(within(register).queryByRole('link')).toBeNull()
+    cleanup()
+
+    mock.handler = serve(event({ link_url: null, contact_email: 'reg@club.example' }))
+    renderEvent(ID)
+    await screen.findByRole('heading', { level: 1, name: TITLE })
+    const only = screen.getByRole('region', { name: 'How to register' })
+    expect(within(only).queryByRole('img')).toBeNull()
+    expect(within(only).getByRole('link', { name: 'reg@club.example' })).toBeTruthy()
+  })
+
+  it('has no registration section when the club gave no way to register', async () => {
+    mock.handler = serve(event({ link_url: null }))
+    renderEvent(ID)
+    await screen.findByRole('heading', { level: 1, name: TITLE })
+    expect(screen.queryByRole('region', { name: 'How to register' })).toBeNull()
+  })
+
+  it('escapes % in a stored email, so it cannot add line breaks or headers to the mail', async () => {
+    mock.handler = serve(event({ contact_email: 'a%0ABcc@club.example' }))
+    renderEvent(ID)
+    await screen.findByRole('heading', { level: 1, name: TITLE })
+    expect(screen.getByRole('link', { name: 'a%0ABcc@club.example' }).getAttribute('href')).toBe('mailto:a%250ABcc@club.example')
   })
 
   it('falls back to a generated cover when there is no poster', async () => {

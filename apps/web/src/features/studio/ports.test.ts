@@ -40,10 +40,12 @@ const row: PostInsertRow = {
   description: null,
   mycsd: false,
   link_url: null,
+  contact_email: null,
   starts_at: '2026-10-11T12:00:00.000Z',
   ends_at: '2026-10-11T14:00:00.000Z',
   poster_path: null,
   thumb_path: null,
+  qr_path: null,
 }
 const reject = (p: Promise<unknown>) => p.then(() => null, (e: unknown) => e)
 
@@ -93,8 +95,16 @@ describe('studioPorts', () => {
       `eq("starts_at","${row.starts_at}")`,
       `eq("ends_at","${row.ends_at}")`,
       'is("poster_path",null)',
+      'is("qr_path",null)',
       'limit(1)',
     ])
+  })
+
+  it('a post with only a QR image is found by its (random) QR file name', async () => {
+    mock.result = { data: [{ id: 'p2' }], error: null, status: 200 }
+    const qrOnly = { ...row, qr_path: `${ORG}/b-qr.webp` }
+    await expect(studioPorts.findOwn(ORG, qrOnly)).resolves.toEqual({ id: 'p2' })
+    expect(mock.calls).toEqual(['from(posts)', 'select("id")', `eq("org_id","${ORG}")`, `eq("qr_path","${ORG}/b-qr.webp")`, 'limit(1)'])
   })
 
   it('throws when it cannot look', async () => {

@@ -59,12 +59,14 @@ Public (anon, `publicDb` in `apps/web/src/lib/db.ts`):
 Club studio (`studioDb`, session in sessionStorage):
 - `rpc('my_posting_status')` → `{ state: 'ok'|'inactive'|'session_ended'|'no_account'|'owner'|'anonymous', username, org{id,name,slug,type,campus}, posting_enabled, live, live_limit, new_24h, new_limit, next_slot_at, edits_24h, edits_limit }`
 - `from('posts')` insert/update/delete with the column grants in 0020
-  (`campus,title,venue,description,link_url,starts_at,ends_at,poster_path,thumb_path,cancelled_at`).
+  (`campus,title,venue,description,link_url,contact_email,starts_at,ends_at,poster_path,thumb_path,qr_path,cancelled_at`;
+  `contact_email` and `qr_path` are the optional registration email and QR image, 0057).
   Own posts (including hidden/expired-but-not-purged) are readable with
   `.eq('org_id', status.org.id)`.
 - Storage bucket `posters`: upload `${orgId}/${uuid}.webp|jpg` and
-  `${orgId}/${uuid}-thumb.webp|jpg` with `{ upsert: false, cacheControl: '3600', contentType }`;
-  `remove([...])` for own files. Max 2 MiB, WebP/JPEG only, 40 objects per org.
+  `${orgId}/${uuid}-thumb.webp|jpg`, and for the registration QR image
+  `${orgId}/${uuid}-qr.webp|jpg`, with `{ upsert: false, cacheControl: '3600', contentType }`;
+  `remove([...])` for own files. Max 2 MiB, WebP/JPEG only, 55 objects per org.
 - Errors: `errorKey()` from `@usmfomo/shared/errors` → i18n key under `errors:`.
 
 Owner console (owner session; there is no 2FA, see 0055):
@@ -121,7 +123,7 @@ passwords of other actions, or stack traces. Details as implemented:
 | `set_account_active` | `userId, active` | `{}` | `admin_set_account_active`; `false` also bans (`ban_duration: '876000h'`), `true` unbans (`'none'`) |
 | `update_org` | `orgId, name, slug, type, campus, active` | `{}` | `admin_update_org` |
 | `delete_account` | `userId` | `{ removedFiles }` | refuse for the owner account; deactivate first (no upload can land after the listing) → `admin_org_objects` (every file name, one jsonb array) → Storage `remove` (≤1000 per call; any failed batch → 500, org and account kept deactivated so a retry can finish) → `admin_delete_org` → `auth.admin.deleteUser`. Only when `admin_get_account` finds no account row is an existing auth user (left by a failed create) just deleted |
-| `delete_post` | `postId` | `{ removedFiles, failedFiles }` | `admin_delete_post` → Storage `remove` of returned paths. Unknown post 404. A Storage failure does not fail the request: `failedFiles` (a number, 0 when all went) counts the files still in the bucket, which stay public until the daily orphan sweep deletes them |
+| `delete_post` | `postId` | `{ removedFiles, failedFiles }` | `admin_delete_post` → Storage `remove` of the returned poster, thumbnail and QR paths. Unknown post 404. A Storage failure does not fail the request: `failedFiles` (a number, 0 when all went) counts the files still in the bucket, which stay public until the daily orphan sweep deletes them |
 | `remove_post_image` | `postId` | `{ removedFiles, failedFiles }` | `admin_remove_post_image` → Storage `remove` (same failure rule and `failedFiles`) |
 
 Generated passwords: 24 characters from `crypto.getRandomValues`, alphabet
@@ -150,9 +152,9 @@ audit row.
 with no body detail. Steps (each logged as counts, never row contents):
 1. `rpc('maint_heartbeat', { p_result })` — PostgREST write (keep-alive).
 2. `rpc('maint_purge_expired', { p_limit: 100 })` → Storage `remove()` of the
-   returned `poster_path`/`thumb_path` values (rows are already deleted). It
-   returns one jsonb array of `{ kind: 'post'|'notice', id, poster_path,
-   thumb_path }`, posts first.
+   returned `poster_path`/`thumb_path`/`qr_path` values (rows are already
+   deleted). It returns one jsonb array of `{ kind: 'post'|'notice', id,
+   poster_path, thumb_path, qr_path }`, posts first.
 3. Once a day (first run after 03:00 MYT, i.e. 19:00 UTC, or `?sweep=1`):
    `rpc('maint_orphans')` (one jsonb array of file names, oldest first) →
    Storage `remove()`; `rpc('maint_retention')`.

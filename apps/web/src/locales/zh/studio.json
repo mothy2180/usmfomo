@@ -100,6 +100,9 @@
     "link": "报名链接（可选）",
     "linkHint": "完整的 https:// 链接，例如 https://forms.gle/…",
     "linkText": "报名链接",
+    "contactEmail": "报名邮箱（可选）",
+    "contactEmailHint": "学生可发送电子邮件到此地址报名。该地址会公开显示在活动页面上。",
+    "emailText": "邮件报名：{{email}}",
     "cancelled": "标记为已取消",
     "cancelledHint": "帖子会继续显示，并带有“已取消”标签，让学生知道。",
     "required": "必填。",
@@ -139,7 +142,18 @@
     "current": "当前海报",
     "removed": "保存后将移除海报。",
     "previewAlt": "海报预览",
-    "refused": "海报上传被拒绝。可能是发布功能已暂停、你的社团已有 40 个海报文件，或登录已失效。"
+    "refused": "海报上传被拒绝。可能是发布功能已暂停、你的社团已有 55 个图片文件，或登录已失效。"
+  },
+  "qr": {
+    "label": "报名二维码（可选）",
+    "hint": "JPG、PNG 或 WebP，最大 10 MB。显示在报名链接上方。图片会在浏览器中缩小，请保持二维码大而清晰。",
+    "remove": "移除二维码",
+    "undoRemove": "保留当前二维码",
+    "processing": "正在处理图片…",
+    "ready": "二维码已就绪（{{size}}，{{format}}）。",
+    "current": "当前二维码",
+    "removed": "保存时将移除二维码。",
+    "previewAlt": "二维码预览"
   },
   "settings": {
     "title": "设置",

@@ -7,11 +7,12 @@ import { useTranslation } from 'react-i18next'
 import { Button, ButtonLink, Field, Input, Select, Textarea } from '../../components/ui.tsx'
 import { imageSrc } from '../../lib/db.ts'
 import { currentLang } from '../../lib/i18n.ts'
-import { processPoster, type ProcessedPoster } from '../../lib/poster.ts'
+import { processPoster, processQr, type ProcessedPoster } from '../../lib/poster.ts'
 import { STUDIO_QUERY_KEY, type StudioOrg } from '../../lib/session.ts'
 import { studioErrorKey } from './errorMessage.ts'
 import { PosterPicker, type PosterSelection } from './PosterPicker.tsx'
 import { PostPreview, type PreviewPoster } from './PostPreview.tsx'
+import { QrPicker, type QrSelection } from './QrPicker.tsx'
 import {
   emptyPostValues,
   nextDaySuggestion,
@@ -25,13 +26,18 @@ import {
   type ValidPost,
 } from './postForm.ts'
 import { studioPorts } from './ports.ts'
-import { createPost, UnconfirmedCreate, updatePost, type PosterChange, type PosterFiles } from './submitPost.ts'
+import { createPost, UnconfirmedCreate, updatePost, type PosterChange, type PosterFiles, type QrChange, type QrFile } from './submitPost.ts'
 import type { PostInsertRow, PostRow } from './types.ts'
 
 type Step = 'form' | 'preview' | 'done'
 type TextField = Exclude<PostField, 'campus' | 'mycsd'>
 
 const toFiles = (p: ProcessedPoster): PosterFiles => ({ poster: p.poster, thumb: p.thumb, ext: p.format.ext, contentType: p.format.type })
+const toQrFile = (p: { blob: Blob; format: { ext: 'webp' | 'jpg'; type: 'image/webp' | 'image/jpeg' } }): QrFile => ({
+  blob: p.blob,
+  ext: p.format.ext,
+  contentType: p.format.type,
+})
 const isCampus = (v: string): v is Campus => (CAMPUSES as readonly string[]).includes(v)
 
 /** Always rendered (a live region must exist before its text changes), so a
@@ -62,6 +68,7 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
   const rootRef = useRef<HTMLDivElement>(null)
 
   const initialPoster = (): PosterSelection => (post?.poster_path ? { kind: 'existing' } : { kind: 'none' })
+  const initialQr = (): QrSelection => (post?.qr_path ? { kind: 'existing' } : { kind: 'none' })
   const [values, setValues] = useState<PostFormValues>(() => (post ? postToValues(post) : emptyPostValues(org.campus)))
   const [endTouched, setEndTouched] = useState(Boolean(post))
   const [cancelled, setCancelled] = useState(post ? post.cancelled_at !== null : false)
@@ -71,6 +78,10 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
   const [posterBusy, setPosterBusy] = useState(false)
   const [posterError, setPosterError] = useState<string | null>(null)
   const pickTicket = useRef(0)
+  const [qr, setQr] = useState<QrSelection>(initialQr)
+  const [qrBusy, setQrBusy] = useState(false)
+  const [qrError, setQrError] = useState<string | null>(null)
+  const qrTicket = useRef(0)
   const [step, setStep] = useState<Step>('form')
   const [valid, setValid] = useState<ValidPost | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -130,9 +141,30 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
     setPoster(post?.poster_path ? { kind: 'removed' } : { kind: 'none' })
   }
 
+  const pickQr = async (file: File) => {
+    const ticket = ++qrTicket.current
+    setQrError(null)
+    setQrBusy(true)
+    try {
+      const processed = await processQr(file)
+      if (ticket === qrTicket.current) setQr({ kind: 'new', processed })
+    } catch (e) {
+      if (ticket === qrTicket.current) setQrError(studioErrorKey(e))
+    } finally {
+      if (ticket === qrTicket.current) setQrBusy(false)
+    }
+  }
+
+  const removeQr = () => {
+    qrTicket.current++
+    setQrBusy(false)
+    setQrError(null)
+    setQr(post?.qr_path ? { kind: 'removed' } : { kind: 'none' })
+  }
+
   const onPreview = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (posterBusy || paused) return
+    if (posterBusy || qrBusy || paused) return
     const result = validatePostForm(values, post ? { kind: 'edit', post } : { kind: 'create' })
     if (!result.ok) {
       setErrors(result.errors)
@@ -141,7 +173,7 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
       return
     }
     setErrors({})
-    if (post && Object.keys(toUpdatePatch(post, result.data, cancelled)).length === 0 && poster.kind === initialPoster().kind) {
+    if (post && Object.keys(toUpdatePatch(post, result.data, cancelled)).length === 0 && poster.kind === initialPoster().kind && qr.kind === initialQr().kind) {
       setSummary('form.noChanges')
       focusSoon('[data-summary]')
       return
@@ -162,11 +194,14 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
       if (post) {
         const change: PosterChange =
           poster.kind === 'new' ? { kind: 'replace', files: toFiles(poster.processed) } : poster.kind === 'removed' ? { kind: 'remove' } : { kind: 'keep' }
-        await updatePost(studioPorts, post, toUpdatePatch(post, valid, cancelled), change)
+        const qrChange: QrChange =
+          qr.kind === 'new' ? { kind: 'replace', file: toQrFile(qr.processed) } : qr.kind === 'removed' ? { kind: 'remove' } : { kind: 'keep' }
+        await updatePost(studioPorts, post, toUpdatePatch(post, valid, cancelled), change, undefined, qrChange)
         setSavedId(post.id)
       } else {
         const files = poster.kind === 'new' ? toFiles(poster.processed) : null
-        setSavedId(await createPost(studioPorts, org.id, valid, files, { unconfirmed }))
+        const qrFile = qr.kind === 'new' ? toQrFile(qr.processed) : null
+        setSavedId(await createPost(studioPorts, org.id, valid, files, { unconfirmed, qr: qrFile }))
         setUnconfirmed(null)
       }
       setStep('done')
@@ -196,6 +231,10 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
     setPoster({ kind: 'none' })
     setPosterBusy(false)
     setPosterError(null)
+    qrTicket.current++
+    setQr({ kind: 'none' })
+    setQrBusy(false)
+    setQrError(null)
     setValid(null)
     setSavedId(null)
     setStep('form')
@@ -204,6 +243,9 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
 
   const suggestion = nextDaySuggestion(values)
   const existingUrl = imageSrc(post?.poster_path)
+  const existingQrUrl = imageSrc(post?.qr_path)
+  const previewQr: PreviewPoster =
+    qr.kind === 'new' ? { blob: qr.processed.blob } : qr.kind === 'existing' && existingQrUrl ? { url: existingQrUrl } : null
   const previewPoster: PreviewPoster =
     poster.kind === 'new' ? { blob: poster.processed.poster } : poster.kind === 'existing' && existingUrl ? { url: existingUrl } : null
 
@@ -240,7 +282,7 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
             {t('form.previewTitle')}
           </h2>
           <p className="m-0 font-semibold text-accent">{post ? t('form.liveNoteEdit') : t('form.liveNote')}</p>
-          <PostPreview data={valid} orgName={org.name} poster={previewPoster} cancelled={post ? cancelled : false} />
+          <PostPreview data={valid} orgName={org.name} poster={previewPoster} qr={previewQr} cancelled={post ? cancelled : false} />
           {submitError ? (
             <p role="alert" className="m-0 rounded-lg border border-danger/40 bg-danger/5 p-3 text-sm">
               {t(submitError)}
@@ -408,6 +450,34 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
           )}
         </Field>
 
+        <Field label={t('form.contactEmail')} hint={t('form.contactEmailHint')} error={err('contact_email')}>
+          {({ id, describedBy }) => (
+            <Input
+              id={id}
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              spellCheck={false}
+              aria-describedby={describedBy}
+              aria-invalid={inv('contact_email')}
+              value={values.contact_email}
+              onChange={onText('contact_email')}
+              maxLength={LIMITS.emailMax}
+            />
+          )}
+        </Field>
+
+        <QrPicker
+          selection={qr}
+          busy={qrBusy}
+          error={qrError}
+          existingUrl={existingQrUrl}
+          disabled={paused}
+          onPick={(file) => void pickQr(file)}
+          onRemove={removeQr}
+          onUndoRemove={() => setQr({ kind: 'existing' })}
+        />
+
         <Field label={t('form.mycsd')} hint={t('form.mycsdHint')}>
           {({ id, describedBy }) => (
             <Select
@@ -459,7 +529,7 @@ export function PostForm({ org, post, postingEnabled }: { org: StudioOrg; post?:
         ) : null}
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" data-preview-button disabled={posterBusy || paused}>
+          <Button type="submit" variant="primary" data-preview-button disabled={posterBusy || qrBusy || paused}>
             {t('form.preview')}
           </Button>
           <ButtonLink to="/studio">{t('form.discard')}</ButtonLink>

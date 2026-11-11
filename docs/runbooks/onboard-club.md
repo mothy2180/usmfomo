@@ -68,7 +68,10 @@ Limits they will see in the status bar (the database enforces them):
   back); 30 edits per 24 hours.
 - Events need a start and an end; a post disappears when its event ends.
 - Posters: JPG, PNG or WebP up to 10 MB; the browser shrinks them (location data
-  removed). At most 40 stored image files per organisation.
+  removed). At most 55 stored image files per organisation.
+- Registration: a link, an email address and a QR image are all optional and can be
+  combined. The QR image is shown above the link on the event page. The email address
+  is public, so use a club address, not a personal one.
 
 ## 6. Keep a private record
 

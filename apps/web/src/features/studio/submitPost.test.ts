@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { ValidPost } from './postForm.ts'
-import { createPost, deletePost, isRefusal, UnconfirmedCreate, updatePost, uploadPoster, type PostPorts, type PosterFiles } from './submitPost.ts'
+import {
+  createPost,
+  deletePost,
+  isRefusal,
+  UnconfirmedCreate,
+  updatePost,
+  uploadPoster,
+  type PostPorts,
+  type PosterFiles,
+  type QrFile,
+} from './submitPost.ts'
 import type { PostInsertRow } from './types.ts'
 
 const ORG = '11111111-1111-4111-8111-111111111111'
@@ -14,6 +24,7 @@ const data: ValidPost = {
   campus: 'main',
   description: null,
   link_url: null,
+  contact_email: null,
   mycsd: false,
   starts_at: '2026-10-11T12:00:00.000Z',
   ends_at: '2026-10-11T14:00:00.000Z',
@@ -26,7 +37,7 @@ const files: PosterFiles = {
   contentType: 'image/webp',
 }
 
-type Fail = Partial<Record<'upload-poster' | 'upload-thumb' | 'remove' | 'insert' | 'update' | 'delete' | 'findOwn', unknown>>
+type Fail = Partial<Record<'upload-poster' | 'upload-thumb' | 'upload-qr' | 'remove' | 'insert' | 'update' | 'delete' | 'findOwn', unknown>>
 
 /** Fake I/O that records every call in order and fails where told to.
  * `found` is what findOwn answers. */
@@ -34,7 +45,11 @@ function fakePorts(fail: Fail = {}, found: { id: string } | null = null) {
   const log: string[] = []
   const ports: PostPorts = {
     async upload(path, _file, contentType) {
-      const kind = path.endsWith(`-thumb.webp`) || path.endsWith('-thumb.jpg') ? 'upload-thumb' : 'upload-poster'
+      const kind = /-qr\.(webp|jpg)$/.test(path)
+        ? 'upload-qr'
+        : path.endsWith(`-thumb.webp`) || path.endsWith('-thumb.jpg')
+          ? 'upload-thumb'
+          : 'upload-poster'
       log.push(`${kind} ${path} ${contentType}`)
       if (fail[kind]) throw fail[kind]
     },
@@ -126,11 +141,13 @@ describe('createPost', () => {
       campus: 'main',
       description: null,
       link_url: null,
+      contact_email: null,
       mycsd: false,
       starts_at: data.starts_at,
       ends_at: data.ends_at,
       poster_path: `${ORG}/55555555-5555-4555-8555-555555555555.webp`,
       thumb_path: `${ORG}/55555555-5555-4555-8555-555555555555-thumb.webp`,
+      qr_path: null,
     }
 
     it('returns the post that attempt wrote instead of posting twice', async () => {
@@ -276,5 +293,99 @@ describe('deletePost', () => {
     const { ports, log } = fakePorts({ remove: offline })
     await expect(deletePost(ports, { id: POST_ID, poster_path: OLD_POSTER, thumb_path: OLD_THUMB })).rejects.toBe(offline)
     expect(log).not.toContain(`delete ${POST_ID}`)
+  })
+})
+
+describe('registration QR image', () => {
+  const qr: QrFile = { blob: new Blob(['q'], { type: 'image/webp' }), ext: 'webp', contentType: 'image/webp' }
+  const NEW_QR = `${ORG}/${UUID}-qr.webp`
+  const OLD_QR = `${ORG}/66666666-6666-4666-8666-666666666666-qr.jpg`
+  const withQr = { id: POST_ID, org_id: ORG, poster_path: null, thumb_path: null, qr_path: OLD_QR }
+  const withoutQr = { id: POST_ID, org_id: ORG, poster_path: null, thumb_path: null, qr_path: null }
+
+  it('create: uploads the QR image first, then inserts a row that points at it', async () => {
+    const { ports, log } = fakePorts()
+    await createPost(ports, ORG, data, null, { uuid, qr })
+    expect(log).toHaveLength(2)
+    expect(log[0]).toBe(`upload-qr ${NEW_QR} image/webp`)
+    expect(log[1]).toContain(`"qr_path":"${NEW_QR}"`)
+    expect(log[1]).toContain('"poster_path":null')
+  })
+
+  it('create: removes the QR file (and the poster files) when the row is refused', async () => {
+    const { ports, log } = fakePorts({ insert: quotaDaily })
+    await expect(createPost(ports, ORG, data, files, { uuid, qr })).rejects.toBe(quotaDaily)
+    expect(log.at(-1)).toBe(`remove ${NEW_POSTER},${NEW_THUMB},${NEW_QR}`)
+  })
+
+  it('create: keeps the files when the answer to the insert was lost (the row may point at them)', async () => {
+    const { ports, log } = fakePorts({ insert: lostAnswer })
+    await expect(createPost(ports, ORG, data, null, { uuid, qr })).rejects.toBeInstanceOf(UnconfirmedCreate)
+    expect(log.some((l) => l.startsWith('remove'))).toBe(false)
+  })
+
+  it('create: takes the poster files down again when the QR upload fails, and inserts nothing', async () => {
+    const offline = new TypeError('Failed to fetch')
+    const { ports, log } = fakePorts({ 'upload-qr': offline })
+    await expect(createPost(ports, ORG, data, files, { uuid, qr })).rejects.toBe(offline)
+    expect(log.at(-1)).toBe(`remove ${NEW_POSTER},${NEW_THUMB}`)
+    expect(log.some((l) => l.startsWith('insert'))).toBe(false)
+  })
+
+  it('update: replaces the QR image: upload new -> update row -> remove the old file', async () => {
+    const { ports, log } = fakePorts()
+    await expect(updatePost(ports, withQr, {}, { kind: 'keep' }, uuid, { kind: 'replace', file: qr })).resolves.toBe('saved')
+    expect(log).toEqual([`upload-qr ${NEW_QR} image/webp`, `update ${POST_ID} {"qr_path":"${NEW_QR}"}`, `remove ${OLD_QR}`])
+  })
+
+  it('update: "Remove QR code" clears the column, then removes the file', async () => {
+    const { ports, log } = fakePorts()
+    await updatePost(ports, withQr, {}, { kind: 'keep' }, uuid, { kind: 'remove' })
+    expect(log).toEqual([`update ${POST_ID} {"qr_path":null}`, `remove ${OLD_QR}`])
+  })
+
+  it('update: adds a first QR image to a post that had none, and removes nothing', async () => {
+    const { ports, log } = fakePorts()
+    await updatePost(ports, withoutQr, {}, { kind: 'keep' }, uuid, { kind: 'replace', file: qr })
+    expect(log).toEqual([`upload-qr ${NEW_QR} image/webp`, `update ${POST_ID} {"qr_path":"${NEW_QR}"}`])
+  })
+
+  it('update: keeps the old QR file and removes the new one when the update is refused', async () => {
+    const { ports, log } = fakePorts({ update: quotaDaily })
+    await expect(updatePost(ports, withQr, {}, { kind: 'keep' }, uuid, { kind: 'replace', file: qr })).rejects.toBe(quotaDaily)
+    expect(log.at(-1)).toBe(`remove ${NEW_QR}`)
+    expect(log.join('\n')).not.toContain(OLD_QR)
+  })
+
+  it('update: keeps both QR files when the answer to the update was lost', async () => {
+    const { ports, log } = fakePorts({ update: lostAnswer })
+    await expect(updatePost(ports, withQr, {}, { kind: 'keep' }, uuid, { kind: 'replace', file: qr })).rejects.toBe(lostAnswer)
+    expect(log.some((l) => l.startsWith('remove'))).toBe(false)
+  })
+
+  it('update: takes the new poster files down again when the QR upload fails', async () => {
+    const offline = new TypeError('Failed to fetch')
+    const { ports, log } = fakePorts({ 'upload-qr': offline })
+    await expect(updatePost(ports, withQr, {}, { kind: 'replace', files }, uuid, { kind: 'replace', file: qr })).rejects.toBe(offline)
+    expect(log.at(-1)).toBe(`remove ${NEW_POSTER},${NEW_THUMB}`)
+    expect(log.some((l) => l.startsWith('update'))).toBe(false)
+  })
+
+  it('update: nothing to write when the QR image is kept and nothing else changed', async () => {
+    const { ports, log } = fakePorts()
+    await expect(updatePost(ports, withQr, {}, { kind: 'keep' }, uuid, { kind: 'keep' })).resolves.toBe('unchanged')
+    expect(log).toEqual([])
+  })
+
+  it('delete: removes the QR file together with the poster files, before the row', async () => {
+    const { ports, log } = fakePorts()
+    await deletePost(ports, { id: POST_ID, poster_path: OLD_POSTER, thumb_path: OLD_THUMB, qr_path: OLD_QR })
+    expect(log).toEqual([`remove ${OLD_POSTER},${OLD_THUMB},${OLD_QR}`, `delete ${POST_ID}`])
+  })
+
+  it('delete: a post with only a QR image still has its file removed', async () => {
+    const { ports, log } = fakePorts()
+    await deletePost(ports, { id: POST_ID, poster_path: null, thumb_path: null, qr_path: OLD_QR })
+    expect(log).toEqual([`remove ${OLD_QR}`, `delete ${POST_ID}`])
   })
 })

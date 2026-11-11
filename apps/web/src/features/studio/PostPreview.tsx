@@ -10,9 +10,23 @@ import type { ValidPost } from './postForm.ts'
 export type PreviewPoster = { blob: Blob } | { url: string } | null
 
 const POSTER_CLASS = 'block max-h-[32rem] w-full bg-ink object-contain'
+const QR_CLASS = 'block h-40 w-40 max-w-full self-start rounded-lg bg-white object-contain p-2'
 
 /** How the post will look to students (text exactly as typed, MYT times). */
-export function PostPreview({ data, orgName, poster, cancelled }: { data: ValidPost; orgName: string; poster: PreviewPoster; cancelled: boolean }) {
+export function PostPreview({
+  data,
+  orgName,
+  poster,
+  qr = null,
+  cancelled,
+}: {
+  data: ValidPost
+  orgName: string
+  poster: PreviewPoster
+  /** The registration QR image, shown above the link like on the event page. */
+  qr?: PreviewPoster
+  cancelled: boolean
+}) {
   const { t } = useTranslation('studio')
   const alt = t('posts.posterAlt', { title: data.title })
   return (
@@ -33,11 +47,14 @@ export function PostPreview({ data, orgName, poster, cancelled }: { data: ValidP
         </p>
         {data.mycsd ? <p className="m-0 font-semibold text-ok">{t('dashboard:card.mycsd')}</p> : null}
         {data.description ? <p className="m-0 break-words whitespace-pre-line text-muted">{data.description}</p> : null}
+        {qr && 'blob' in qr ? <BlobImage blob={qr.blob} alt={t('qr.previewAlt')} className={QR_CLASS} /> : null}
+        {qr && 'url' in qr ? <img src={qr.url} alt={t('qr.previewAlt')} className={QR_CLASS} /> : null}
         {data.link_url ? (
           <p className="m-0">
             <ExternalLink href={data.link_url}>{t('form.linkText')}</ExternalLink>
           </p>
         ) : null}
+        {data.contact_email ? <p className="m-0 break-words">{t('form.emailText', { email: data.contact_email })}</p> : null}
       </div>
     </article>
   )

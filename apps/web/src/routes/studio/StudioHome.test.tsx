@@ -49,6 +49,8 @@ const post = (id: string, title: string, starts: string, ends: string, over: Par
   venue: 'DK A',
   description: null,
   link_url: null,
+  contact_email: null,
+  qr_path: null,
   starts_at: starts,
   ends_at: ends,
   poster_path: null,

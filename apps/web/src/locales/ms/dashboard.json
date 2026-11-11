@@ -81,7 +81,11 @@
     "newTab": "(dibuka dalam tab baharu)",
     "mycsd": "MyCSD",
     "mycsdNote": "Seperti yang dinyatakan oleh penganjur",
-    "mycsdYes": "Ya"
+    "mycsdYes": "Ya",
+    "register": "Cara mendaftar",
+    "qrAlt": "Kod QR pendaftaran: {{title}}",
+    "qrCaption": "Imbas untuk mendaftar",
+    "emailLabel": "Daftar melalui e-mel:"
   },
   "share": {
     "copied": "Pautan disalin.",

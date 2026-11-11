@@ -9,7 +9,7 @@
 //     -> thumbnail: 360 px wide (height capped at 540 px), <= 40 KB target
 //   Safari cannot encode WebP from a canvas (it returns PNG): both files are
 //   then JPEG instead.
-import { POSTER } from '@usmfomo/shared/config'
+import { POSTER, QR } from '@usmfomo/shared/config'
 
 export type PosterErrorKey = 'file_too_big' | 'file_type' | 'image_decode' | 'image_too_big_after'
 
@@ -261,6 +261,49 @@ export async function processPoster(file: File): Promise<ProcessedPoster> {
     const poster = await encodePoster(img, size)
     const thumb = await encodeThumb(img, thumbSize(img.width, img.height), poster.format)
     return { poster: poster.blob, thumb: thumb.blob, format: poster.format, size, thumbSize: thumb.size }
+  } catch (err) {
+    if (err instanceof PosterError) throw err
+    throw new PosterError('image_decode')
+  } finally {
+    img.release()
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Registration QR image (0057): one file, no thumbnail. A QR code has to stay
+// scannable, so it is flattened onto white (JPEG has no alpha and a dark page
+// must not show through transparent modules), never upscaled, capped at
+// QR.maxEdge and encoded at a high quality ladder.
+// ---------------------------------------------------------------------------
+
+export type ProcessedQr = { blob: Blob; format: PosterFormat; size: Size }
+
+async function encodeQr(img: Decoded, size: Size): Promise<{ blob: Blob; format: PosterFormat }> {
+  const steps = qualitySteps(QR.quality.start, QR.quality.min, QR.quality.step)
+  const first = steps[0] ?? QR.quality.start
+  const canvas = draw(img.source, size, '#ffffff')
+  try {
+    // Same probe as the poster: a non-WebP answer (Safari: PNG) means JPEG.
+    const probe = await canvasToBlob(canvas, WEBP.type, first)
+    const format = formatForEncodedType(probe.type)
+    const encode = (q: number) => (format.type === WEBP.type && q === first ? Promise.resolve(probe) : encodeAs(canvas, format, q))
+    const { blob } = await encodeWithinBudget(encode, steps, QR.targetBytes, QR.maxBytes)
+    return { blob, format }
+  } finally {
+    release(canvas)
+  }
+}
+
+/** Validate, decode and re-encode a chosen file into a registration QR image. */
+export async function processQr(file: File): Promise<ProcessedQr> {
+  const invalid = validateFile(file)
+  if (invalid) throw new PosterError(invalid)
+  const img = await decode(file)
+  try {
+    if (!img.width || !img.height) throw new PosterError('image_decode')
+    const size = fitWithin(img.width, img.height, QR.maxEdge)
+    const { blob, format } = await encodeQr(img, size)
+    return { blob, format, size }
   } catch (err) {
     if (err instanceof PosterError) throw err
     throw new PosterError('image_decode')

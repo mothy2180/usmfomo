@@ -27,6 +27,7 @@ const filled = (over: Partial<PostFormValues> = {}): PostFormValues => ({
   campus: 'main',
   description: '',
   link_url: '',
+  contact_email: '',
   mycsd: false,
   ...over,
 })
@@ -40,10 +41,12 @@ const row = (over: Partial<PostRow> = {}): PostRow => ({
   venue: 'DK A',
   description: null,
   link_url: null,
+  contact_email: null,
   starts_at: '2026-10-11T12:00:00+00:00',
   ends_at: '2026-10-11T14:00:00+00:00',
   poster_path: null,
   thumb_path: null,
+  qr_path: null,
   cancelled_at: null,
   hidden_at: null,
   details_changed_at: null,
@@ -55,7 +58,7 @@ const row = (over: Partial<PostRow> = {}): PostRow => ({
 describe('form values', () => {
   it('starts empty on the organisation’s campus', () => {
     expect(emptyPostValues('health')).toEqual({
-      title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus: 'health', description: '', link_url: '', mycsd: false,
+      title: '', startDate: '', startTime: '', endDate: '', endTime: '', venue: '', campus: 'health', description: '', link_url: '', contact_email: '', mycsd: false,
     })
   })
 
@@ -139,6 +142,7 @@ describe('validatePostForm (create)', () => {
         campus: 'main',
         description: null,
         link_url: null,
+        contact_email: null,
         mycsd: false,
         starts_at: '2026-10-11T12:00:00.000Z',
         ends_at: '2026-10-11T14:00:00.000Z',
@@ -191,6 +195,7 @@ describe('payloads', () => {
     campus: 'engineering' as const,
     description: 'Bring a laptop',
     link_url: 'https://forms.gle/abc',
+    contact_email: null,
     mycsd: false,
     starts_at: '2026-10-11T12:00:00.000Z',
     ends_at: '2026-10-11T14:00:00.000Z',
@@ -198,9 +203,33 @@ describe('payloads', () => {
 
   it('inserts only granted columns, never org_id', () => {
     const insert = toInsertRow(data, { poster: `${ORG}/a.webp`, thumb: `${ORG}/a-thumb.webp` })
-    expect(Object.keys(insert).sort()).toEqual(['campus', 'description', 'ends_at', 'link_url', 'mycsd', 'poster_path', 'starts_at', 'thumb_path', 'title', 'venue'])
-    expect(insert).toMatchObject({ poster_path: `${ORG}/a.webp`, thumb_path: `${ORG}/a-thumb.webp` })
-    expect(toInsertRow(data, null)).toMatchObject({ poster_path: null, thumb_path: null })
+    expect(Object.keys(insert).sort()).toEqual([
+      'campus',
+      'contact_email',
+      'description',
+      'ends_at',
+      'link_url',
+      'mycsd',
+      'poster_path',
+      'qr_path',
+      'starts_at',
+      'thumb_path',
+      'title',
+      'venue',
+    ])
+    expect(insert).toMatchObject({ poster_path: `${ORG}/a.webp`, thumb_path: `${ORG}/a-thumb.webp`, qr_path: null })
+    expect(toInsertRow(data, null)).toMatchObject({ poster_path: null, thumb_path: null, qr_path: null })
+  })
+
+  it('carries the contact email and the QR path into the insert and the update', () => {
+    const withEmail = { ...data, contact_email: 'reg@club.example' }
+    expect(toInsertRow(withEmail, null, `${ORG}/b-qr.webp`)).toMatchObject({ contact_email: 'reg@club.example', qr_path: `${ORG}/b-qr.webp` })
+    const post = row({ contact_email: 'old@club.example' })
+    const same = { ...data, campus: 'main' as const, description: null, link_url: null, mycsd: false }
+    expect(toUpdatePatch(post, { ...same, contact_email: 'old@club.example' }, false, NOW)).toEqual({})
+    expect(toUpdatePatch(post, { ...same, contact_email: 'new@club.example' }, false, NOW)).toEqual({ contact_email: 'new@club.example' })
+    // Clearing the field clears the column.
+    expect(toUpdatePatch(post, { ...same, contact_email: null }, false, NOW)).toEqual({ contact_email: null })
   })
 
   it('updates only what changed (every update counts towards the edit limit)', () => {

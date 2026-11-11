@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildIcs, escapeIcsText, foldIcsLine, googleCalendarUrl } from './ics.ts'
-import { displayHostname, isSafeHttpsUrl } from './links.ts'
+import { displayHostname, isContactEmail, isSafeHttpsUrl } from './links.ts'
 import { errorKey } from './errors.ts'
-import { imageUrl, newPosterPaths } from './images.ts'
+import { imageUrl, newPosterPaths, newQrPath } from './images.ts'
 import { checkPostTiming, postFormSchema, slugify, usernameSchema } from './schemas.ts'
 import { createBrowserClient, usernameToEmail } from './supabase.ts'
 
@@ -88,6 +88,16 @@ describe('images', () => {
     expect(imageUrl(poster, 'direct', 'https://x.supabase.co/')).toBe(`https://x.supabase.co/storage/v1/object/public/posters/${poster}`)
     expect(imageUrl(`${ORG}/../evil.webp`, 'proxy', 'https://x.supabase.co')).toBeNull()
   })
+
+  it('names the registration QR image <org>/<uuid>-qr.<ext> and serves it like a poster', () => {
+    const qr = newQrPath(ORG, 'jpg', () => '44444444-4444-4444-8444-444444444444')
+    expect(qr).toBe(`${ORG}/44444444-4444-4444-8444-444444444444-qr.jpg`)
+    expect(imageUrl(qr, 'proxy', 'https://x.supabase.co')).toBe(`/i/${qr}`)
+    expect(imageUrl(qr, 'direct', 'https://x.supabase.co')).toBe(`https://x.supabase.co/storage/v1/object/public/posters/${qr}`)
+    // Only the exact shapes: no other suffixes, no other extensions.
+    expect(imageUrl(`${ORG}/44444444-4444-4444-8444-444444444444-qrcode.jpg`, 'proxy', 'https://x.supabase.co')).toBeNull()
+    expect(imageUrl(`${ORG}/44444444-4444-4444-8444-444444444444-qr.png`, 'proxy', 'https://x.supabase.co')).toBeNull()
+  })
 })
 
 describe('schemas', () => {
@@ -109,6 +119,21 @@ describe('schemas', () => {
     expect(r.ends_at).toBe('2026-10-11T14:00:00.000Z')
     expect(r.description).toBeNull()
     expect(r.link_url).toBeNull()
+    expect(r.contact_email).toBeNull()
+  })
+
+  it('takes a registration email: optional, trimmed, and the same shape as the database CHECK', () => {
+    expect(postFormSchema.parse({ ...base, contact_email: '  reg@club.example ' }).contact_email).toBe('reg@club.example')
+    expect(postFormSchema.parse({ ...base, contact_email: '   ' }).contact_email).toBeNull()
+    for (const bad of ['not an email', 'a@b', 'a@@b.com', 'a b@club.example', 'x@club.example\nBcc: y@z.com', '@club.example', 'a@club.']) {
+      expect(postFormSchema.safeParse({ ...base, contact_email: bad }).success, bad).toBe(false)
+    }
+    // Too long: 254 is the limit.
+    const long = `${'a'.repeat(250)}@x.my`
+    expect(long.length).toBeGreaterThan(254)
+    expect(postFormSchema.safeParse({ ...base, contact_email: long }).success).toBe(false)
+    expect(isContactEmail('reg@club.usm.my')).toBe(true)
+    expect(isContactEmail('reg@club')).toBe(false)
   })
 
   it('takes MyCSD as yes or no, no when left out', () => {

@@ -46,13 +46,13 @@ export type Database = {
                   ]
                 },"posts": {
                   Row: {
-                    "campus": Database["public"]['Enums']["campus"],"cancelled_at": string | null,"created_at": string,"description": string | null,"details_changed_at": string | null,"ends_at": string,"hidden_at": string | null,"id": string,"link_url": string | null,"mycsd": boolean,"org_id": string,"poster_path": string | null,"starts_at": string,"thumb_path": string | null,"title": string,"updated_at": string,"venue": string
+                    "campus": Database["public"]['Enums']["campus"],"cancelled_at": string | null,"contact_email": string | null,"created_at": string,"description": string | null,"details_changed_at": string | null,"ends_at": string,"hidden_at": string | null,"id": string,"link_url": string | null,"mycsd": boolean,"org_id": string,"poster_path": string | null,"qr_path": string | null,"starts_at": string,"thumb_path": string | null,"title": string,"updated_at": string,"venue": string
                   }
                   Insert: {
-                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at": string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"mycsd"?: boolean,"org_id": string,"poster_path"?: string | null,"starts_at": string,"thumb_path"?: string | null,"title": string,"updated_at"?: string,"venue": string
+                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"contact_email"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at": string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"mycsd"?: boolean,"org_id": string,"poster_path"?: string | null,"qr_path"?: string | null,"starts_at": string,"thumb_path"?: string | null,"title": string,"updated_at"?: string,"venue": string
                   }
                   Update: {
-                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at"?: string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"mycsd"?: boolean,"org_id"?: string,"poster_path"?: string | null,"starts_at"?: string,"thumb_path"?: string | null,"title"?: string,"updated_at"?: string,"venue"?: string
+                    "campus"?: Database["public"]['Enums']["campus"],"cancelled_at"?: string | null,"contact_email"?: string | null,"created_at"?: string,"description"?: string | null,"details_changed_at"?: string | null,"ends_at"?: string,"hidden_at"?: string | null,"id"?: string,"link_url"?: string | null,"mycsd"?: boolean,"org_id"?: string,"poster_path"?: string | null,"qr_path"?: string | null,"starts_at"?: string,"thumb_path"?: string | null,"title"?: string,"updated_at"?: string,"venue"?: string
                   }
                   Relationships: [
                     {
@@ -93,7 +93,7 @@ isOneToOne: false
                            },
 "admin_delete_post":
 { Args: { "p_post": string }; Returns: {
-              "poster_path": string,"thumb_path": string
+              "poster_path": string,"qr_path": string,"thumb_path": string
             }[]
                            },
 "admin_get_account":
