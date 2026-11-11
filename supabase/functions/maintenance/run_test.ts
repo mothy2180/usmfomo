@@ -79,6 +79,19 @@ Deno.test('runMaintenance: hourly run without the daily sweep', async () => {
   assertEquals(rec.removed, [['o/1.webp', 'o/1-thumb.webp', null, null, null, null]])
 })
 
+Deno.test('runMaintenance: the registration QR file of an expired post is removed with its poster files', async () => {
+  const { port: p, rec } = port({
+    purgeExpired: () =>
+      Promise.resolve([
+        { kind: 'post', id: 'p1', poster_path: 'o/1.webp', thumb_path: 'o/1-thumb.webp', qr_path: 'o/1-qr.webp' },
+        { kind: 'post', id: 'p2', poster_path: null, thumb_path: null, qr_path: 'o/2-qr.jpg' },
+      ]),
+  })
+  const summary = await runMaintenance(p, { now: NOT_DUE })
+  assertEquals(summary.files, 4)
+  assertEquals(rec.removed, [['o/1.webp', 'o/1-thumb.webp', 'o/1-qr.webp', null, null, 'o/2-qr.jpg']])
+})
+
 Deno.test('runMaintenance: daily sweep when due, recorded in swept_at', async () => {
   const { port: p, rec } = port()
   const summary = await runMaintenance(p, { now: DUE })

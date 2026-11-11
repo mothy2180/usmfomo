@@ -51,11 +51,15 @@ export type EventDetail = {
   venue: string
   description: string | null
   link_url: string | null
+  /** Where to email to register (0057), or null. */
+  contact_email: string | null
   mycsd: boolean
   starts_at: string
   ends_at: string
   poster_path: string | null
   thumb_path: string | null
+  /** Registration QR image (0057), or null. */
+  qr_path: string | null
   cancelled_at: string | null
   details_changed_at: string | null
   updated_at: string

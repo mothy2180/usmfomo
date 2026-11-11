@@ -28,7 +28,9 @@ export type AccountRow = {
   live_posts: number
 }
 
-export type PosterPaths = { poster_path: string | null; thumb_path: string | null }
+/** Files of a post. `qr_path` is the registration QR image (0057); it is absent
+ * from answers of functions that predate it, so it is optional here. */
+export type PosterPaths = { poster_path: string | null; thumb_path: string | null; qr_path?: string | null }
 
 export type TokenClaims = { sub: unknown; role: unknown }
 

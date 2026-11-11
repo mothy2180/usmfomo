@@ -16,6 +16,15 @@ const ports = vi.hoisted(() => ({
 }))
 
 vi.mock('./ports.ts', () => ({ studioPorts: ports }))
+// jsdom has no canvas: the QR pipeline is replaced by a fixed small WebP.
+vi.mock('../../lib/poster.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/poster.ts')>()),
+  processQr: vi.fn(async () => ({
+    blob: new Blob(['qr'], { type: 'image/webp' }),
+    format: { type: 'image/webp', ext: 'webp' },
+    size: { width: 400, height: 400 },
+  })),
+}))
 vi.mock('../../lib/db.ts', () => ({
   studioDb: {},
   imageSrc: (path: string | null | undefined) => (path ? `/i/${path}` : undefined),
@@ -35,11 +44,13 @@ const existing: PostRow = {
   venue: 'DK A',
   description: null,
   link_url: null,
+  contact_email: null,
   mycsd: false,
   starts_at: '2026-10-11T12:00:00+00:00',
   ends_at: '2026-10-11T14:00:00+00:00',
   poster_path: OLD_POSTER,
   thumb_path: OLD_THUMB,
+  qr_path: null,
   cancelled_at: null,
   hidden_at: null,
   details_changed_at: null,
@@ -123,11 +134,13 @@ describe('PostForm', () => {
       campus: 'engineering',
       description: null,
       link_url: 'https://forms.gle/abc',
+      contact_email: null,
       mycsd: true,
       starts_at: '2026-10-11T12:00:00.000Z',
       ends_at: '2026-10-11T14:00:00.000Z',
       poster_path: null,
       thumb_path: null,
+      qr_path: null,
     })
     expect(ports.upload).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'View public page' }).getAttribute('href')).toBe('/e/22222222-2222-4222-8222-222222222222')
@@ -179,12 +192,63 @@ describe('PostForm', () => {
     expect(screen.getByRole('link', { name: 'View public page' }).getAttribute('href')).toBe(`/e/${POST}`)
   })
 
+  it('publishes with a registration email and a QR image: the QR is uploaded first, the row points at it', async () => {
+    renderForm()
+    await screen.findByLabelText('Event name')
+    fillValid()
+    change('Registration email (optional)', '  reg@club.example ')
+    fireEvent.change(screen.getByLabelText('Registration QR code (optional)'), {
+      target: { files: [new File(['x'], 'qr.png', { type: 'image/png' })] },
+    })
+    expect(await screen.findByText(/QR code ready/)).toBeTruthy()
+    click('Preview')
+    expect(await screen.findByText('This goes live immediately.')).toBeTruthy()
+    // The preview shows what students will see: the QR image, the link, the email.
+    expect(screen.getByAltText('QR code preview')).toBeTruthy()
+    expect(screen.getByText('Register by email: reg@club.example')).toBeTruthy()
+    click('Publish')
+    expect(await screen.findByRole('heading', { name: 'Published' })).toBeTruthy()
+    expect(ports.upload).toHaveBeenCalledTimes(1)
+    const [path, , type] = ports.upload.mock.calls[0]!
+    expect(path).toMatch(new RegExp(`^${ORG.id}/[0-9a-f-]{36}-qr\\.webp$`))
+    expect(type).toBe('image/webp')
+    expect(ports.insert).toHaveBeenCalledWith(expect.objectContaining({ contact_email: 'reg@club.example', qr_path: path, poster_path: null }))
+    expect(ports.upload.mock.invocationCallOrder[0]!).toBeLessThan(ports.insert.mock.invocationCallOrder[0]!)
+  })
+
+  it('refuses a registration email that is not an address, next to the field', async () => {
+    renderForm()
+    await screen.findByLabelText('Event name')
+    fillValid()
+    change('Registration email (optional)', 'not an email')
+    click('Preview')
+    expect(await screen.findByText('Use a full email address (for example name@club.example).')).toBeTruthy()
+    expect(ports.insert).not.toHaveBeenCalled()
+  })
+
+  it('edits: removing the QR image clears the column in the same update, then deletes the file', async () => {
+    const OLD_QR = `${ORG.id}/66666666-6666-4666-8666-666666666666-qr.webp`
+    renderForm({ post: { ...existing, qr_path: OLD_QR, contact_email: 'old@club.example' } })
+    await screen.findByLabelText('Event name')
+    expect(screen.getByText('Current QR code')).toBeTruthy()
+    click('Remove QR code')
+    expect(screen.getByText('The QR code will be removed when you save.')).toBeTruthy()
+    click('Preview')
+    expect(await screen.findByText('Your changes go live immediately.')).toBeTruthy()
+    click('Save changes')
+    expect(await screen.findByRole('heading', { name: 'Saved' })).toBeTruthy()
+    expect(ports.update).toHaveBeenCalledWith(existing.id, { qr_path: null })
+    expect(ports.remove).toHaveBeenCalledWith([OLD_QR])
+    expect(ports.update.mock.invocationCallOrder[0]!).toBeLessThan(ports.remove.mock.invocationCallOrder[0]!)
+  })
+
   it('disables uploads and publishing while posting is paused', async () => {
     renderForm({ postingEnabled: false })
     await screen.findByLabelText('Event name')
     expect(screen.getByText(/Posting is paused by the usmfomo admin/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Preview' }) as HTMLButtonElement).disabled).toBe(true)
     expect((screen.getByLabelText('Poster (optional)') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByLabelText('Registration QR code (optional)') as HTMLInputElement).disabled).toBe(true)
   })
 
   it('edits: removes the poster in the same update, then deletes its files; can mark cancelled', async () => {

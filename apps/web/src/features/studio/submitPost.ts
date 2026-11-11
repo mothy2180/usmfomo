@@ -1,11 +1,11 @@
-// Create / update / delete a post together with its poster files, in the
+// Create / update / delete a post together with its poster and QR files, in the
 // order that never leaves a row pointing at missing files:
 //   upload new files -> write the row -> remove files no longer referenced.
 // New files are removed again only when the database refused the row. When
 // the answer was lost (offline, timeout) the row may have been written, so
 // they stay; the daily orphan sweep (maint_orphans, unreferenced files over
 // 24 h old) removes them if not, and anything a failed clean-up leaves behind.
-import { newPosterPaths } from '@usmfomo/shared/images'
+import { newPosterPaths, newQrPath } from '@usmfomo/shared/images'
 import { toInsertRow, type ValidPost } from './postForm.ts'
 import type { PostInsertRow, PostPatch, PostRow } from './types.ts'
 
@@ -17,6 +17,13 @@ export type PosterFiles = {
 }
 
 export type PosterChange = { kind: 'keep' } | { kind: 'remove' } | { kind: 'replace'; files: PosterFiles }
+
+/** The registration QR image: one file, no thumbnail. */
+export type QrFile = { blob: Blob; ext: 'webp' | 'jpg'; contentType: 'image/webp' | 'image/jpeg' }
+
+export type QrChange = { kind: 'keep' } | { kind: 'remove' } | { kind: 'replace'; file: QrFile }
+
+const KEEP_QR: QrChange = { kind: 'keep' }
 
 /** The I/O submitPost needs (real implementation: ports.ts). Each throws on error. */
 export type PostPorts = {
@@ -84,6 +91,13 @@ export async function uploadPoster(ports: PostPorts, orgId: string, files: Poste
   return paths
 }
 
+/** Uploads the QR image to a fresh random name in the org's folder. */
+export async function uploadQr(ports: PostPorts, orgId: string, file: QrFile, uuid?: Uuid): Promise<string> {
+  const path = newQrPath(orgId, file.ext, uuid)
+  await ports.upload(path, file.blob, file.contentType)
+  return path
+}
+
 /**
  * New post: upload (optional) -> insert. The files go again only if the
  * database refused the row. When its answer is lost this throws
@@ -95,9 +109,9 @@ export async function createPost(
   orgId: string,
   data: ValidPost,
   files: PosterFiles | null,
-  opts: { uuid?: Uuid; unconfirmed?: PostInsertRow | null } = {},
+  opts: { uuid?: Uuid; unconfirmed?: PostInsertRow | null; qr?: QrFile | null } = {},
 ): Promise<string> {
-  const { uuid, unconfirmed } = opts
+  const { uuid, unconfirmed, qr = null } = opts
   if (unconfirmed) {
     let found: { id: string } | null
     try {
@@ -109,13 +123,22 @@ export async function createPost(
     // Not written: its files are unreferenced and left for the orphan sweep.
   }
   const paths = files ? await uploadPoster(ports, orgId, files, uuid) : null
-  const row = toInsertRow(data, paths)
+  let qrPath: string | null = null
+  if (qr) {
+    try {
+      qrPath = await uploadQr(ports, orgId, qr, uuid)
+    } catch (err) {
+      if (paths) await bestEffortRemove(ports, [paths.poster, paths.thumb])
+      throw err
+    }
+  }
+  const row = toInsertRow(data, paths, qrPath)
   try {
     const { id } = await ports.insert(row)
     return id
   } catch (err) {
     if (!isRefusal(err)) throw new UnconfirmedCreate(row, err)
-    if (paths) await bestEffortRemove(ports, [paths.poster, paths.thumb])
+    await bestEffortRemove(ports, [paths?.poster ?? null, paths?.thumb ?? null, qrPath])
     throw err
   }
 }
@@ -130,40 +153,57 @@ export async function createPost(
  */
 export async function updatePost(
   ports: PostPorts,
-  post: Pick<PostRow, 'id' | 'org_id' | 'poster_path' | 'thumb_path'>,
+  post: Pick<PostRow, 'id' | 'org_id' | 'poster_path' | 'thumb_path'> & { qr_path?: string | null },
   patch: PostPatch,
   change: PosterChange,
   uuid?: Uuid,
+  qr: QrChange = KEEP_QR,
 ): Promise<'saved' | 'unchanged'> {
   const full: PostPatch = { ...patch }
   const hadPoster = Boolean(post.poster_path || post.thumb_path)
+  const hadQr = Boolean(post.qr_path)
   if (change.kind === 'remove' && hadPoster) {
     full.poster_path = null
     full.thumb_path = null
   }
-  if (Object.keys(full).length === 0 && change.kind !== 'replace') return 'unchanged'
+  if (qr.kind === 'remove' && hadQr) full.qr_path = null
+  if (Object.keys(full).length === 0 && change.kind !== 'replace' && qr.kind !== 'replace') return 'unchanged'
 
   let uploaded: Paths | null = null
+  let uploadedQr: string | null = null
   if (change.kind === 'replace') {
     uploaded = await uploadPoster(ports, post.org_id, change.files, uuid)
     full.poster_path = uploaded.poster
     full.thumb_path = uploaded.thumb
   }
+  if (qr.kind === 'replace') {
+    try {
+      uploadedQr = await uploadQr(ports, post.org_id, qr.file, uuid)
+    } catch (err) {
+      if (uploaded) await bestEffortRemove(ports, [uploaded.poster, uploaded.thumb])
+      throw err
+    }
+    full.qr_path = uploadedQr
+  }
   try {
     await ports.update(post.id, full)
   } catch (err) {
-    if (uploaded && isRefusal(err)) await bestEffortRemove(ports, [uploaded.poster, uploaded.thumb])
+    if (isRefusal(err)) await bestEffortRemove(ports, [uploaded?.poster ?? null, uploaded?.thumb ?? null, uploadedQr])
     throw err
   }
   if (change.kind !== 'keep' && hadPoster) await bestEffortRemove(ports, [post.poster_path, post.thumb_path])
+  if (qr.kind !== 'keep' && hadQr) await bestEffortRemove(ports, [post.qr_path ?? null])
   return 'saved'
 }
 
 /** Delete: remove the poster files first (they disappear at once), then the
  * row. A failed row delete can simply be retried; removing missing files is a
  * no-op. */
-export async function deletePost(ports: PostPorts, post: Pick<PostRow, 'id' | 'poster_path' | 'thumb_path'>): Promise<void> {
-  const files = [post.poster_path, post.thumb_path].filter((p): p is string => Boolean(p))
+export async function deletePost(
+  ports: PostPorts,
+  post: Pick<PostRow, 'id' | 'poster_path' | 'thumb_path'> & { qr_path?: string | null },
+): Promise<void> {
+  const files = [post.poster_path, post.thumb_path, post.qr_path].filter((p): p is string => Boolean(p))
   if (files.length > 0) await ports.remove(files)
   await ports.delete(post.id)
 }

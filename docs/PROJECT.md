@@ -18,6 +18,7 @@ rule, the UI only mirrors it · unofficial project, says so on every page.
 
 | Date | Decision | Options considered | Chosen | Why |
 |---|---|---|---|---|
+| 2026-11-11 | Registration email and QR image on a post | link only; link + email; link + email + QR image (uploaded); QR as an external image link | link, email and QR image all optional and in any mix; the QR is an upload stored as `<org>/<uuid>-qr.webp\|jpg` in the posters bucket (0057) | clubs hand out QR codes on posters; an external image URL would let a club track every viewer, so it is upload only. The public email can be scraped, so the form says it is public. The per-org file cap rose from 40 to 55 (15 posts × 3 files + spare) |
 | 2026-10-17 | Username changes | owner-only; club self-service | owner-only (console + CLI), Auth email and accounts.username changed together, 0056 | Tim's choice; usernames are private login names, and keeping renames with the owner adds no new way for a stolen club session to lock a committee out |
 | 2026-10-17 | Who picks passwords | generated only; owner may type one | owner may type one (12+ chars, upper, lower, digit), generated stays the default suggestion | Tim's choice |
 | 2026-10-12 | 2FA | keep (owner mandatory, clubs optional); remove for clubs only; remove for everyone | removed for everyone (owner and clubs): TOTP off in Auth, no aal2 anywhere, console and studio have no 2FA screens (0055) | the owner's choice, made knowing the owner account controls every club account, the kill switches and moderation; remaining protection: random 20+ char passwords from the owner, Turnstile on every sign-in, owner console on its own origin with a memory-only session, 30-min idle sign-out, live-session checks, audit log |
@@ -112,7 +113,7 @@ Database (`supabase/migrations`, tested by `supabase/tests`, 160 checks):
 - Trigger rules: kill switch, start/end windows, 15 live posts, 5 new per 24 h
   (from an append-only log), 30 edits per 24 h, 400-day lifetime, exact storage
   paths. CHECKs: lengths, https links without userinfo, no control characters.
-- Storage: 2 MiB, WebP/JPEG only, own folder, 40 objects per org, bucket under
+- Storage: 2 MiB, WebP/JPEG only, own folder, 55 objects per org, bucket under
   800 MiB, no listing, no overwrite.
 - Auth: sign-ups off globally (Email provider on for password login), no 2FA
   (TOTP off, 0055), Turnstile, 30-minute JWTs, no email ever sent.

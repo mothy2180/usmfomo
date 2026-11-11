@@ -186,6 +186,8 @@ export async function deleteAccount(port: OwnerAdminPort, userId: string): Promi
  */
 async function removePosterFiles(port: OwnerAdminPort, rows: PosterPaths[]): Promise<PosterFiles> {
   if (rows.length === 0) throw new HttpError('not_found')
-  const removal = await port.removeFiles(rows.flatMap((r) => [r.poster_path, r.thumb_path]))
+  const removal = await port.removeFiles(
+    rows.flatMap((r) => [r.poster_path, r.thumb_path, ...(r.qr_path ? [r.qr_path] : [])]),
+  )
   return { removedFiles: removal.removed, failedFiles: removal.failed }
 }

@@ -18,6 +18,8 @@ export const LIMITS = {
   venueMax: 120,
   descriptionMax: 1000,
   linkMax: 300,
+  /** Registration contact email (RFC 5321 path limit). */
+  emailMax: 254,
   noticeTitleMax: 120,
   noticeBodyMax: 1000,
   noticeMaxDays: 180,
@@ -35,6 +37,21 @@ export const POSTER = {
   thumbWidth: 360,
   thumbMaxBytes: 40 * 1024,
   cacheControlSeconds: 3600,
+} as const
+
+/**
+ * Registration QR image. One file per post, never a thumbnail. It is re-encoded
+ * at a high quality on a white background and capped at a modest size, because
+ * a QR code must stay sharp enough to scan from a screen.
+ */
+export const QR = {
+  /** Long edge cap; a QR code never needs more, and it is never upscaled. */
+  maxEdge: 800,
+  /** WebP/JPEG quality ladder (start, floor, step). */
+  quality: { start: 0.95, min: 0.8, step: 0.05 },
+  targetBytes: 120 * 1024,
+  /** Same hard cap as a poster (the bucket allows 2 MiB). */
+  maxBytes: 1.5 * 1024 * 1024,
 } as const
 
 export const CAMPUSES = ['main', 'engineering', 'health', 'other', 'online'] as const

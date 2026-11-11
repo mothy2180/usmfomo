@@ -53,12 +53,20 @@ export const studioPorts: PostPorts = {
     if (data.length === 0) throw NO_ROWS
   },
   async findOwn(orgId, row) {
-    // A poster file name is random, so it alone identifies the row. Without
-    // one, the same details: a second identical post would be a duplicate.
+    // A poster or QR file name is random, so it alone identifies the row.
+    // Without either, the same details: a second identical post would be a duplicate.
     const own = studioDb.from('posts').select('id').eq('org_id', orgId)
     const query = row.poster_path
       ? own.eq('poster_path', row.poster_path)
-      : own.eq('title', row.title).eq('venue', row.venue).eq('starts_at', row.starts_at).eq('ends_at', row.ends_at).is('poster_path', null)
+      : row.qr_path
+        ? own.eq('qr_path', row.qr_path)
+        : own
+            .eq('title', row.title)
+            .eq('venue', row.venue)
+            .eq('starts_at', row.starts_at)
+            .eq('ends_at', row.ends_at)
+            .is('poster_path', null)
+            .is('qr_path', null)
     const { data, error, status } = await query.limit(1)
     if (error) throw failure(error, status)
     return data[0] ?? null

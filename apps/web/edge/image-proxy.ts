@@ -3,7 +3,7 @@
 // edge location every 6 hours. Only /i/* invokes Functions (public/_routes.json),
 // so every other request stays a free, unlimited static-asset request.
 
-export const POSTER_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}(-thumb)?\.(webp|jpg)$/
+export const POSTER_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}(-thumb|-qr)?\.(webp|jpg)$/
 const TYPES: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg' }
 
 /** _headers does not apply to Function responses, so set them here. */

@@ -97,13 +97,13 @@ select throws_ok(format(
 select tests.become_postgres();
 update public.site_settings set posting_enabled = true;
 
--- A now has 1 object; add 39 more -> 40 = the per-org cap.
-select tests.raw_object(tests.fx('oa') || '/' || gen_random_uuid() || '.webp') from generate_series(1, 39);
+-- A now has 1 object; add 54 more -> 55 = the per-org cap (0057: 15 posts x 3 files + spare).
+select tests.raw_object(tests.fx('oa') || '/' || gen_random_uuid() || '.webp') from generate_series(1, 54);
 select tests.authenticate_as(tests.fx('ua'), tests.fx('sa'));
 select throws_ok(format(
   $f$ insert into storage.objects (bucket_id, name, owner_id, metadata) values ('posters', %L, %L, '{"size": 1}') $f$,
   tests.fx('oa') || '/' || gen_random_uuid() || '.webp', tests.fx('ua')),
-  '42501', null, 'the 41st object in an org folder is refused');
+  '42501', null, 'the 56th object in an org folder is refused');
 
 -- Whole bucket over 800 MiB -> every upload is refused.
 select tests.become_postgres();

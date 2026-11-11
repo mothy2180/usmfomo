@@ -100,6 +100,9 @@
     "link": "Registration link (optional)",
     "linkHint": "A full https:// link, for example https://forms.gle/…",
     "linkText": "Registration link",
+    "contactEmail": "Registration email (optional)",
+    "contactEmailHint": "Students can email this address to register. It is shown publicly on the event page.",
+    "emailText": "Register by email: {{email}}",
     "cancelled": "Mark as cancelled",
     "cancelledHint": "The post stays up with a “Cancelled” badge so students know.",
     "required": "Required.",
@@ -139,7 +142,18 @@
     "current": "Current poster",
     "removed": "The poster will be removed when you save.",
     "previewAlt": "Poster preview",
-    "refused": "The poster upload was refused. Posting may be paused, your club may already have 40 poster files, or your session may have ended."
+    "refused": "The poster upload was refused. Posting may be paused, your club may already have 55 image files, or your session may have ended."
+  },
+  "qr": {
+    "label": "Registration QR code (optional)",
+    "hint": "JPG, PNG or WebP, up to 10 MB. Shown above the registration link. It is resized in your browser, so keep the code large and clear.",
+    "remove": "Remove QR code",
+    "undoRemove": "Keep the current QR code",
+    "processing": "Preparing the image…",
+    "ready": "QR code ready ({{size}}, {{format}}).",
+    "current": "Current QR code",
+    "removed": "The QR code will be removed when you save.",
+    "previewAlt": "QR code preview"
   },
   "settings": {
     "title": "Settings",

@@ -23,6 +23,7 @@
   "venue_length": "The venue must be 2–120 characters.",
   "description_length": "The description can be at most 1,000 characters.",
   "link_format": "Use a full https:// link (for example https://forms.gle/…).",
+  "email_format": "Use a full email address (for example name@club.example).",
   "date_format": "Enter a valid date and time.",
   "time_format": "Enter a valid time.",
   "end_before_start": "The end must be after the start.",

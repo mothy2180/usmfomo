@@ -4,7 +4,7 @@ export type PostRow = Database['public']['Tables']['posts']['Row']
 
 /** Columns the studio reads (own posts, including hidden and expired ones). */
 export const POST_COLUMNS =
-  'id,org_id,campus,title,venue,description,link_url,mycsd,starts_at,ends_at,poster_path,thumb_path,cancelled_at,hidden_at,details_changed_at,created_at,updated_at' as const
+  'id,org_id,campus,title,venue,description,link_url,contact_email,mycsd,starts_at,ends_at,poster_path,thumb_path,qr_path,cancelled_at,hidden_at,details_changed_at,created_at,updated_at' as const
 
 /**
  * What a club may write (the column grants in 0020_posts.sql). There is no
@@ -17,11 +17,14 @@ export type PostInsertRow = {
   venue: string
   description: string | null
   link_url: string | null
+  contact_email: string | null
   mycsd: boolean
   starts_at: string
   ends_at: string
   poster_path: string | null
   thumb_path: string | null
+  /** Registration QR image (0057). */
+  qr_path: string | null
 }
 
 export type PostPatch = Partial<PostInsertRow & { cancelled_at: string | null }>

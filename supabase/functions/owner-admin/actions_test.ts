@@ -332,6 +332,33 @@ Deno.test('delete_post and remove_post_image: remove the returned files', async 
   }
 })
 
+Deno.test('delete_post: the registration QR file is removed with the poster files', async () => {
+  const withQr = fakePort({
+    deletePost: () =>
+      Promise.resolve([{
+        poster_path: `${ORG_ID}/p.webp`,
+        thumb_path: `${ORG_ID}/p-thumb.webp`,
+        qr_path: `${ORG_ID}/p-qr.webp`,
+      }]),
+  })
+  assertEquals(await runAction({ action: 'delete_post', postId: POST_ID }, deps(withQr.port)), {
+    removedFiles: 3,
+    failedFiles: 0,
+  })
+  assertEquals(withQr.calls[1], {
+    op: 'removeFiles',
+    args: [[`${ORG_ID}/p.webp`, `${ORG_ID}/p-thumb.webp`, `${ORG_ID}/p-qr.webp`]],
+  })
+  // A post with only a QR image (no poster) still has a file to remove.
+  const qrOnly = fakePort({
+    deletePost: () => Promise.resolve([{ poster_path: null, thumb_path: null, qr_path: `${ORG_ID}/q-qr.jpg` }]),
+  })
+  assertEquals(await runAction({ action: 'delete_post', postId: POST_ID }, deps(qrOnly.port)), {
+    removedFiles: 1,
+    failedFiles: 0,
+  })
+})
+
 Deno.test('delete_post: unknown post is 404; a post without image removes nothing', async () => {
   const missing = fakePort({ deletePost: () => Promise.resolve([]) })
   await failsWith(runAction({ action: 'delete_post', postId: POST_ID }, deps(missing.port)), 'not_found')

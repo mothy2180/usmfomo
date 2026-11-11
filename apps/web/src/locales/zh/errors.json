@@ -23,6 +23,7 @@
   "venue_length": "地点须为 2–120 个字符。",
   "description_length": "简介最多 1,000 个字符。",
   "link_format": "请使用完整的 https:// 链接（例如 https://forms.gle/…）。",
+  "email_format": "请输入完整的电子邮件地址（例如 name@club.example）。",
   "date_format": "请输入有效的日期和时间。",
   "time_format": "请输入有效的时间。",
   "end_before_start": "结束时间必须晚于开始时间。",

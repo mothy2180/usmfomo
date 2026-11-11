@@ -100,6 +100,9 @@
     "link": "Pautan pendaftaran (pilihan)",
     "linkHint": "Pautan https:// yang lengkap, contohnya https://forms.gle/…",
     "linkText": "Pautan pendaftaran",
+    "contactEmail": "E-mel pendaftaran (pilihan)",
+    "contactEmailHint": "Pelajar boleh menghantar e-mel ke alamat ini untuk mendaftar. Alamat ini dipaparkan kepada umum pada halaman acara.",
+    "emailText": "Daftar melalui e-mel: {{email}}",
     "cancelled": "Tandakan sebagai dibatalkan",
     "cancelledHint": "Siaran kekal dipaparkan dengan lencana “Dibatalkan” supaya pelajar tahu.",
     "required": "Wajib diisi.",
@@ -139,7 +142,18 @@
     "current": "Poster semasa",
     "removed": "Poster akan dibuang apabila anda menyimpan.",
     "previewAlt": "Pratonton poster",
-    "refused": "Muat naik poster ditolak. Penyiaran mungkin dihentikan sementara, kelab anda mungkin sudah mempunyai 40 fail poster, atau sesi anda mungkin telah tamat."
+    "refused": "Muat naik poster ditolak. Penyiaran mungkin dihentikan sementara, kelab anda mungkin sudah mempunyai 55 fail imej, atau sesi anda mungkin telah tamat."
+  },
+  "qr": {
+    "label": "Kod QR pendaftaran (pilihan)",
+    "hint": "JPG, PNG atau WebP, sehingga 10 MB. Dipaparkan di atas pautan pendaftaran. Ia diubah saiz dalam pelayar anda, jadi pastikan kod itu besar dan jelas.",
+    "remove": "Buang kod QR",
+    "undoRemove": "Kekalkan kod QR semasa",
+    "processing": "Menyediakan imej…",
+    "ready": "Kod QR sedia ({{size}}, {{format}}).",
+    "current": "Kod QR semasa",
+    "removed": "Kod QR akan dibuang apabila anda menyimpan.",
+    "previewAlt": "Pratonton kod QR"
   },
   "settings": {
     "title": "Tetapan",

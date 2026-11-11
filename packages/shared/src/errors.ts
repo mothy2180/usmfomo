@@ -25,6 +25,8 @@ const CHECK_KEYS: Record<string, string> = {
   posts_time_order: 'end_before_start',
   posts_max_length: 'too_long_event',
   posts_poster_pair: 'poster_pair',
+  posts_contact_email: 'email_format',
+  posts_qr_path: 'path_invalid',
   notices_link_url: 'link_format',
   notices_time_order: 'end_before_start',
   notices_max_length: 'too_long_notice',

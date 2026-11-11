@@ -85,7 +85,11 @@
     "newTab": "（在新标签页中打开）",
     "mycsd": "MyCSD",
     "mycsdNote": "由主办方提供",
-    "mycsdYes": "是"
+    "mycsdYes": "是",
+    "register": "如何报名",
+    "qrAlt": "报名二维码：{{title}}",
+    "qrCaption": "扫码报名",
+    "emailLabel": "邮件报名："
   },
   "share": {
     "copied": "链接已复制。",

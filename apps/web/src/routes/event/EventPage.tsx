@@ -143,10 +143,41 @@ function EventDetails({ post, now }: { post: EventDetail; now: Date }) {
           </section>
         ) : null}
 
-        {post.link_url ? (
-          <p className="m-0 mt-5">
-            <ExternalLink href={post.link_url}>{t('event.link')}</ExternalLink>
-          </p>
+        {post.qr_path || post.link_url || post.contact_email ? (
+          <section aria-labelledby="event-register" className="mt-6">
+            <h2 id="event-register" className="m-0 text-lg font-bold">
+              {t('event.register')}
+            </h2>
+            {/* The QR image sits above the link. White behind it keeps the light
+                margin a scanner needs, whatever the page theme. */}
+            {post.qr_path ? (
+              <figure className="m-0 mt-3 flex flex-col items-start gap-2">
+                <FallbackImage
+                  paths={[post.qr_path]}
+                  alt={t('event.qrAlt', { title: post.title })}
+                  width={240}
+                  height={240}
+                  loading="lazy"
+                  className="h-auto w-48 max-w-full rounded-lg border border-line bg-white object-contain p-2 sm:w-56"
+                />
+                <figcaption className="text-sm text-muted">{t('event.qrCaption')}</figcaption>
+              </figure>
+            ) : null}
+            {post.link_url ? (
+              <p className="m-0 mt-3">
+                <ExternalLink href={post.link_url}>{t('event.link')}</ExternalLink>
+              </p>
+            ) : null}
+            {/* '%' is escaped so a stored address can never smuggle %0A header breaks into the mail client. */}
+            {post.contact_email ? (
+              <p className="m-0 mt-3 wrap-anywhere">
+                {t('event.emailLabel')}{' '}
+                <a href={`mailto:${post.contact_email.replaceAll('%', '%25')}`} className="text-sky underline underline-offset-2">
+                  {post.contact_email}
+                </a>
+              </p>
+            ) : null}
+          </section>
         ) : null}
 
         <div className="mt-6 flex flex-wrap items-start gap-2">
